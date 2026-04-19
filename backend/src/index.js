@@ -9,10 +9,7 @@ const app = express();
 
 // ── Middleware ─────────────────────────────────
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://pulsedesk-1.onrender.com'
-  ],
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173'||'https://pulsedesk-1.onrender.com/login',
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
