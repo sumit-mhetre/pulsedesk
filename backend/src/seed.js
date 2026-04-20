@@ -76,9 +76,7 @@ await prisma.user.upsert({
     console.log('✅ Admin/Doctor created')
     console.log(`   Email: admin@sharmaclinic.com`)
     console.log(`   Password: password123\n`)
-  } else {
-    console.log('ℹ️  Admin user already exists\n')
-  }
+  } 
 
   // ── 4. Doctor ───────────────────────────
   const existingDoctor = await prisma.user.findFirst({
