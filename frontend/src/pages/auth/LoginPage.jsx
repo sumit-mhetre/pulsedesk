@@ -89,7 +89,7 @@ export default function LoginPage() {
         <p className="text-xs font-semibold text-primary mb-2">Demo Credentials</p>
         <div className="space-y-1 text-xs text-slate-600 font-mono">
           <p>Admin: <span className="text-primary">admin@sharmaclinic.com</span> / <span className="text-primary">password123</span></p>
-          <p>Super: <span className="text-primary">super@pulsedesk.com</span> / <span className="text-primary">SuperAdmin@123</span></p>
+          <p>Super: <span className="text-primary">super@pulsedesk.com</span> / <span className="text-primary">superadmin123</span></p>
         </div>
       </div>
     </div>
