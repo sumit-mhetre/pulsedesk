@@ -55,22 +55,24 @@ async function main() {
     }
   })
 
-  if (!existingAdmin) {
-    const hashed = await bcrypt.hash('password123', 12)
-    await prisma.user.create({
-      data: {
-        clinicId: clinic.id,
-        name: 'Dr. Rajesh Sharma',
-        email: 'admin@sharmaclinic.com',
-        password: hashed,
-        role: 'ADMIN',
-        phone: '9876543210',
-        qualification: 'MBBS, MD (General Medicine)',
-        specialization: 'General Physician',
-        regNo: 'MH-12345',
-        permissions: {},
-      },
-    })
+const hashed = await bcrypt.hash('password123', 12)
+
+await prisma.user.upsert({
+  where: { email: 'admin@sharmaclinic.com' },
+  update: { password: hashed },
+  create: {
+    clinicId: clinic.id,
+    name: 'Dr. Rajesh Sharma',
+    email: 'admin@sharmaclinic.com',
+    password: hashed,
+    role: 'ADMIN',
+    phone: '9876543210',
+    qualification: 'MBBS, MD (General Medicine)',
+    specialization: 'General Physician',
+    regNo: 'MH-12345',
+    permissions: {},
+  },
+})
     console.log('✅ Admin/Doctor created')
     console.log(`   Email: admin@sharmaclinic.com`)
     console.log(`   Password: password123\n`)
