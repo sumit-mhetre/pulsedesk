@@ -47,9 +47,12 @@ async function main() {
     console.log(`   Clinic ID: ${clinic.id}\n`)
   }
 
-  // ── 3. Clinic Admin (Doctor) ───────────────────────────
-  const existingAdmin = await prisma.user.findUnique({
-    where: { clinicId_email: { clinicId: clinic.id, email: 'admin@sharmaclinic.com' } },
+  // ── 3. Clinic Admin ───────────────────────────
+  const existingAdmin = await prisma.user.findFirst({
+    where: {
+      clinicId: clinic.id,
+      email: 'admin@sharmaclinic.com'
+    }
   })
 
   if (!existingAdmin) {
@@ -75,10 +78,14 @@ async function main() {
     console.log('ℹ️  Admin user already exists\n')
   }
 
-  // ── 4. Doctor 2 ────────────────────────────────────────
-  const existingDoctor = await prisma.user.findUnique({
-    where: { clinicId_email: { clinicId: clinic.id, email: 'doctor@sharmaclinic.com' } },
+  // ── 4. Doctor ───────────────────────────
+  const existingDoctor = await prisma.user.findFirst({
+    where: {
+      clinicId: clinic.id,
+      email: 'doctor@sharmaclinic.com'
+    }
   })
+
   if (!existingDoctor) {
     const hashed = await bcrypt.hash('password123', 12)
     await prisma.user.create({
@@ -100,10 +107,14 @@ async function main() {
     console.log(`   Password: password123\n`)
   }
 
-  // ── 5. Receptionist ────────────────────────────────────
-  const existingRecp = await prisma.user.findUnique({
-    where: { clinicId_email: { clinicId: clinic.id, email: 'reception@sharmaclinic.com' } },
+  // ── 5. Receptionist ───────────────────────────
+  const existingRecp = await prisma.user.findFirst({
+    where: {
+      clinicId: clinic.id,
+      email: 'reception@sharmaclinic.com'
+    }
   })
+
   if (!existingRecp) {
     const hashed = await bcrypt.hash('password123', 12)
     await prisma.user.create({
@@ -122,82 +133,48 @@ async function main() {
     console.log(`   Password: password123\n`)
   }
 
-  // ── 6. Default Dosage Options ──────────────────────────
+  // ── 6. Dosage Options ───────────────────────────
   const dosageCount = await prisma.dosageOption.count({ where: { clinicId: clinic.id } })
   if (dosageCount === 0) {
     await prisma.dosageOption.createMany({
       data: [
-        { clinicId: clinic.id, code: '1-0-0',   label: 'Once daily (Morning)',           timesPerDay: 1 },
-        { clinicId: clinic.id, code: '0-1-0',   label: 'Once daily (Afternoon)',         timesPerDay: 1 },
-        { clinicId: clinic.id, code: '0-0-1',   label: 'Once daily (Night)',             timesPerDay: 1 },
-        { clinicId: clinic.id, code: '1-0-1',   label: 'Twice daily (Morning & Night)',  timesPerDay: 2 },
-        { clinicId: clinic.id, code: '1-1-0',   label: 'Twice daily (Morning & Afternoon)', timesPerDay: 2 },
-        { clinicId: clinic.id, code: '1-1-1',   label: 'Thrice daily',                  timesPerDay: 3 },
-        { clinicId: clinic.id, code: '1-1-1-1', label: 'Four times daily',              timesPerDay: 4 },
-        { clinicId: clinic.id, code: 'SOS',     label: 'As needed (SOS)',               timesPerDay: null },
-        { clinicId: clinic.id, code: 'OD',      label: 'Once daily (OD)',               timesPerDay: 1 },
-        { clinicId: clinic.id, code: 'BD',      label: 'Twice daily (BD)',              timesPerDay: 2 },
-        { clinicId: clinic.id, code: 'TDS',     label: 'Thrice daily (TDS)',            timesPerDay: 3 },
-        { clinicId: clinic.id, code: 'QID',     label: 'Four times daily (QID)',        timesPerDay: 4 },
-        { clinicId: clinic.id, code: 'HS',      label: 'At bedtime (HS)',               timesPerDay: 1 },
+        { clinicId: clinic.id, code: '1-0-0', label: 'Once daily (Morning)', timesPerDay: 1 },
+        { clinicId: clinic.id, code: '1-1-1', label: 'Thrice daily', timesPerDay: 3 },
+        { clinicId: clinic.id, code: 'SOS', label: 'As needed', timesPerDay: null },
       ],
     })
     console.log('✅ Dosage options seeded')
   }
 
-  // ── 7. Default Timing Options ──────────────────────────
+  // ── 7. Timing Options ───────────────────────────
   const timingCount = await prisma.timingOption.count({ where: { clinicId: clinic.id } })
   if (timingCount === 0) {
     await prisma.timingOption.createMany({
       data: [
-        { clinicId: clinic.id, code: 'AF',  labelEn: 'After Food',      labelHi: 'खाने के बाद',      labelMr: 'जेवणानंतर' },
-        { clinicId: clinic.id, code: 'BF',  labelEn: 'Before Food',     labelHi: 'खाने से पहले',     labelMr: 'जेवणापूर्वी' },
-        { clinicId: clinic.id, code: 'ES',  labelEn: 'Empty Stomach',   labelHi: 'खाली पेट',         labelMr: 'रिकाम्या पोटी' },
-        { clinicId: clinic.id, code: 'WM',  labelEn: 'With Milk',       labelHi: 'दूध के साथ',       labelMr: 'दुधासोबत' },
-        { clinicId: clinic.id, code: 'WW',  labelEn: 'With Water',      labelHi: 'पानी के साथ',      labelMr: 'पाण्यासोबत' },
-        { clinicId: clinic.id, code: 'WFW', labelEn: 'With Warm Water', labelHi: 'गर्म पानी के साथ', labelMr: 'कोमट पाण्यासोबत' },
-        { clinicId: clinic.id, code: 'HS',  labelEn: 'At Bedtime',      labelHi: 'सोते समय',         labelMr: 'झोपताना' },
-        { clinicId: clinic.id, code: 'MO',  labelEn: 'Morning Only',    labelHi: 'सुबह',             labelMr: 'सकाळी' },
-        { clinicId: clinic.id, code: 'AN',  labelEn: 'At Night',        labelHi: 'रात को',           labelMr: 'रात्री' },
+        { clinicId: clinic.id, code: 'AF', labelEn: 'After Food' },
+        { clinicId: clinic.id, code: 'BF', labelEn: 'Before Food' },
       ],
     })
     console.log('✅ Timing options seeded')
   }
 
-  // ── 8. Default Billing Items ───────────────────────────
+  // ── 8. Billing ───────────────────────────
   const billCount = await prisma.billingItem.count({ where: { clinicId: clinic.id } })
   if (billCount === 0) {
     await prisma.billingItem.createMany({
       data: [
-        { clinicId: clinic.id, name: 'Consultation Fee — General',    defaultPrice: 300, category: 'Consultation' },
-        { clinicId: clinic.id, name: 'Consultation Fee — Follow Up',  defaultPrice: 150, category: 'Consultation' },
-        { clinicId: clinic.id, name: 'Consultation Fee — Pediatric',  defaultPrice: 350, category: 'Consultation' },
-        { clinicId: clinic.id, name: 'Consultation Fee — Emergency',  defaultPrice: 500, category: 'Consultation' },
-        { clinicId: clinic.id, name: 'Dressing — Simple',             defaultPrice: 100, category: 'Procedure' },
-        { clinicId: clinic.id, name: 'Dressing — Complex',            defaultPrice: 250, category: 'Procedure' },
-        { clinicId: clinic.id, name: 'IV Injection',                  defaultPrice: 200, category: 'Injection' },
-        { clinicId: clinic.id, name: 'IM Injection',                  defaultPrice: 100, category: 'Injection' },
-        { clinicId: clinic.id, name: 'Nebulisation',                  defaultPrice: 200, category: 'Procedure' },
-        { clinicId: clinic.id, name: 'ECG',                           defaultPrice: 250, category: 'Diagnostic' },
-        { clinicId: clinic.id, name: 'Blood Sugar (Glucometer)',       defaultPrice: 50,  category: 'Diagnostic' },
-        { clinicId: clinic.id, name: 'Bed Charges (per day)',          defaultPrice: 500, category: 'Bed' },
+        { clinicId: clinic.id, name: 'Consultation Fee', defaultPrice: 300, category: 'Consultation' },
       ],
     })
     console.log('✅ Billing items seeded')
   }
 
   console.log('\n🎉 Seeding complete!\n')
-  console.log('─────────────────────────────────────────')
-  console.log('📋 LOGIN CREDENTIALS')
-  console.log('─────────────────────────────────────────')
-  console.log(`Super Admin:  super@pulsedesk.com / superadmin123`)
-  console.log(`Clinic ID:    ${clinic.id}`)
-  console.log(`Admin:        admin@sharmaclinic.com / password123`)
-  console.log(`Doctor:       doctor@sharmaclinic.com / password123`)
-  console.log(`Receptionist: reception@sharmaclinic.com / password123`)
-  console.log('─────────────────────────────────────────\n')
 }
 
 main()
-  .catch((e) => { console.error('Seed error:', e); process.exit(1) })
+  .catch((e) => {
+    console.error('Seed error:', e)
+    process.exit(1)
+  })
   .finally(() => prisma.$disconnect())
