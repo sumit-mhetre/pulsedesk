@@ -15,7 +15,6 @@ app.use(cors({
   ],
   credentials: true,
 }));
-
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -26,16 +25,16 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ── Routes ─────────────────────────────────────
 app.use('/api/auth',         require('./routes/auth.routes'));
-app.use('/api/master',       require('./routes/masterdata.routes'));
-app.use('/api/templates',    require('./routes/template.routes'));
-app.use('/api/reports',      require('./routes/reports.routes'));
-app.use('/api/billing',      require('./routes/billing.routes'));
-app.use('/api/prescriptions',require('./routes/prescription.routes'));
+app.use('/api/master', require('./routes/masterdata.routes'));
+app.use('/api/templates', require('./routes/template.routes'));
+app.use('/api/reports', require('./routes/reports.routes'));
+app.use('/api/billing', require('./routes/billing.routes'));
+app.use('/api/prescriptions', require('./routes/prescription.routes'));
 app.use('/api/patients',     require('./routes/patient.routes'));
 app.use('/api/appointments', require('./routes/appointment.routes'));
-app.use('/api/clinics',      require('./routes/clinic.routes'));
-app.use('/api/users',        require('./routes/user.routes'));
-app.use('/api/super',        require('./routes/super.routes'));
+app.use('/api/clinics', require('./routes/clinic.routes'));
+app.use('/api/users',   require('./routes/user.routes'));
+app.use('/api/super',   require('./routes/super.routes'));
 
 // ── Health check ───────────────────────────────
 app.get('/api/health', (req, res) => {
