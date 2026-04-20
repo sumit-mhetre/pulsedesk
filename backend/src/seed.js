@@ -8,22 +8,21 @@ async function main() {
   console.log('🌱 Seeding PulseDesk database...\n')
 
   // ── 1. Super Admin ─────────────────────────────
-  const existingSuper = await prisma.superAdmin.findFirst()
+ const superHashed = await bcrypt.hash('superadmin123', 12)
 
-  if (!existingSuper) {
-    const hashed = await bcrypt.hash('superadmin123', 12)
-    await prisma.superAdmin.create({
-      data: {
-        name: 'Super Admin',
-        email: 'super@pulsedesk.com',
-        password: hashed
-      }
-    })
-    console.log('✅ Super Admin created')
-  } else {
-    console.log('ℹ️ Super Admin already exists')
+await prisma.superAdmin.upsert({
+  where: { email: 'super@pulsedesk.com' },
+  update: {
+    password: superHashed
+  },
+  create: {
+    name: 'Super Admin',
+    email: 'super@pulsedesk.com',
+    password: superHashed
   }
+})
 
+console.log('✅ Super Admin ready')
   // ── 2. Clinic ─────────────────────────────
   let clinic = await prisma.clinic.findFirst({
     where: { name: 'Sharma Medical Clinic' }
