@@ -1,11 +1,13 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-const api = axios.create({
-  baseURL: '/api',
-  withCredentials: true,
-})
+const API_URL = import.meta.env.VITE_API_URL;
 
+const api = axios.create({
+  baseURL: `${API_URL}/api`,
+  withCredentials: true,
+});
+console.log(import.meta.env.VITE_API_URL);
 // Attach access token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken')
