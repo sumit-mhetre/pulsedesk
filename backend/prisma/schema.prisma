@@ -574,3 +574,21 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+// ─────────────────────────────────────────────
+// DOCTOR MEDICINE PREFERENCES (smart auto-fill)
+// ─────────────────────────────────────────────
+model DoctorMedicinePreference {
+  id          String   @id @default(uuid())
+  clinicId    String
+  doctorId    String
+  medicineId  String
+  dosage      String?
+  timing      String?
+  days        Int?
+  usageCount  Int      @default(1)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([clinicId, doctorId, medicineId])
+  @@map("doctor_medicine_preferences")
+}

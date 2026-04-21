@@ -4,6 +4,7 @@ const ctrl = require('../controllers/prescription.controller');
 
 router.get ('/',                                    authenticate, ctrl.getPrescriptions);
 router.post('/',                                    authenticate, authorize('DOCTOR','ADMIN'), ctrl.createPrescription);
+router.get ('/doctor-preferences', authenticate, ctrl.getDoctorPreferences);
 router.get ('/calc-qty',                            authenticate, ctrl.calculateQty);
 router.get ('/patient/:patientId',                  authenticate, ctrl.getPatientPrescriptions);
 router.get ('/patient/:patientId/last',             authenticate, ctrl.getLastPrescription);

@@ -8,6 +8,85 @@ import { format, addDays } from 'date-fns'
 
 const DOSAGE_OPTS = ['1-0-0','0-1-0','0-0-1','1-0-1','1-1-0','0-1-1','1-1-1','1-1-1-1','OD','BD','TDS','QID','HS','SOS','STAT']
 const DAYS_OPTS   = ['1','2','3','5','7','10','14','15','21','30']
+
+// ── Smart days input — type number → shows N days/weeks/months/years ──
+function SmartDaysInput({ value, onChange }) {
+  const [open, setOpen]   = useState(false)
+  const [input, setInput] = useState('')
+  const ref = useRef(null)
+  const [pos, setPos]     = useState({ top:0, left:0, width:0 })
+
+  // Parse display value like "7 days" → { num: 7, unit: 'days' }
+  const parse = (v) => {
+    if (!v) return { num: '', unit: 'days' }
+    const m = String(v).match(/^(\d+)\s*(days?|weeks?|months?|years?)?$/i)
+    if (m) return { num: m[1], unit: (m[2]||'days').toLowerCase().replace(/s$/, '') + 's' }
+    // plain number
+    if (/^\d+$/.test(String(v))) return { num: String(v), unit: 'days' }
+    return { num: v, unit: 'days' }
+  }
+  const { num, unit } = parse(value)
+  const display = value ? (String(value).includes(' ') ? value : `${value} days`) : ''
+
+  // Convert to days for saving
+  const toDays = (n, u) => {
+    const N = parseInt(n)
+    if (!N) return ''
+    if (u.startsWith('week'))  return String(N * 7)
+    if (u.startsWith('month')) return String(N * 30)
+    if (u.startsWith('year'))  return String(N * 365)
+    return String(N)
+  }
+
+  const getOptions = (n) => {
+    if (!n) return DAYS_OPTS.map(d => ({ label: `${d} days`, value: d }))
+    const N = parseInt(n); if (!N) return []
+    return [
+      { label: `${N} days`,   value: String(N) },
+      { label: `${N} weeks`,  value: String(N * 7) },
+      { label: `${N} months`, value: String(N * 30) },
+      { label: `${N} years`,  value: String(N * 365) },
+    ]
+  }
+
+  const calc = () => {
+    if (ref.current) {
+      const r = ref.current.getBoundingClientRect()
+      const ab = window.innerHeight - r.bottom < 160 && r.top > 160
+      setPos({ top: ab ? r.top - 160 - 2 : r.bottom + 2, left: r.left, width: r.width })
+    }
+  }
+
+  const opts = getOptions(input || num)
+
+  return (
+    <>
+      <div ref={ref} className="relative flex">
+        <input
+          className={`w-full h-8 px-2 text-xs border rounded-lg focus:outline-none focus:border-primary bg-white transition-all ${value ? 'border-blue-200 text-slate-700 font-medium' : 'border-slate-200 text-slate-400'}`}
+          placeholder="Days"
+          value={input || display}
+          onChange={e => { setInput(e.target.value); calc(); setOpen(true) }}
+          onFocus={() => { calc(); setOpen(true) }}
+          onBlur={() => setTimeout(() => { setOpen(false); if (input && /^\d+$/.test(input.trim())) { onChange(input.trim()); setInput('') } }, 200)}
+          onKeyDown={e => { if (e.key === 'Enter' && input) { if (/^\d+$/.test(input.trim())) { onChange(input.trim()); setInput('') } setOpen(false) } if (e.key === 'Escape') setOpen(false) }}
+        />
+      </div>
+      {open && opts.length > 0 && (
+        <div style={{ position:'fixed', top:pos.top, left:pos.left, width:Math.max(pos.width, 130), zIndex:9999 }}
+          className="bg-white rounded-xl shadow-xl border border-blue-100 overflow-hidden">
+          {opts.map(opt => (
+            <button key={opt.label} type="button"
+              onMouseDown={e => { e.preventDefault(); onChange(opt.value); setInput(''); setOpen(false) }}
+              className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors border-b border-slate-50 last:border-0 ${opt.value === value ? 'bg-blue-50 text-primary font-bold' : 'text-slate-700'}`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
 const TIMING_OPTS = [
   { code:'AF', label:'After Food' }, { code:'BF', label:'Before Food' },
   { code:'ES', label:'Empty Stomach' }, { code:'HS', label:'At Bedtime' },
@@ -467,6 +546,7 @@ export default function NewPrescriptionPage() {
   const [customRxNo,setCustomRxNo]= useState('')
   const [saving,    setSaving]    = useState(false)
   const [lastRx,    setLastRx]    = useState(null)
+  const [doctorPrefs, setDoctorPrefs] = useState({})
   const [allTemplates, setAllTemplates] = useState([])
 
   useEffect(() => {
@@ -568,9 +648,11 @@ export default function NewPrescriptionPage() {
   const handleMedSelect = useCallback((med, rowIdx) => {
     if (!med) return
     const isNT = NON_TABLET.includes(med.type)
-    const dosage = isNT ? '' : (med.defaultDosage||lastUsed.current.dosage)
-    const days   = med.defaultDays ? String(med.defaultDays) : lastUsed.current.days
-    const timing = med.defaultTiming||lastUsed.current.timing
+    // Priority: doctor's personal preference > medicine default > last used
+    const pref   = doctorPrefs[med.id] || {}
+    const dosage = isNT ? '' : (pref.dosage || med.defaultDosage || lastUsed.current.dosage)
+    const days   = pref.days ? String(pref.days) : (med.defaultDays ? String(med.defaultDays) : lastUsed.current.days)
+    const timing = pref.timing || med.defaultTiming || lastUsed.current.timing
     setRxMeds(prev => {
       const u=[...prev]
       u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, notesEn:'', qty: isNT?'':calcQty(dosage,days) }
@@ -612,24 +694,37 @@ export default function NewPrescriptionPage() {
     toast.success(`"${val}" applied to all rows`)
   }
 
+  // Detect script — Devanagari (Hindi/Marathi) or English
+  const detectLang = (text) => {
+    if (/[ऀ-ॿ]/.test(text)) return printLang === 'mr' ? 'mr' : 'hi'
+    return 'en'
+  }
+  const buildPayload = (text, type) => {
+    const lang = detectLang(text)
+    if (type === 'lab') return lang === 'en' ? { name: text } : { name: text, [`name${lang.charAt(0).toUpperCase()+lang.slice(1)}`]: text }
+    if (lang === 'en') return { nameEn: text }
+    if (lang === 'hi') return { nameEn: text, nameHi: text }
+    return { nameEn: text, nameMr: text }
+  }
+
   const autoSaveToMaster = async () => {
     for (const tag of complaintTags) {
       if (!complaints.some(c=>c.nameEn?.toLowerCase()===tag.toLowerCase()))
-        try { await api.post('/master/complaints',{nameEn:tag}) } catch {}
+        try { await api.post('/master/complaints', buildPayload(tag, 'complaint')) } catch {}
     }
     for (const tag of diagnosisTags) {
       if (!diagnoses.some(d=>d.nameEn?.toLowerCase()===tag.toLowerCase()))
-        try { await api.post('/master/diagnoses',{nameEn:tag}) } catch {}
+        try { await api.post('/master/diagnoses', buildPayload(tag, 'diagnosis')) } catch {}
     }
     const savedTests=[]
     for (const t of rxTests) {
       if (t.isNew) {
-        try { const{data}=await api.post('/master/lab-tests',{name:t.name}); savedTests.push({id:data.data.id,name:t.name}) }
+        try { const{data}=await api.post('/master/lab-tests', buildPayload(t.name,'lab')); savedTests.push({id:data.data.id,name:t.name}) }
         catch { savedTests.push(t) }
       } else savedTests.push(t)
     }
     for (const a of rxAdvice) {
-      if (a.isNew) try { await api.post('/master/advice',{nameEn:a.name}) } catch {}
+      if (a.isNew) try { await api.post('/master/advice', buildPayload(a.name,'advice')) } catch {}
     }
     return savedTests
   }
@@ -801,7 +896,7 @@ export default function NewPrescriptionPage() {
 
         {/* Complaint */}
         <Card>
-          <div className="flex items-center justify-between mb-3"><h3 className="font-bold text-slate-700">Chief Complaint</h3><SectionTemplate label="Complaint Templates" section="complaint" templates={allTemplates} onApply={t=>{ if(t.complaint) setComplaintTags(p=>[...new Set([...p,...t.complaint.split('||').map(s=>s.trim()).filter(Boolean)])])}}/></div>
+          <div className="flex items-center justify-between mb-3"><h3 className="font-bold text-slate-700">Chief Complaint</h3><div className="flex gap-2">{complaintTags.length>0 && <button type="button" onClick={()=>setComplaintTags([])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}<SectionTemplate label="Complaint Templates" section="complaint" templates={allTemplates} onApply={t=>{ if(t.complaint) setComplaintTags(p=>[...new Set([...p,...t.complaint.split('||').map(s=>s.trim()).filter(Boolean)])])}}/></div>
           <TagInput
             tags={complaintTags}
             onAdd={t=>setComplaintTags(p=>[...p,t])}
@@ -812,7 +907,7 @@ export default function NewPrescriptionPage() {
 
         {/* Diagnosis */}
         <Card>
-          <div className="flex items-center justify-between mb-3"><h3 className="font-bold text-slate-700">Diagnosis</h3><SectionTemplate label="Diagnosis Templates" section="diagnosis" templates={allTemplates} onApply={t=>{ if(t.diagnosis) setDiagnosisTags(p=>[...new Set([...p,...t.diagnosis.split('||').map(s=>s.trim()).filter(Boolean)])])}}/></div>
+          <div className="flex items-center justify-between mb-3"><h3 className="font-bold text-slate-700">Diagnosis</h3><div className="flex gap-2">{diagnosisTags.length>0 && <button type="button" onClick={()=>setDiagnosisTags([])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}<SectionTemplate label="Diagnosis Templates" section="diagnosis" templates={allTemplates} onApply={t=>{ if(t.diagnosis) setDiagnosisTags(p=>[...new Set([...p,...t.diagnosis.split('||').map(s=>s.trim()).filter(Boolean)])])}}/></div>
           <TagInput
             tags={diagnosisTags}
             onAdd={t=>setDiagnosisTags(p=>[...p,t])}
@@ -827,7 +922,9 @@ export default function NewPrescriptionPage() {
             <h3 className="font-bold text-slate-700 flex items-center gap-2">
               Medicines <Badge variant="primary">{rxMeds.filter(m=>m.medicineName).length}</Badge>
             </h3>
-            <div className="flex items-center gap-2"><SectionTemplate label="Medicine Templates" section="medicines" templates={allTemplates} onApply={t=>{ if(t.medicines?.length>0){api.post(`/templates/${t.id}/use`).then(({data})=>{setRxMeds(p=>{const existing=p.filter(m=>m.medicineName);const newMeds=data.data.medicines||[];return[...existing,...newMeds,{...emptyMed}]});toast.success(`${t.name} medicines loaded!`)}).catch(()=>{})} }}/><Button variant="outline" size="sm" icon={<Plus className="w-3.5 h-3.5"/>} onClick={addRow}>Add Row</Button></div>
+            <div className="flex items-center gap-2">
+              {rxMeds.filter(m=>m.medicineName).length>0 && <button type="button" onClick={()=>setRxMeds([{...emptyMed}])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}
+              <SectionTemplate label="Medicine Templates" section="medicines" templates={allTemplates} onApply={t=>{ if(t.medicines?.length>0){api.post(`/templates/${t.id}/use`).then(({data})=>{setRxMeds(p=>{const existing=p.filter(m=>m.medicineName);const newMeds=data.data.medicines||[];return[...existing,...newMeds,{...emptyMed}]});toast.success(`${t.name} medicines loaded!`)}).catch(()=>{})} }}/><Button variant="outline" size="sm" icon={<Plus className="w-3.5 h-3.5"/>} onClick={addRow}>Add Row</Button></div>
           </div>
           <p className="text-xs text-slate-400 mb-3">💡 Click <strong className="text-primary">↓</strong> in headers to apply value to all rows</p>
 
@@ -884,7 +981,7 @@ export default function NewPrescriptionPage() {
                       <ColDrop value={med.timing} options={TIMING_OPTS} placeholder="When" onChange={v=>updateMed(idx,'timing',v)}/>
                     </td>
                     <td className="py-1.5 px-1">
-                      <ColDrop value={med.days} options={DAYS_OPTS.map(d=>({code:d,label:`${d} days`}))} placeholder="Days" onChange={v=>updateMed(idx,'days',v)}/>
+                      <SmartDaysInput value={med.days} onChange={v=>updateMed(idx,'days',v)}/>
                     </td>
                     <td className="py-1.5 px-1">
                       {isNT ? <div className="h-8 flex items-center justify-center text-xs text-slate-300 bg-slate-50 rounded-lg border border-slate-100">—</div>
@@ -915,7 +1012,7 @@ export default function NewPrescriptionPage() {
 
         {/* Lab Tests */}
         <Card>
-          <div className="flex items-center justify-between mb-3"><h3 className="font-bold text-slate-700">Lab Tests</h3><SectionTemplate label="Lab Test Templates" section="labTests" templates={allTemplates} onApply={t=>{ if(t.labTests?.length>0){ t.labTests.forEach((name,i)=>{ const item=labTestList.find(l=>l.name===name); if(item&&!rxTests.find(x=>x.id===item.id)) setRxTests(p=>[...p,{id:item.id,name}]); else if(!item) setRxTests(p=>[...p,{id:'new_'+Date.now()+i,name,isNew:true}]) }); toast.success('Lab tests loaded!') }}}/></div>
+          <div className="flex items-center justify-between mb-3"><h3 className="font-bold text-slate-700">Lab Tests</h3><div className="flex gap-2">{rxTests.length>0 && <button type="button" onClick={()=>setRxTests([])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}<SectionTemplate label="Lab Test Templates" section="labTests" templates={allTemplates} onApply={t=>{ if(t.labTests?.length>0){ t.labTests.forEach((name,i)=>{ const item=labTestList.find(l=>l.name===name); if(item&&!rxTests.find(x=>x.id===item.id)) setRxTests(p=>[...p,{id:item.id,name}]); else if(!item) setRxTests(p=>[...p,{id:'new_'+Date.now()+i,name,isNew:true}]) }); toast.success('Lab tests loaded!') }}}/></div>
           <TagSearch
             tags={rxTests}
             onAdd={t=>{ if(!rxTests.find(x=>x.id===t.id)) setRxTests(p=>[...p,t]) }}
@@ -927,7 +1024,7 @@ export default function NewPrescriptionPage() {
 
         {/* Advice */}
         <Card>
-          <div className="flex items-center justify-between mb-3"><h3 className="font-bold text-slate-700">Advice & Precautions</h3><SectionTemplate label="Advice Templates" section="advice" templates={allTemplates} onApply={t=>{ if(t.advice){ t.advice.split('\n').filter(Boolean).forEach((a,i)=>{ if(!rxAdvice.find(x=>x.name===a)) setRxAdvice(p=>[...p,{id:'adv_'+Date.now()+i,name:a}]) }); toast.success('Advice loaded!') }}}/></div>
+          <div className="flex items-center justify-between mb-3"><h3 className="font-bold text-slate-700">Advice & Precautions</h3><div className="flex gap-2">{rxAdvice.length>0 && <button type="button" onClick={()=>setRxAdvice([])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}<SectionTemplate label="Advice Templates" section="advice" templates={allTemplates} onApply={t=>{ if(t.advice){ t.advice.split('\n').filter(Boolean).forEach((a,i)=>{ if(!rxAdvice.find(x=>x.name===a)) setRxAdvice(p=>[...p,{id:'adv_'+Date.now()+i,name:a}]) }); toast.success('Advice loaded!') }}}/></div>
           <TagSearch
             tags={rxAdvice}
             onAdd={t=>{ if(!rxAdvice.find(x=>x.id===t.id)) setRxAdvice(p=>[...p,t]) }}

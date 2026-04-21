@@ -171,13 +171,21 @@ async function createPrescription(req, res) {
         const validMeds = processedMeds.filter(Boolean)
         if (validMeds.length > 0) {
           await tx.prescriptionMedicine.createMany({ data: validMeds })
-          // Increment usage for known medicines
+          // Increment usage + save doctor's medicine preferences
           for (const med of validMeds) {
             if (med.medicineId) {
               await tx.medicine.updateMany({
                 where: { id: med.medicineId, clinicId: req.clinicId },
                 data: { usageCount: { increment: 1 } },
               })
+              // Save per-doctor preference (dosage/timing/days used last time)
+              if (med.dosage || med.timing || med.days) {
+                await prisma.doctorMedicinePreference.upsert({
+                  where: { clinicId_doctorId_medicineId: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId } },
+                  create: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId, dosage: med.dosage||null, timing: med.timing||null, days: med.days||null },
+                  update: { dosage: med.dosage||null, timing: med.timing||null, days: med.days||null, usageCount: { increment: 1 } },
+                }).catch(()=>{})
+              }
             }
           }
         }
@@ -378,6 +386,21 @@ async function calculateQty(req, res) {
     return successResponse(res, { qty });
   } catch (err) {
     return errorResponse(res, 'Calculation failed', 500);
+  }
+}
+
+// ── Get doctor's medicine preferences ────────────────────
+async function getDoctorPreferences(req, res) {
+  try {
+    const prefs = await prisma.doctorMedicinePreference.findMany({
+      where: { clinicId: req.clinicId, doctorId: req.user.id },
+    })
+    // Return as map: { medicineId: { dosage, timing, days } }
+    const map = {}
+    prefs.forEach(p => { map[p.medicineId] = { dosage: p.dosage, timing: p.timing, days: p.days } })
+    return successResponse(res, map)
+  } catch (err) {
+    return successResponse(res, {}) // non-critical, return empty on error
   }
 }
 
