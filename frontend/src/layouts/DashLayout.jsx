@@ -30,7 +30,12 @@ export default function DashLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
 
-  const handleLogout = async () => {
+  const [confirmLogout, setConfirmLogout] = useState(false)
+
+  const handleLogout = () => setConfirmLogout(true)
+
+  const doLogout = async () => {
+    setConfirmLogout(false)
     await logout()
     toast.success('Logged out successfully')
     navigate('/login')
@@ -93,6 +98,31 @@ export default function DashLayout() {
   )
 
   return (
+    <>
+    {confirmLogout && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={()=>setConfirmLogout(false)}/>
+        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-orange-100">
+          <div className="p-6 text-center">
+            <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <LogOut className="w-7 h-7 text-warning"/>
+            </div>
+            <h3 className="font-bold text-slate-800 text-lg mb-2">Logout?</h3>
+            <p className="text-sm text-slate-500">Are you sure you want to logout from PulseDesk?</p>
+          </div>
+          <div className="flex border-t border-slate-100">
+            <button onClick={()=>setConfirmLogout(false)}
+              className="flex-1 py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors border-r border-slate-100">
+              Cancel
+            </button>
+            <button onClick={doLogout}
+              className="flex-1 py-3.5 text-sm font-bold text-white bg-danger hover:bg-danger/90 transition-colors">
+              Yes, Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="flex min-h-screen bg-background">
       <div className="hidden lg:block sticky top-0 h-screen no-print"><Sidebar /></div>
 
@@ -155,5 +185,6 @@ export default function DashLayout() {
         <main className="flex-1 p-6 fade-in"><Outlet /></main>
       </div>
     </div>
+  </>
   )
 }
