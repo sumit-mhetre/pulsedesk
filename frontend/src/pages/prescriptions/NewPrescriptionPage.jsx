@@ -900,7 +900,9 @@ export default function NewPrescriptionPage() {
             <h3 className="font-bold text-slate-700">Chief Complaint</h3>
             <div className="flex gap-2">
               {complaintTags.length>0 && <button type="button" onClick={()=>setComplaintTags([])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}
-              <SectionTemplate label="Complaint Templates" section="complaint" templates={allTemplates} onApply={t=>{ if(t.complaint) setComplaintTags(p=>[...new Set([...p,...t.complaint.split('||').map(s=>s.trim()).filter(Boolean)])])}}/></div>
+              <SectionTemplate label="Complaint Templates" section="complaint" templates={allTemplates} onApply={t=>{ if(t.complaint) setComplaintTags(p=>[...new Set([...p,...t.complaint.split('||').map(s=>s.trim()).filter(Boolean)])])}}/>
+            </div>
+          </div>
           <TagInput
             tags={complaintTags}
             onAdd={t=>setComplaintTags(p=>[...p,t])}
@@ -915,7 +917,9 @@ export default function NewPrescriptionPage() {
             <h3 className="font-bold text-slate-700">Diagnosis</h3>
             <div className="flex gap-2">
               {diagnosisTags.length>0 && <button type="button" onClick={()=>setDiagnosisTags([])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}
-              <SectionTemplate label="Diagnosis Templates" section="diagnosis" templates={allTemplates} onApply={t=>{ if(t.diagnosis) setDiagnosisTags(p=>[...new Set([...p,...t.diagnosis.split('||').map(s=>s.trim()).filter(Boolean)])])}}/></div>
+              <SectionTemplate label="Diagnosis Templates" section="diagnosis" templates={allTemplates} onApply={t=>{ if(t.diagnosis) setDiagnosisTags(p=>[...new Set([...p,...t.diagnosis.split('||').map(s=>s.trim()).filter(Boolean)])])}}/>
+            </div>
+          </div>
           <TagInput
             tags={diagnosisTags}
             onAdd={t=>setDiagnosisTags(p=>[...p,t])}
@@ -1024,7 +1028,7 @@ export default function NewPrescriptionPage() {
             <h3 className="font-bold text-slate-700">Lab Tests</h3>
             <div className="flex gap-2">
               {rxTests.length>0 && <button type="button" onClick={()=>setRxTests([])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}
-              <SectionTemplate label="Lab Test Templates" section="labTests" templates={allTemplates} onApply={t=>{ if(t.labTests?.length>0){ t.labTests.forEach((name,i)=>{ const item=labTestList.find(l=>l.name===name); if(item&&!rxTests.find(x=>x.id===item.id)) setRxTests(p=>[...p,{id:item.id,name}]); else if(!item) setRxTests(p=>[...p,{id:'new_'+Date.now()+i,name,isNew:true}]) }); toast.success('Lab tests loaded!') }}/>
+              <SectionTemplate label="Lab Test Templates" section="labTests" templates={allTemplates} onApply={t=>{ if(t.labTests?.length>0){ t.labTests.forEach((name,i)=>{ const item=labTestList.find(l=>l.name===name); if(item&&!rxTests.find(x=>x.id===item.id)) setRxTests(p=>[...p,{id:item.id,name}]); else if(!item) setRxTests(p=>[...p,{id:'new_'+Date.now()+i,name,isNew:true}]) }); toast.success('Lab tests loaded!') }}}/>
             </div>
           </div>
           <TagSearch
@@ -1042,7 +1046,7 @@ export default function NewPrescriptionPage() {
             <h3 className="font-bold text-slate-700">Advice & Precautions</h3>
             <div className="flex gap-2">
               {rxAdvice.length>0 && <button type="button" onClick={()=>setRxAdvice([])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}
-              <SectionTemplate label="Advice Templates" section="advice" templates={allTemplates} onApply={t=>{ if(t.advice){ t.advice.split('\n').filter(Boolean).forEach((a,i)=>{ if(!rxAdvice.find(x=>x.name===a)) setRxAdvice(p=>[...p,{id:'adv_'+Date.now()+i,name:a}]) }); toast.success('Advice loaded!') }}/>
+              <SectionTemplate label="Advice Templates" section="advice" templates={allTemplates} onApply={t=>{ if(t.advice){ t.advice.split('\n').filter(Boolean).forEach((a,i)=>{ if(!rxAdvice.find(x=>x.name===a)) setRxAdvice(p=>[...p,{id:'adv_'+Date.now()+i,name:a}]) }); toast.success('Advice loaded!') }}}/>
             </div>
           </div>
           <TagSearch
