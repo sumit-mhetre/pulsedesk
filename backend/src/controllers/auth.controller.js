@@ -38,8 +38,11 @@ async function login(req, res) {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    await prisma.refreshToken.create({
-      data: { userId: user.id, token: refreshToken, expiresAt: new Date(Date.now() + 7*24*60*60*1000) },
+    // Upsert to avoid unique constraint error on repeated logins
+    await prisma.refreshToken.upsert({
+      where: { token: refreshToken },
+      create: { userId: user.id, token: refreshToken, expiresAt: new Date(Date.now() + 7*24*60*60*1000) },
+      update: { userId: user.id, expiresAt: new Date(Date.now() + 7*24*60*60*1000) },
     });
 
     const { password: _, ...userSafe } = user;
