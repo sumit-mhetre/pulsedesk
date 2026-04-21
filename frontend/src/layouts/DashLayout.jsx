@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
-  LayoutDashboard, Users, Settings, LogOut, Database, FileText, Receipt, BookOpen,
+  LayoutDashboard, Users, Settings, LogOut, Database, FileText, Receipt, BookOpen, Palette,
   Menu, X, User, ChevronDown, Building2,
   CalendarDays, BarChart3, Palette,
 } from 'lucide-react'
@@ -16,17 +16,13 @@ const navItems = [
   { label: 'Billing',       icon: Receipt,        to: '/billing',       roles: ['ADMIN','DOCTOR','RECEPTIONIST'] },
   { label: 'Reports',       icon: BarChart3,      to: '/reports',       roles: ['ADMIN','DOCTOR'] },
   { label: 'Templates',     icon: BookOpen,       to: '/templates',     roles: ['ADMIN','DOCTOR'] },
+  { label: 'Page Designer',  icon: Palette,        to: '/page-designer', roles: ['ADMIN','DOCTOR'] },
   { label: 'Master Data', icon: Database, to: '/master-data', roles: ['ADMIN'] },
   { label: 'Clinic Setup', icon: Building2,       to: '/clinic/setup',roles: ['ADMIN'] },
   { label: 'Users',        icon: Users,           to: '/users',       roles: ['ADMIN'] },
 ]
 
-const futureItems = [
-  { label: 'Prescriptions', icon: FileText  },
-  { label: 'Billing',       icon: Receipt   },
-  { label: 'Reports',       icon: BarChart3 },
-  { label: 'Page Designer', icon: Palette   },
-]
+
 
 export default function DashLayout() {
   const { user, logout } = useAuthStore()
@@ -74,14 +70,7 @@ export default function DashLayout() {
           </NavLink>
         ))}
 
-        <div className="border-t border-white/10 my-3" />
-        <p className="text-blue-300 text-xs font-semibold uppercase tracking-wider px-4 mb-2">Coming Soon</p>
-        {futureItems.map((item) => (
-          <div key={item.label} className="sidebar-link opacity-40 cursor-not-allowed">
-            <item.icon className="w-4 h-4 flex-shrink-0" />
-            {item.label}
-          </div>
-        ))}
+
       </nav>
 
       <div className="p-4 border-t border-white/10">

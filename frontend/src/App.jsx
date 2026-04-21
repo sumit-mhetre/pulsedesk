@@ -21,7 +21,8 @@ import ViewPrescriptionPage from './pages/prescriptions/ViewPrescriptionPage'
 import BillsPage      from './pages/billing/BillsPage'
 import ReportsPage      from './pages/reports/ReportsPage'
 import TemplatesPage    from './pages/templates/TemplatesPage'
-import TemplateEditorPage from './pages/templates/TemplateEditorPage'
+import TemplateEditorPage  from './pages/templates/TemplateEditorPage'
+import PageDesignerPage    from './pages/pagedesigner/PageDesignerPage'
 import NewBillPage    from './pages/billing/NewBillPage'
 import ViewBillPage   from './pages/billing/ViewBillPage'
 import SuperDashboard      from './pages/super/SuperDashboard'
@@ -67,7 +68,8 @@ export default function App() {
           <Route path="/reports"         element={<ReportsPage />} />
           <Route path="/templates"        element={<TemplatesPage />} />
           <Route path="/templates/new"    element={<TemplateEditorPage />} />
-          <Route path="/templates/:id/edit" element={<TemplateEditorPage />} />
+          <Route path="/templates/:id/edit"  element={<TemplateEditorPage />} />
+          <Route path="/page-designer"         element={<PageDesignerPage />} />
           <Route path="/billing/new"   element={<NewBillPage />} />
           <Route path="/billing/:id"   element={<ViewBillPage />} />
           <Route element={<RoleRoute roles={['ADMIN']} />}>

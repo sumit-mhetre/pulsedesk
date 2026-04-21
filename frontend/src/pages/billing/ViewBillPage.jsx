@@ -25,6 +25,7 @@ export default function ViewBillPage() {
   const [saving,   setSaving]   = useState(false)
 
   useEffect(() => {
+    api.get('/page-design?type=bill').then(r=>{ if(r.data.data?.config) setCfg(r.data.data.config) }).catch(()=>{})
     api.get(`/billing/${id}`)
       .then(({ data }) => { setBill(data.data); setPaid(data.data.amountPaid); setMode(data.data.paymentMode) })
       .catch(() => navigate('/billing'))

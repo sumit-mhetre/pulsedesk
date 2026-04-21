@@ -38,13 +38,22 @@ export default function ViewPrescriptionPage() {
   const [rx, setRx]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [lang, setLang]   = useState('en')
+  const [cfg, setCfg]     = useState(null)
 
   useEffect(() => {
-    api.get(`/prescriptions/${id}`)
-      .then(({ data }) => { setRx(data.data); setLang(data.data.printLang || 'en') })
-      .catch(() => navigate('/prescriptions'))
-      .finally(() => setLoading(false))
+    Promise.all([
+      api.get(`/prescriptions/${id}`),
+      api.get('/page-design?type=prescription'),
+    ]).then(([rxRes, cfgRes]) => {
+      setRx(rxRes.data.data)
+      setLang(rxRes.data.data.printLang || 'en')
+      if (cfgRes.data.data?.config) setCfg(cfgRes.data.data.config)
+    }).catch(() => navigate('/prescriptions'))
+    .finally(() => setLoading(false))
   }, [id])
+
+  // Shorthand: show(key) returns true if cfg doesn't explicitly disable it
+  const show = (key) => cfg ? (cfg[key] !== false) : true
 
   if (loading) return <div className="flex justify-center py-20"><div className="spinner text-primary w-8 h-8"/></div>
   if (!rx) return null
@@ -112,22 +121,23 @@ export default function ViewPrescriptionPage() {
       </div>
 
       {/* ── Print area ── */}
-      <div className="bg-white rounded-2xl shadow-card border border-blue-50 p-8 max-w-3xl mx-auto print-area">
+      <div className={`bg-white rounded-2xl shadow-card border border-blue-50 p-8 max-w-3xl mx-auto print-area ${cfg?.baseFontSize==='sm'?'text-sm':cfg?.baseFontSize==='lg'?'text-lg':''}`} style={{fontFamily:cfg?.fontFamily==='serif'?'Georgia,serif':cfg?.fontFamily==='mono'?'monospace':'inherit'}}>
 
         {/* Clinic header */}
-        <div className="border-b-2 border-primary pb-4 mb-5">
+        <div className={`pb-4 mb-5 ${show('headerBorder')?'border-b-2':''}`}
+          style={{borderColor: cfg?.primaryColor||'#1565C0'}}>
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-primary">{clinic?.name||'PulseDesk Clinic'}</h1>
-              {clinic?.tagline && <p className="text-sm text-slate-500 italic">{clinic.tagline}</p>}
-              {clinic?.address && <p className="text-xs text-slate-400 mt-1">{clinic.address}</p>}
-              {(clinic?.phone||clinic?.mobile) && <p className="text-xs text-slate-400">📞 {clinic?.mobile||clinic?.phone}</p>}
+              {show('showClinicName')    && <h1 className="text-2xl font-bold" style={{color:cfg?.primaryColor||'#1565C0'}}>{clinic?.name||'PulseDesk Clinic'}</h1>}
+              {show('showClinicTagline') && clinic?.tagline && <p className="text-sm text-slate-500 italic">{clinic.tagline}</p>}
+              {show('showClinicAddress') && clinic?.address && <p className="text-xs text-slate-400 mt-1">{clinic.address}</p>}
+              {show('showClinicPhone')   && (clinic?.phone||clinic?.mobile) && <p className="text-xs text-slate-400">📞 {clinic?.mobile||clinic?.phone}</p>}
             </div>
             <div className="text-right">
-              <p className="font-bold text-slate-700">{doctor?.name}</p>
-              <p className="text-sm text-slate-500">{doctor?.qualification}</p>
-              <p className="text-sm text-slate-500">{doctor?.specialization}</p>
-              {doctor?.regNo && <p className="text-xs text-slate-400">Reg. No: {doctor.regNo}</p>}
+              {show('showDoctorName')  && <p className="font-bold text-slate-700">{doctor?.name}</p>}
+              {show('showDoctorQual')  && doctor?.qualification  && <p className="text-sm text-slate-500">{doctor.qualification}</p>}
+              {show('showDoctorSpec')  && doctor?.specialization && <p className="text-sm text-slate-500">{doctor.specialization}</p>}
+              {show('showDoctorRegNo') && doctor?.regNo          && <p className="text-xs text-slate-400">Reg. No: {doctor.regNo}</p>}
             </div>
           </div>
         </div>
@@ -136,13 +146,10 @@ export default function ViewPrescriptionPage() {
         <div className="flex justify-between items-start mb-5 gap-4">
           <div className="flex-1 bg-background rounded-xl p-3">
             <div className="grid grid-cols-2 gap-1 text-sm">
-              <span className="text-slate-400">{t.patientLabel}</span>
-              <span className="font-semibold text-slate-800">{patient?.name}</span>
-              <span className="text-slate-400">{t.ageLabel}</span>
-              <span className="font-medium">{patient?.age} yrs</span>
-              <span className="text-slate-400">{t.genderLabel}</span>
-              <span className="font-medium">{patient?.gender}</span>
-              {patient?.allergies?.length>0 && <>
+              {show('showPatient') && <><span className="text-slate-400">{t.patientLabel}</span><span className="font-semibold text-slate-800">{patient?.name}</span></>}
+              {show('showAge')     && <><span className="text-slate-400">{t.ageLabel}</span><span className="font-medium">{patient?.age} yrs</span></>}
+              {show('showGender')  && <><span className="text-slate-400">{t.genderLabel}</span><span className="font-medium">{patient?.gender}</span></>}
+              {show('showAllergy') && patient?.allergies?.length>0 && <>
                 <span className="text-danger font-semibold text-xs">⚠ Allergy:</span>
                 <span className="text-danger text-xs">{patient.allergies.join(', ')}</span>
               </>}
@@ -151,12 +158,12 @@ export default function ViewPrescriptionPage() {
           <div className="text-right text-sm">
             <p className="text-slate-400">{t.dateLabel}</p>
             <p className="font-bold text-slate-700">{format(new Date(rx.date),'dd / MM / yyyy')}</p>
-            <p className="text-xs text-slate-400 mt-1 font-mono">{rx.rxNo}</p>
+            {show('showRxNo') && <p className="text-xs text-slate-400 mt-1 font-mono">{rx.rxNo}</p>}
           </div>
         </div>
 
-        {/* Complaint — always English */}
-        {complaints.length > 0 && (
+        {/* Complaint */}
+        {show('showComplaint') && complaints.length > 0 && (
           <div className="mb-4">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">CHIEF COMPLAINT</p>
             <div className="flex flex-wrap gap-1.5">
@@ -167,8 +174,8 @@ export default function ViewPrescriptionPage() {
           </div>
         )}
 
-        {/* Diagnosis — always English */}
-        {diagnoses.length > 0 && (
+        {/* Diagnosis */}
+        {show('showDiagnosis') && diagnoses.length > 0 && (
           <div className="mb-5">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">DIAGNOSIS</p>
             <div className="flex flex-wrap gap-1.5">
@@ -180,7 +187,7 @@ export default function ViewPrescriptionPage() {
         )}
 
         {/* Medicines */}
-        {rx.medicines?.length > 0 && (
+        {show('showMedicines') && rx.medicines?.length > 0 && (
           <div className="mb-5">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl font-bold text-primary italic">℞</span>
@@ -191,11 +198,10 @@ export default function ViewPrescriptionPage() {
                 <tr className="border-b-2 border-primary/20">
                   <th className="text-left py-2 px-2 text-xs text-slate-400 font-semibold uppercase">#</th>
                   <th className="text-left py-2 px-2 text-xs text-slate-400 font-semibold uppercase">MEDICINE</th>
-                  <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DOSAGE</th>
-                  {/* When before Days in print too */}
-                  <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">TIMING</th>
-                  <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DAYS</th>
-                  <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">QTY</th>
+                  {show('showDosage') && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DOSAGE</th>}
+                  {show('showWhen')   && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">TIMING</th>}
+                  {show('showDays')   && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DAYS</th>}
+                  {show('showQty')    && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">QTY</th>}
                 </tr>
               </thead>
               <tbody>
@@ -203,16 +209,15 @@ export default function ViewPrescriptionPage() {
                   <tr key={med.id} className={`border-b border-slate-50 ${idx%2===0?'':'bg-slate-50/50'}`}>
                     <td className="py-2.5 px-2 text-slate-400 text-xs">{idx+1}</td>
                     <td className="py-2.5 px-2">
-                      <p className="font-semibold text-slate-800">{med.medicineName}</p>
-                      {med.notesEn && (
+                      <p className={show('medicineNameBold')?'font-semibold text-slate-800':'text-slate-800'}>{med.medicineName}</p>
+                      {show('showNotes') && med.notesEn && (
                         <p className="text-xs text-slate-400 mt-0.5">{translateNote(med.notesEn, lang)}</p>
                       )}
                     </td>
-                    <td className="py-2.5 px-2 text-center font-mono text-slate-700">{med.dosage||'—'}</td>
-                    {/* Timing — THIS is the only field that translates */}
-                    <td className="py-2.5 px-2 text-center text-xs text-slate-600">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>
-                    <td className="py-2.5 px-2 text-center text-slate-700">{med.days?`${med.days}d`:'—'}</td>
-                    <td className="py-2.5 px-2 text-center font-bold text-primary">{med.qty||'—'}</td>
+                    {show('showDosage') && <td className="py-2.5 px-2 text-center font-mono text-slate-700">{med.dosage||'—'}</td>}
+                    {show('showWhen')   && <td className="py-2.5 px-2 text-center text-xs text-slate-600">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
+                    {show('showDays')   && <td className="py-2.5 px-2 text-center text-slate-700">{med.days?`${med.days}d`:'—'}</td>}
+                    {show('showQty')    && <td className="py-2.5 px-2 text-center font-bold" style={{color:cfg?.primaryColor||'#1565C0'}}>{med.qty||'—'}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -220,8 +225,7 @@ export default function ViewPrescriptionPage() {
           </div>
         )}
 
-        {/* Lab Tests */}
-        {rx.labTests?.length > 0 && (
+        {show('showLabTests') && rx.labTests?.length > 0 && (
           <div className="mb-5">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">LAB TESTS</p>
             <div className="flex flex-wrap gap-2">
@@ -232,8 +236,7 @@ export default function ViewPrescriptionPage() {
           </div>
         )}
 
-        {/* Advice */}
-        {adviceList.length > 0 && (
+        {show('showAdvice') && adviceList.length > 0 && (
           <div className="mb-5 p-3 bg-amber-50 border border-amber-100 rounded-xl">
             <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">ADVICE & PRECAUTIONS</p>
             <ul className="space-y-1">
@@ -246,8 +249,7 @@ export default function ViewPrescriptionPage() {
           </div>
         )}
 
-        {/* Next Visit */}
-        {rx.nextVisit && (
+        {show('showNextVisit') && rx.nextVisit && (
           <div className="mb-5 flex items-center gap-2 text-sm">
             <Calendar className="w-4 h-4 text-primary"/>
             <span className="text-slate-500">{t.nextVisitLabel}</span>
@@ -257,14 +259,10 @@ export default function ViewPrescriptionPage() {
 
         {/* Footer */}
         <div className="border-t border-slate-100 pt-4 flex justify-between items-end mt-6">
-          <div className="text-xs text-slate-400">
-            <p>Generated by PulseDesk</p>
-            <p>{format(new Date(rx.date),'dd MMM yyyy, hh:mm a')}</p>
-          </div>
+{show('showGeneratedBy') && <div className="text-xs text-slate-400"><p>Generated by PulseDesk</p><p>{format(new Date(rx.date),'dd MMM yyyy, hh:mm a')}</p></div>}
           <div className="text-right">
             <div className="w-32 border-b border-slate-300 mb-1 h-8"></div>
-            <p className="text-xs font-semibold text-slate-600">{doctor?.name}</p>
-            <p className="text-xs text-slate-400">Signature</p>
+{show('showSignature') && <><p className="text-xs font-semibold text-slate-600">{doctor?.name}</p><p className="text-xs text-slate-400">Signature</p></>}
           </div>
         </div>
       </div>
