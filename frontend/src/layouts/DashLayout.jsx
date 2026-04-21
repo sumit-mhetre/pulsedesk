@@ -3,7 +3,7 @@ import { useState } from 'react'
 import {
   LayoutDashboard, Users, Settings, LogOut, Database, FileText, Receipt, BookOpen, Palette,
   Menu, X, User, ChevronDown, Building2,
-  CalendarDays, BarChart3, Palette,
+  CalendarDays, BarChart3,
 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import toast from 'react-hot-toast'
