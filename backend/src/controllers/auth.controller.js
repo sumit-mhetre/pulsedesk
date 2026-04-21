@@ -38,12 +38,12 @@ async function login(req, res) {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    // Upsert to avoid unique constraint error on repeated logins
-    await prisma.refreshToken.upsert({
+    // Save refresh token — non-blocking, won't crash login if DB issue
+    prisma.refreshToken.upsert({
       where: { token: refreshToken },
       create: { userId: user.id, token: refreshToken, expiresAt: new Date(Date.now() + 7*24*60*60*1000) },
       update: { userId: user.id, expiresAt: new Date(Date.now() + 7*24*60*60*1000) },
-    });
+    }).catch(err => console.error('RefreshToken save error (non-fatal):', err.message));
 
     const { password: _, ...userSafe } = user;
     return successResponse(res, { accessToken, refreshToken, user: userSafe }, 'Login successful');
