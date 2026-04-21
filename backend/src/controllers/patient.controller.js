@@ -266,5 +266,5 @@ async function getNextCode(req, res) {
 
 module.exports = {
   getPatients, getPatient, createPatient,
-  updatePatient, deletePatient, addVitalRecord, searchPatients,
+  updatePatient, deletePatient, addVitalRecord, searchPatients, getNextCode,
 };
