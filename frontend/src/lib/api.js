@@ -1,8 +1,14 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
+// Use VITE_API_URL if set (production with separate backend),
+// otherwise fall back to relative /api (same-origin or Vite proxy)
+const BASE_URL = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL.replace(/\/+$/, '') // remove trailing slash
+  : '/api'
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: BASE_URL,
   withCredentials: true,
 })
 
@@ -23,8 +29,8 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refreshToken')
         if (!refreshToken) throw new Error('No refresh token')
-
-        const { data } = await axios.post('/api/auth/refresh', { refreshToken })
+        // ✅ Use BASE_URL not hardcoded /api
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken })
         localStorage.setItem('accessToken', data.data.accessToken)
         original.headers.Authorization = `Bearer ${data.data.accessToken}`
         return api(original)
@@ -47,25 +53,12 @@ api.interceptors.response.use(
   }
 )
 
-// ── Auto-retry on connection refused (Render wake-up) ────
-const axiosRetry = async (config, retries = 2, delay = 2000) => {
-  try {
-    return await api(config)
-  } catch (err) {
-    if (retries > 0 && (!err.response || err.code === 'ERR_NETWORK')) {
-      await new Promise(r => setTimeout(r, delay))
-      return axiosRetry(config, retries - 1, delay)
-    }
-    throw err
-  }
-}
-
 // ── Keep Render backend alive (ping every 10 min) ─────────
 if (typeof window !== 'undefined') {
   const ping = () => {
-    fetch('/api/health', { method: 'GET' }).catch(() => {})
+    // ✅ Use BASE_URL not hardcoded /api
+    fetch(`${BASE_URL}/health`, { method: 'GET' }).catch(() => {})
   }
-  // Ping on load, then every 10 minutes
   setTimeout(ping, 3000)
   setInterval(ping, 10 * 60 * 1000)
 }
