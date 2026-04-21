@@ -2,7 +2,7 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
 })
 
@@ -35,8 +35,10 @@ api.interceptors.response.use(
       }
     }
 
-    // Show error toast for non-401 errors
-    if (err.response?.status !== 401) {
+    // Show error toast for non-401 errors (skip auth endpoints - they handle their own errors)
+    const url = err.config?.url || ''
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/refresh')
+    if (err.response?.status !== 401 && !isAuthEndpoint) {
       const msg = err.response?.data?.message || 'Something went wrong'
       toast.error(msg)
     }
