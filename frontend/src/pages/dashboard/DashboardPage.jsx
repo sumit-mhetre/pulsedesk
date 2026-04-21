@@ -18,17 +18,20 @@ export default function DashboardPage() {
 
   const [daily, setDaily] = useState(null)
 
-  const fetchStats = async () => {
+  const fetchStats = async (attempt = 1) => {
     try {
-      const [clinic, rep] = await Promise.all([
-        api.get('/clinics/me'),
-        api.get('/reports/daily').catch(() => ({ data: { data: null } })),
-      ])
+      const clinic = await api.get('/clinics/me')
       setStats(clinic.data.data)
-      setDaily(rep.data.data)
-    } catch {
+      // Load daily report separately so clinic shows even if report fails
+      api.get('/reports/daily').then(r => setDaily(r.data.data)).catch(()=>{})
+    } catch (err) {
+      // Retry once after 3 seconds (Render cold start)
+      if (attempt === 1) {
+        setTimeout(() => fetchStats(2), 3000)
+        return
+      }
     } finally {
-      setLoading(false)
+      if (attempt > 1 || true) setLoading(false)
     }
   }
 

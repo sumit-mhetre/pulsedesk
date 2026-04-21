@@ -29,7 +29,10 @@ export default function LoginPage() {
     try {
       const user = await login(form.email, form.password)
       toast.success(`Welcome back, ${user.name}!`)
-      navigate(user.role === 'SUPER_ADMIN' ? '/super/dashboard' : '/dashboard')
+      // Small delay to let Render backend fully wake up after login
+      setTimeout(() => {
+        navigate(user.role === 'SUPER_ADMIN' ? '/super/dashboard' : '/dashboard')
+      }, 800)
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || 'Login failed. Please check your credentials.'
       toast.error(msg)
