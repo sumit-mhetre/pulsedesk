@@ -5,7 +5,8 @@ const { authenticate, authorize, hasPermission } = require('../middleware/auth.m
 const ctrl = require('../controllers/patient.controller');
 
 // Quick search (for prescription dropdown)
-router.get('/search', authenticate, ctrl.searchPatients);
+router.get('/search',    authenticate, ctrl.searchPatients);
+router.get('/next-code', authenticate, ctrl.getNextCode);
 
 // All roles can view patients
 router.get('/',    authenticate, ctrl.getPatients);
@@ -16,7 +17,6 @@ router.post('/',
   authenticate,
   [
     body('name').notEmpty().withMessage('Name required'),
-    body('age').isInt({ min: 0, max: 150 }).withMessage('Valid age required'),
     body('gender').isIn(['Male', 'Female', 'Other']).withMessage('Gender required'),
     body('phone').notEmpty().withMessage('Phone required'),
   ],

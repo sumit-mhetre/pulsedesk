@@ -104,13 +104,23 @@ async function createPatient(req, res) {
     const patientCode = await generatePatientCode(req.clinicId);
     const fullName = prefix ? `${prefix} ${name}` : name;
 
+    // Calculate age from DOB if age not provided
+    let finalAge = age ? parseInt(age) : null;
+    if (!finalAge && dob) {
+      const today = new Date();
+      const birth = new Date(dob);
+      finalAge = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) finalAge--;
+    }
+
     const patient = await prisma.patient.create({
       data: {
         clinicId: req.clinicId,
         patientCode,
         prefix:   prefix || null,
         name:     fullName,
-        age:      age ? parseInt(age) : null,
+        age:      finalAge || 0,
         dob:      dob ? new Date(dob) : null,
         gender,
         phone,
@@ -129,7 +139,8 @@ async function createPatient(req, res) {
     }, 'Patient registered successfully', 201);
   } catch (err) {
     console.error(err);
-    return errorResponse(res, 'Failed to create patient', 500);
+    console.error('Create patient error:', err.message);
+    return errorResponse(res, err.message || 'Failed to create patient', 500);
   }
 }
 
@@ -240,6 +251,16 @@ async function searchPatients(req, res) {
     return successResponse(res, patients);
   } catch (err) {
     return errorResponse(res, 'Search failed', 500);
+  }
+}
+
+// ── Get next patient code preview ────────────────────────
+async function getNextCode(req, res) {
+  try {
+    const nextCode = await generatePatientCode(req.clinicId);
+    return successResponse(res, { nextCode });
+  } catch (err) {
+    return errorResponse(res, 'Failed to get next code', 500);
   }
 }
 
