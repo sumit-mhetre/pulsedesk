@@ -576,6 +576,11 @@ export default function NewPrescriptionPage() {
         setAdviceList(adv.data.data)
         setAllTemplates(tmpl.data.data)
       } catch {}
+      // Load doctor's medicine preferences last (non-critical)
+      try {
+        const prefs = await api.get('/prescriptions/doctor-preferences')
+        setDoctorPrefs(prefs.data.data || {})
+      } catch {}
     }
     loadMaster()
     const pid        = params.get('patientId')
@@ -651,7 +656,7 @@ export default function NewPrescriptionPage() {
     // Priority: doctor's personal preference > medicine default > last used
     const pref   = doctorPrefs[med.id] || {}
     const dosage = isNT ? '' : (pref.dosage || med.defaultDosage || lastUsed.current.dosage)
-    const days   = pref.days ? String(pref.days) : (med.defaultDays ? String(med.defaultDays) : lastUsed.current.days)
+    const days   = pref.days ? String(pref.days) : (med.defaultDays ? String(med.defaultDays) : lastUsed.current.days)  // pref.days is raw number from DB
     const timing = pref.timing || med.defaultTiming || lastUsed.current.timing
     setRxMeds(prev => {
       const u=[...prev]
@@ -754,7 +759,7 @@ export default function NewPrescriptionPage() {
         diagnosis:  diagnosisTags.join(' || '),
         advice:     rxAdvice.map(a=>a.name).join('\n'),
         labTests:   rxTests.filter(t=>!t.isNew).map(t=>t.name),
-        medicines:  rxMeds.filter(m=>m.medicineId).map(m=>({ medicineId:m.medicineId, dosage:m.dosage, days:m.days, timing:m.timing, notesEn:m.notesEn })),
+        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: m.days ? parseInt(String(m.days)) || m.days : null, timing:m.timing, notesEn:m.notesEn })),
       })
       toast.success(`Template "${templateName}" saved!`)
     } catch { toast.error('Failed to save template') }
