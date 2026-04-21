@@ -470,14 +470,34 @@ export default function NewPrescriptionPage() {
   const [allTemplates, setAllTemplates] = useState([])
 
   useEffect(() => {
-    Promise.all([
-      api.get('/master/medicines').then(r=>setMedicines(r.data.data)),
-      api.get('/templates').then(r=>setAllTemplates(r.data.data)).catch(()=>{}),
-      api.get('/master/lab-tests').then(r=>setLabTestList(r.data.data)),
-      api.get('/master/complaints').then(r=>setComplaints(r.data.data)),
-      api.get('/master/diagnoses').then(r=>setDiagnoses(r.data.data)),
-      api.get('/master/advice').then(r=>setAdviceList(r.data.data)),
-    ])
+    // Load sequentially in small groups to avoid overwhelming Render free tier
+    const loadMaster = async () => {
+      try {
+        const [meds, labs] = await Promise.all([
+          api.get('/master/medicines'),
+          api.get('/master/lab-tests'),
+        ])
+        setMedicines(meds.data.data)
+        setLabTestList(labs.data.data)
+      } catch {}
+      try {
+        const [comp, diag] = await Promise.all([
+          api.get('/master/complaints'),
+          api.get('/master/diagnoses'),
+        ])
+        setComplaints(comp.data.data)
+        setDiagnoses(diag.data.data)
+      } catch {}
+      try {
+        const [adv, tmpl] = await Promise.all([
+          api.get('/master/advice'),
+          api.get('/templates'),
+        ])
+        setAdviceList(adv.data.data)
+        setAllTemplates(tmpl.data.data)
+      } catch {}
+    }
+    loadMaster()
     const pid        = params.get('patientId')
     const templateId = params.get('template')
     if (pid) {
