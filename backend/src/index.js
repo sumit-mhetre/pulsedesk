@@ -9,7 +9,12 @@ const app = express();
 
 // ── Middleware ─────────────────────────────────
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://pulsedesk-testing1.onrender.com',
+    process.env.FRONTEND_URL,
+  ].filter(Boolean),
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -22,17 +27,17 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ── Routes ─────────────────────────────────────
 app.use('/api/auth',         require('./routes/auth.routes'));
-app.use('/api/master', require('./routes/masterdata.routes'));
-app.use('/api/page-design', require('./routes/pagedesign.routes'));
-app.use('/api/templates', require('./routes/template.routes'));
-app.use('/api/reports', require('./routes/reports.routes'));
-app.use('/api/billing', require('./routes/billing.routes'));
-app.use('/api/prescriptions', require('./routes/prescription.routes'));
+app.use('/api/master',       require('./routes/masterdata.routes'));
+app.use('/api/page-design',  require('./routes/pagedesign.routes'));
+app.use('/api/templates',    require('./routes/template.routes'));
+app.use('/api/reports',      require('./routes/reports.routes'));
+app.use('/api/billing',      require('./routes/billing.routes'));
+app.use('/api/prescriptions',require('./routes/prescription.routes'));
 app.use('/api/patients',     require('./routes/patient.routes'));
 app.use('/api/appointments', require('./routes/appointment.routes'));
-app.use('/api/clinics', require('./routes/clinic.routes'));
-app.use('/api/users',   require('./routes/user.routes'));
-app.use('/api/super',   require('./routes/super.routes'));
+app.use('/api/clinics',      require('./routes/clinic.routes'));
+app.use('/api/users',        require('./routes/user.routes'));
+app.use('/api/super',        require('./routes/super.routes'));
 
 // ── Health check ───────────────────────────────
 app.get('/api/health', (req, res) => {
@@ -57,4 +62,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`\n🚀 PulseDesk API running on http://localhost:${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV}`);
+  console.log(`   Allowed origins: localhost:5173, localhost:3000, pulsedesk-testing1.onrender.com`);
 });
