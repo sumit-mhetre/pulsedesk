@@ -97,6 +97,7 @@ model Clinic {
   logo             String?
   tagline          String?
   gst              String?
+  opdSeriesPrefix  String?  // custom OPD number prefix e.g. MH, JK
   status           ClinicStatus     @default(Active)
   subscriptionPlan SubscriptionPlan @default(Basic)
   subscriptionEnd  DateTime?
@@ -177,14 +178,17 @@ model Patient {
   id                String   @id @default(uuid())
   clinicId          String
   patientCode       String
+  prefix            String?  // Mr, Mrs, Ms, Dr, Baby etc.
   name              String
-  age               Int
+  age               Int?
+  dob               DateTime?
   gender            Gender
   phone             String
   email             String?
   address           String?
   bloodGroup        String?
   photo             String?
+  existingId        String?  // old patient ID from previous system
   allergies         String[] @default([])
   chronicConditions String[] @default([])
   isActive          Boolean  @default(true)

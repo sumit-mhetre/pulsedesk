@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 export default function ClinicSetupPage() {
   const [form, setForm] = useState({
     name: '', address: '', phone: '', mobile: '',
-    email: '', tagline: '', gst: '',
+    email: '', tagline: '', gst: '', opdSeriesPrefix: '',
   })
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
@@ -22,7 +22,8 @@ export default function ClinicSetupPage() {
         mobile:   c.mobile || '',
         email:    c.email || '',
         tagline:  c.tagline || '',
-        gst:      c.gst || '',
+        gst:             c.gst || '',
+        opdSeriesPrefix: c.opdSeriesPrefix || '',
       })
     }).finally(() => setFetching(false))
   }, [])
@@ -71,6 +72,7 @@ export default function ClinicSetupPage() {
             {field('tagline', 'Tagline',         'e.g. Your Health, Our Priority')}
             {field('address', 'Address',         'Full clinic address')}
             {field('gst',     'GST Number',      'e.g. 27AABCS1429B1Z1')}
+            {field('opdSeriesPrefix', 'OPD Series Prefix', 'e.g. MH, JK or MH1000')}
           </Card>
 
           <Card title="Contact Details">

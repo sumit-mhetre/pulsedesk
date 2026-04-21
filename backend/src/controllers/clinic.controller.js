@@ -103,7 +103,7 @@ async function getMyClinic(req, res) {
 async function updateClinic(req, res) {
   try {
     const clinicId = req.user.isSuperAdmin ? req.params.id : req.clinicId;
-    const { name, address, phone, mobile, email, tagline, gst } = req.body;
+    const { name, address, phone, mobile, email, tagline, gst, opdSeriesPrefix } = req.body;
 
     const clinic = await prisma.clinic.update({
       where: { id: clinicId },

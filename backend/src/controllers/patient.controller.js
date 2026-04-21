@@ -3,8 +3,24 @@ const { successResponse, errorResponse, paginatedResponse } = require('../lib/re
 
 // ── Generate unique patient code ──────────────────────────
 async function generatePatientCode(clinicId) {
-  const clinic = await prisma.clinic.findUnique({ where: { id: clinicId }, select: { name: true } });
-  const prefix = clinic.name.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'PAT';
+  const clinic = await prisma.clinic.findUnique({
+    where: { id: clinicId },
+    select: { name: true, opdSeriesPrefix: true }
+  });
+  // Use custom prefix if set, else derive from clinic name
+  let prefix = clinic.opdSeriesPrefix?.trim() || '';
+  if (!prefix) {
+    prefix = clinic.name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase() || 'PAT';
+  }
+  // Extract numeric part if prefix already has numbers (e.g. MH1000)
+  const numMatch = prefix.match(/^([a-zA-Z]+)(\d+)$/);
+  if (numMatch) {
+    // prefix like MH1000 — use as starting counter
+    const letters = numMatch[1];
+    const startNum = parseInt(numMatch[2]);
+    const count = await prisma.patient.count({ where: { clinicId } });
+    return `${letters}${startNum + count}`;
+  }
   const count = await prisma.patient.count({ where: { clinicId } });
   return `${prefix}${String(count + 1).padStart(4, '0')}`;
 }
@@ -72,29 +88,45 @@ async function getPatient(req, res) {
 async function createPatient(req, res) {
   try {
     const {
-      name, age, gender, phone, email, address,
-      bloodGroup, allergies, chronicConditions,
+      prefix, name, age, dob, gender, phone, email, address,
+      bloodGroup, allergies, chronicConditions, existingId,
     } = req.body;
 
-    // Check duplicate phone in same clinic
-    const existing = await prisma.patient.findFirst({
+    if (!name) return errorResponse(res, 'Name is required', 400);
+    if (!phone) return errorResponse(res, 'Phone is required', 400);
+
+    // Warn (not block) if duplicate phone — return existing patient info as warning
+    const duplicate = await prisma.patient.findFirst({
       where: { clinicId: req.clinicId, phone, isActive: true },
+      select: { patientCode: true, name: true, id: true },
     });
-    if (existing) return errorResponse(res, `Patient with phone ${phone} already exists (${existing.patientCode} — ${existing.name})`, 409);
 
     const patientCode = await generatePatientCode(req.clinicId);
+    const fullName = prefix ? `${prefix} ${name}` : name;
 
     const patient = await prisma.patient.create({
       data: {
         clinicId: req.clinicId,
-        patientCode, name, age: parseInt(age), gender,
-        phone, email, address, bloodGroup,
+        patientCode,
+        prefix:   prefix || null,
+        name:     fullName,
+        age:      age ? parseInt(age) : null,
+        dob:      dob ? new Date(dob) : null,
+        gender,
+        phone,
+        email:    email || null,
+        address:  address || null,
+        bloodGroup: bloodGroup || null,
+        existingId: existingId || null,
         allergies:         Array.isArray(allergies) ? allergies : [],
         chronicConditions: Array.isArray(chronicConditions) ? chronicConditions : [],
       },
     });
 
-    return successResponse(res, patient, 'Patient registered successfully', 201);
+    return successResponse(res, {
+      ...patient,
+      warning: duplicate ? `Note: Phone ${phone} also used by ${duplicate.patientCode} — ${duplicate.name}` : null,
+    }, 'Patient registered successfully', 201);
   } catch (err) {
     console.error(err);
     return errorResponse(res, 'Failed to create patient', 500);
@@ -110,20 +142,25 @@ async function updatePatient(req, res) {
     if (!existing) return errorResponse(res, 'Patient not found', 404);
 
     const {
-      name, age, gender, phone, email, address,
-      bloodGroup, allergies, chronicConditions,
+      prefix, name, age, dob, gender, phone, email, address,
+      bloodGroup, allergies, chronicConditions, existingId,
     } = req.body;
+
+    const fullName = prefix ? `${prefix} ${name?.replace(/^(Mr|Mrs|Ms|Dr|Baby|Master|Miss)\s+/i,'')}` : name;
 
     const patient = await prisma.patient.update({
       where: { id: req.params.id },
       data: {
-        ...(name  && { name }),
-        ...(age   && { age: parseInt(age) }),
-        ...(gender && { gender }),
-        ...(phone  && { phone }),
-        ...(email  !== undefined && { email }),
-        ...(address !== undefined && { address }),
+        ...(name      && { name: fullName }),
+        ...(prefix    !== undefined && { prefix }),
+        ...(age       !== undefined && { age: age ? parseInt(age) : null }),
+        ...(dob       !== undefined && { dob: dob ? new Date(dob) : null }),
+        ...(gender    && { gender }),
+        ...(phone     && { phone }),
+        ...(email     !== undefined && { email }),
+        ...(address   !== undefined && { address }),
         ...(bloodGroup !== undefined && { bloodGroup }),
+        ...(existingId !== undefined && { existingId }),
         ...(allergies !== undefined && { allergies: Array.isArray(allergies) ? allergies : [] }),
         ...(chronicConditions !== undefined && { chronicConditions: Array.isArray(chronicConditions) ? chronicConditions : [] }),
       },
