@@ -407,5 +407,5 @@ async function getDoctorPreferences(req, res) {
 module.exports = {
   getPrescriptions, getPrescription, createPrescription,
   updatePrescription, getPatientPrescriptions,
-  getLastPrescription, calculateQty,
+  getLastPrescription, calculateQty, getDoctorPreferences,
 };
