@@ -783,11 +783,13 @@ export default function NewPrescriptionPage() {
     // Priority: doctor's personal preference > medicine default > last used
     const pref   = doctorPrefs[med.id] || {}
     const dosage = isNT ? '' : (pref.dosage || med.defaultDosage || lastUsed.current.dosage)
-    const days   = pref.days ? String(pref.days) : (med.defaultDays ? String(med.defaultDays) : lastUsed.current.days)  // pref.days is raw number from DB
+    // pref.days from DB is Int - add 'days' unit for display
+    const rawDays = pref.days ? `${pref.days} days` : (med.defaultDays ? `${med.defaultDays} days` : lastUsed.current.days)
+    const days = rawDays || ''
     const timing = pref.timing || med.defaultTiming || lastUsed.current.timing
     setRxMeds(prev => {
       const u=[...prev]
-      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, notesEn:'', qty: isNT?'':calcQty(dosage,days) }
+      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, notesEn:'', qty: isNT?'1':calcQty(dosage,days,med.type) }
       if (rowIdx===u.length-1) u.push({...emptyMed})
       return u
     })
