@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ConfirmDialog } from '../../components/ui'
 import { Plus, Search, Eye, Edit2, User, X, FileText, Receipt, AlertTriangle, CheckCircle, AlertCircle, Info } from 'lucide-react'
 import { Card, Button, Badge, PageHeader } from '../../components/ui'
 import api from '../../lib/api'
@@ -539,7 +540,7 @@ export default function PatientsPage() {
     try {
       const { data } = await api.get(`/patients/${id}`)
       const p = data.data
-      const prefixMatch = p.name?.match(/^(Mr|Mrs|Ms|Dr|Baby|Master|Miss|Er)\s+/i)
+      const prefixMatch = p.name?.match(/^(Mr|Mrs|Ms|Dr|Baby|Master|Er)\s+/i)
       setEditPt({
         id: p.id,
         prefix: prefixMatch ? prefixMatch[1] : 'Mr',

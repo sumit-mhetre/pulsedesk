@@ -200,6 +200,21 @@ export default function PageDesignerPage() {
             <Toggle checked={cfg.showRxNo}     onChange={v=>set('showRxNo',v)}     label="Rx Number"/>
           </Section>
 
+          {/* Vitals customization */}
+          {tab === 'prescription' && (
+            <Section title="Vitals Fields">
+              <p className="text-xs text-slate-400 mb-3">Choose which vital fields appear in the vitals section</p>
+              <Toggle checked={cfg.vitalBP??true}      onChange={v=>set('vitalBP',v)}      label="Blood Pressure" sub="Systolic / Diastolic"/>
+              <Toggle checked={cfg.vitalSugar??true}   onChange={v=>set('vitalSugar',v)}   label="Blood Sugar" sub="mg/dL"/>
+              <Toggle checked={cfg.vitalWeight??true}  onChange={v=>set('vitalWeight',v)}  label="Weight" sub="kg"/>
+              <Toggle checked={cfg.vitalTemp??true}    onChange={v=>set('vitalTemp',v)}    label="Temperature" sub="°F / °C"/>
+              <Toggle checked={cfg.vitalSpo2??true}    onChange={v=>set('vitalSpo2',v)}    label="SpO2" sub="Oxygen saturation %"/>
+              <Toggle checked={cfg.vitalPulse??true}   onChange={v=>set('vitalPulse',v)}   label="Pulse Rate" sub="bpm"/>
+              <Toggle checked={cfg.vitalHeight??false} onChange={v=>set('vitalHeight',v)}  label="Height" sub="cm"/>
+              <Toggle checked={cfg.vitalBMI??false}    onChange={v=>set('vitalBMI',v)}     label="BMI" sub="Auto-calculated from height + weight"/>
+            </Section>
+          )}
+
           {/* Prescription fields — only for Rx */}
           {tab === 'prescription' && (
             <>

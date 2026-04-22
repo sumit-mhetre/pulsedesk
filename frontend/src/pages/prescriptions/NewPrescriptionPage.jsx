@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom'
 import { Plus, Trash2, ArrowLeft, Save, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap } from 'lucide-react'
 import { Button, Badge, Card } from '../../components/ui'
@@ -85,6 +86,7 @@ function SmartDaysInput({ value, onChange }) {
         </div>
       )}
     </>
+  <ConfirmDialog {...confirmProps} confirmLabel="Yes, Discard" cancelLabel="Keep Editing"/>
   )
 }
 const TIMING_OPTS = [
@@ -518,6 +520,7 @@ function SectionTemplate({ label, onApply, templates, section }) {
 // ── Main Page ─────────────────────────────────────────────
 export default function NewPrescriptionPage() {
   const navigate   = useNavigate()
+  const { isDirty, setDirty, confirmProps } = useUnsavedChanges()
   const [params]   = useSearchParams()
   const { id: editId } = useParams()
   const isEdit     = !!editId
@@ -651,6 +654,7 @@ export default function NewPrescriptionPage() {
   }
 
   const handleMedSelect = useCallback((med, rowIdx) => {
+    setDirty()
     if (!med) return
     const isNT = NON_TABLET.includes(med.type)
     // Priority: doctor's personal preference > medicine default > last used
@@ -793,7 +797,7 @@ export default function NewPrescriptionPage() {
       }
       if (isEdit) {
         await api.put(`/prescriptions/${editId}`, payload)
-        toast.success('Prescription updated!')
+        toast.success('Prescription updated!'); setDirty(false)
         navigate(`/prescriptions/${editId}`)
       } else {
         const {data} = await api.post('/prescriptions', payload)
@@ -889,7 +893,17 @@ export default function NewPrescriptionPage() {
           </div>
           {showVitals && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-              {[{key:'bp',label:'Blood Pressure',ph:'120/80'},{key:'sugar',label:'Blood Sugar',ph:'110 mg/dL'},{key:'weight',label:'Weight (kg)',ph:'70'},{key:'temp',label:'Temp (°F)',ph:'98.6'},{key:'spo2',label:'SpO2 %',ph:'98'},{key:'pulse',label:'Pulse/min',ph:'72'}].map(f=>(
+              {[
+                {key:'bp',     label:'Blood Pressure', ph:'120/80',    cfgKey:'vitalBP'},
+                {key:'sugar',  label:'Blood Sugar',    ph:'110 mg/dL', cfgKey:'vitalSugar'},
+                {key:'weight', label:'Weight (kg)',    ph:'70',        cfgKey:'vitalWeight'},
+                {key:'temp',   label:'Temp (°F)',      ph:'98.6',      cfgKey:'vitalTemp'},
+                {key:'spo2',   label:'SpO2 %',         ph:'98',        cfgKey:'vitalSpo2'},
+                {key:'pulse',  label:'Pulse/min',      ph:'72',        cfgKey:'vitalPulse'},
+                {key:'height', label:'Height (cm)',    ph:'170',       cfgKey:'vitalHeight'},
+                {key:'bmi',    label:'BMI',            ph:'Auto',      cfgKey:'vitalBMI'},
+              ].filter(f => pageDesign ? (pageDesign[f.cfgKey] !== false) : f.cfgKey !== 'vitalHeight' && f.cfgKey !== 'vitalBMI')
+              .map(f=>(
                 <div key={f.key} className="form-group">
                   <label className="form-label">{f.label}</label>
                   <input className="form-input" placeholder={f.ph} value={vitals[f.key]} onChange={e=>setVitals(p=>({...p,[f.key]:e.target.value}))}/>
@@ -910,7 +924,7 @@ export default function NewPrescriptionPage() {
           </div>
           <TagInput
             tags={complaintTags}
-            onAdd={t=>setComplaintTags(p=>[...p,t])}
+            onAdd={t=>{setComplaintTags(p=>[...p,t]);setDirty()}}
             onRemove={t=>setComplaintTags(p=>p.filter(x=>x!==t))}
             items={complaints}
             placeholder="Type complaint or select, press Enter to add another..."/>
@@ -927,7 +941,7 @@ export default function NewPrescriptionPage() {
           </div>
           <TagInput
             tags={diagnosisTags}
-            onAdd={t=>setDiagnosisTags(p=>[...p,t])}
+            onAdd={t=>{setDiagnosisTags(p=>[...p,t]);setDirty()}}
             onRemove={t=>setDiagnosisTags(p=>p.filter(x=>x!==t))}
             items={diagnoses}
             placeholder="Type diagnosis or select, press Enter to add another..."/>
