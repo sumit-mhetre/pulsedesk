@@ -12,41 +12,27 @@ const DAYS_OPTS   = ['1','2','3','5','7','10','14','15','21','30']
 
 // ── Smart days input — type number → shows N days/weeks/months/years ──
 function SmartDaysInput({ value, onChange }) {
-  const [open, setOpen]   = useState(false)
+  const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const ref = useRef(null)
-  const [pos, setPos]     = useState({ top:0, left:0, width:0 })
+  const [pos, setPos] = useState({ top:0, left:0, width:0 })
 
-  // Parse display value like "7 days" → { num: 7, unit: 'days' }
-  const parse = (v) => {
-    if (!v) return { num: '', unit: 'days' }
-    const m = String(v).match(/^(\d+)\s*(days?|weeks?|months?|years?)?$/i)
-    if (m) return { num: m[1], unit: (m[2]||'days').toLowerCase().replace(/s$/, '') + 's' }
-    // plain number
-    if (/^\d+$/.test(String(v))) return { num: String(v), unit: 'days' }
-    return { num: v, unit: 'days' }
+  // Extract number from value like "7 days", "2 weeks", "7"
+  const getNum = (v) => {
+    if (!v) return ''
+    const m = String(v).match(/^(\d+)/)
+    return m ? m[1] : ''
   }
-  const { num, unit } = parse(value)
-  const display = value ? (String(value).includes(' ') ? value : `${value} days`) : ''
-
-  // Convert to days for saving
-  const toDays = (n, u) => {
-    const N = parseInt(n)
-    if (!N) return ''
-    if (u.startsWith('week'))  return String(N * 7)
-    if (u.startsWith('month')) return String(N * 30)
-    if (u.startsWith('year'))  return String(N * 365)
-    return String(N)
-  }
+  const display = value ? (String(value).match(/[a-z]/i) ? value : `${value} days`) : ''
 
   const getOptions = (n) => {
-    if (!n) return DAYS_OPTS.map(d => ({ label: `${d} days`, value: d }))
+    if (!n) return DAYS_OPTS.map(d => ({ label: `${d} days`, value: `${d} days` }))
     const N = parseInt(n); if (!N) return []
     return [
-      { label: `${N} days`,   value: String(N) },
-      { label: `${N} weeks`,  value: String(N * 7) },
-      { label: `${N} months`, value: String(N * 30) },
-      { label: `${N} years`,  value: String(N * 365) },
+      { label: `${N} days`,   value: `${N} days`   },
+      { label: `${N} weeks`,  value: `${N} weeks`  },
+      { label: `${N} months`, value: `${N} months` },
+      { label: `${N} years`,  value: `${N} years`  },
     ]
   }
 
@@ -54,23 +40,35 @@ function SmartDaysInput({ value, onChange }) {
     if (ref.current) {
       const r = ref.current.getBoundingClientRect()
       const ab = window.innerHeight - r.bottom < 160 && r.top > 160
-      setPos({ top: ab ? r.top - 160 - 2 : r.bottom + 2, left: r.left, width: r.width })
+      setPos({ top: ab ? r.top-160-2 : r.bottom+2, left: r.left, width: r.width })
     }
   }
 
-  const opts = getOptions(input || num)
+  const opts = getOptions(input || getNum(value))
+
+  const commit = (v) => {
+    const n = v.trim()
+    if (!n) return
+    // If just a number, default to days
+    if (/^\d+$/.test(n)) onChange(`${n} days`)
+    else onChange(n)
+    setInput('')
+  }
 
   return (
     <>
       <div ref={ref} className="relative flex">
         <input
           className={`w-full h-8 px-2 text-xs border rounded-lg focus:outline-none focus:border-primary bg-white transition-all ${value ? 'border-blue-200 text-slate-700 font-medium' : 'border-slate-200 text-slate-400'}`}
-          placeholder="Days"
+          placeholder="Duration"
           value={input || display}
           onChange={e => { setInput(e.target.value); calc(); setOpen(true) }}
           onFocus={() => { calc(); setOpen(true) }}
-          onBlur={() => setTimeout(() => { setOpen(false); if (input && /^\d+$/.test(input.trim())) { onChange(input.trim()); setInput('') } }, 200)}
-          onKeyDown={e => { if (e.key === 'Enter' && input) { if (/^\d+$/.test(input.trim())) { onChange(input.trim()); setInput('') } setOpen(false) } if (e.key === 'Escape') setOpen(false) }}
+          onBlur={() => setTimeout(() => { setOpen(false); if (input) commit(input) }, 200)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && input) { commit(input); setOpen(false); e.preventDefault() }
+            if (e.key === 'Escape') setOpen(false)
+          }}
         />
       </div>
       {open && opts.length > 0 && (
@@ -102,7 +100,17 @@ const emptyMed    = { medicineId:'',medicineName:'',medicineType:'tablet',dosage
 const LIQUID_NOTES_EN = ['5ml twice daily','5ml thrice daily','2.5ml twice daily','10ml twice daily','2 drops twice daily','2 drops thrice daily','1 teaspoon thrice daily','2 teaspoons twice daily','As directed','Apply thin layer twice daily']
 const LIQUID_NOTES_MR = ['दिवसातून 2 वेळा 5ml','दिवसातून 3 वेळा 5ml','दिवसातून 2 वेळा 2.5ml','दिवसातून 2 वेळा 10ml','दिवसातून 2 वेळा 2 थेंब','दिवसातून 3 वेळा 2 थेंब','दिवसातून 3 वेळा 1 चमचा','दिवसातून 2 वेळा 2 चमचे','सांगितल्याप्रमाणे','दिवसातून 2 वेळा पातळ थर लावा']
 
-const calcQty = (dosage, days) => { const t=FREQ_MAP[dosage]; return (t&&days) ? String(t*parseInt(days)) : '' }
+const calcQty = (dosage, days, type='tablet') => {
+  // Liquid/syrup/drops → qty always 1 bottle (editable)
+  if (['liquid','drops','cream','inhaler','injection','powder','sachet'].includes(type)) return '1'
+  const t=FREQ_MAP[dosage]
+  // Extract number from days string like "7 days", "2 weeks"
+  const d = days ? parseInt(String(days).match(/\d+/)?.[0]) : 0
+  const multiplier = String(days).toLowerCase().includes('week') ? 7
+    : String(days).toLowerCase().includes('month') ? 30
+    : String(days).toLowerCase().includes('year') ? 365 : 1
+  return (t && d) ? String(t * d * multiplier) : ''
+}
 
 // ── Fixed position portal dropdown ───────────────────────
 function PortalDrop({ anchorRef, open, options, value, onSelect, onClose }) {
@@ -259,36 +267,42 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex })
 }
 
 // ── Notes field with dropdown for liquids/non-tablets ─────
-function NotesInput({ value, onChange, medicineType, printLang }) {
+function NotesInput({ value, onChange, medicineType, printLang, savedNotes=[] }) {
   const [open,setOpen] = useState(false)
-  const [pos,setPos] = useState({top:0,left:0,width:0})
+  const [q,setQ]       = useState('')
+  const [pos,setPos]   = useState({top:0,left:0,width:0})
   const ref = useRef(null)
   const isNT = NON_TABLET.includes(medicineType)
-  const noteOptions = printLang==='mr' ? LIQUID_NOTES_MR : LIQUID_NOTES_EN
+  // Show liquid notes for non-tablets, general for tablets
+  const baseOptions = isNT ? (printLang==='mr' ? LIQUID_NOTES_MR : LIQUID_NOTES_EN) : []
+  // Merge with saved custom notes (including Marathi)
+  const allOptions = [...new Set([...savedNotes, ...baseOptions])]
+  const filtered = q ? allOptions.filter(n=>n.toLowerCase().includes(q.toLowerCase())) : allOptions
+
   const calc = () => {
-    if (ref.current) { const r=ref.current.getBoundingClientRect(); const ab=window.innerHeight-r.bottom<200&&r.top>200; setPos({top:ab?r.top-200-2:r.bottom+2,left:r.left,width:r.width}) }
+    if (ref.current) {
+      const r=ref.current.getBoundingClientRect()
+      const ab=window.innerHeight-r.bottom<200&&r.top>200
+      setPos({top:ab?r.top-200-2:r.bottom+2,left:r.left,width:r.width})
+    }
   }
   return (
     <div className="relative">
-      <div className="flex gap-1">
-        <input ref={ref} className="w-full h-8 px-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-primary bg-white"
-          placeholder={isNT ? "Select or type notes..." : "Notes (optional)..."}
-          value={value} onChange={e=>onChange(e.target.value)}
-          onFocus={()=>{if(isNT){calc();setOpen(true)}}}
-          onBlur={()=>setTimeout(()=>setOpen(false),180)}
-        />
-        {isNT && (
-          <button type="button" onClick={()=>{calc();setOpen(o=>!o)}}
-            className="h-8 w-7 flex items-center justify-center border border-slate-200 rounded-lg hover:border-primary bg-white flex-shrink-0">
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400"/>
-          </button>
-        )}
-      </div>
-      {isNT && open && (
-        <div style={{ position:'fixed',top:pos.top,left:pos.left,width:Math.max(pos.width,220),zIndex:9999 }}
+      <input ref={ref}
+        className="w-full h-8 px-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-primary bg-white"
+        placeholder="Notes (optional)..."
+        value={q || value || ''}
+        onChange={e=>{setQ(e.target.value);calc();setOpen(true)}}
+        onFocus={()=>{calc();setOpen(true)}}
+        onBlur={()=>setTimeout(()=>{setOpen(false);if(q){onChange(q);setQ('')}},200)}
+        onKeyDown={e=>{if(e.key==='Enter'&&q){onChange(q);setQ('');setOpen(false);e.preventDefault()}if(e.key==='Escape')setOpen(false)}}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{position:'fixed',top:pos.top,left:pos.left,width:Math.max(pos.width,200),zIndex:9999}}
           className="bg-white rounded-xl shadow-xl border border-blue-100 max-h-48 overflow-y-auto">
-          {noteOptions.map((note,i)=>(
-            <button key={i} type="button" onMouseDown={e=>{e.preventDefault();onChange(note);setOpen(false)}}
+          {filtered.map(note=>(
+            <button key={note} type="button"
+              onMouseDown={e=>{e.preventDefault();onChange(note);setQ('');setOpen(false)}}
               className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-50 last:border-0 text-slate-700">
               {note}
             </button>
@@ -535,8 +549,16 @@ export default function NewPrescriptionPage() {
   const [ptResults,  setPtResults]  = useState([])
   const [showPtDrop, setShowPtDrop] = useState(false)
 
-  const [vitals,     setVitals]     = useState({ bp:'',sugar:'',weight:'',temp:'',spo2:'',pulse:'' })
+  const [vitals,     setVitals]     = useState({ bp:'',bpSys:'',bpDia:'',sugar:'',weight:'',temp:'',spo2:'',pulse:'',height:'',bmi:'' })
   const [showVitals, setShowVitals] = useState(false)
+  // Auto-calculate BMI when weight or height changes
+  useEffect(() => {
+    const w = parseFloat(vitals.weight); const h = parseFloat(vitals.height)
+    if (w > 0 && h > 0) {
+      const bmi = (w / Math.pow(h/100, 2)).toFixed(1)
+      setVitals(p => ({ ...p, bmi }))
+    }
+  }, [vitals.weight, vitals.height])
   const [complaintTags, setComplaintTags] = useState([])
   const [diagnosisTags, setDiagnosisTags] = useState([])
   const [rxMeds,    setRxMeds]    = useState([{...emptyMed}])
@@ -548,7 +570,8 @@ export default function NewPrescriptionPage() {
   const [customRxNo,setCustomRxNo]= useState('')
   const [saving,    setSaving]    = useState(false)
   const [lastRx,    setLastRx]    = useState(null)
-  const [doctorPrefs, setDoctorPrefs] = useState({})
+  const [doctorPrefs,  setDoctorPrefs]  = useState({})
+  const [savedMedNotes, setSavedMedNotes] = useState([]) // all notes ever typed across medicines
   const [allTemplates, setAllTemplates] = useState([])
   const [pageDesign,   setPageDesign]   = useState(null)
   const [pdLoaded,     setPdLoaded]     = useState(false)
@@ -593,6 +616,9 @@ export default function NewPrescriptionPage() {
       try {
         const prefs = await api.get('/prescriptions/doctor-preferences')
         setDoctorPrefs(prefs.data.data || {})
+        // Load saved notes from localStorage
+        const notes = JSON.parse(localStorage.getItem('pulsedesk_notes') || '[]')
+        setSavedMedNotes(notes)
       } catch {}
     }
     loadMaster()
@@ -657,8 +683,9 @@ export default function NewPrescriptionPage() {
       if(field==='dosage')lastUsed.current.dosage=val
       if(field==='days')lastUsed.current.days=val
       if(field==='timing')lastUsed.current.timing=val
+      if(field==='notesEn'&&val?.trim()){setSavedMedNotes(prev=>{const updated=[...new Set([val,...prev])].slice(0,50);localStorage.setItem('pulsedesk_notes',JSON.stringify(updated));return updated})}
       if((field==='dosage'||field==='days')&&!NON_TABLET.includes(u[i].medicineType))
-        u[i].qty=calcQty(field==='dosage'?val:u[i].dosage,field==='days'?val:u[i].days)
+        u[i].qty=calcQty(field==='dosage'?val:u[i].dosage,field==='days'?val:u[i].days,u[i].medicineType||'tablet')
       return u
     })
   }
@@ -922,7 +949,20 @@ export default function NewPrescriptionPage() {
               .map(f=>(
                 <div key={f.key} className="form-group">
                   <label className="form-label">{f.label}</label>
-                  <input className="form-input" placeholder={f.ph} value={vitals[f.key]} onChange={e=>setVitals(p=>({...p,[f.key]:e.target.value}))}/>
+                  {f.key === 'bp' ? (
+                    <div className="flex items-center gap-1">
+                      <input className="form-input text-center" placeholder="120" style={{width:'50%'}}
+                        value={vitals.bpSys||''} onChange={e=>setVitals(p=>({...p,bpSys:e.target.value,bp:e.target.value+(p.bpDia?'/'+p.bpDia:'')}))}/>
+                      <span className="text-slate-400 font-bold text-lg">/</span>
+                      <input className="form-input text-center" placeholder="80" style={{width:'50%'}}
+                        value={vitals.bpDia||''} onChange={e=>setVitals(p=>({...p,bpDia:e.target.value,bp:(p.bpSys||'')+'/'+e.target.value}))}/>
+                    </div>
+                  ) : f.key === 'bmi' ? (
+                    <input className="form-input bg-slate-50 text-slate-500" placeholder="Auto" readOnly
+                      value={vitals.bmi||''} title="Auto-calculated from Weight and Height"/>
+                  ) : (
+                    <input className="form-input" placeholder={f.ph} value={vitals[f.key]||''} onChange={e=>setVitals(p=>({...p,[f.key]:e.target.value}))}/>
+                  )}
                 </div>
               ))}
             </div>
@@ -1095,7 +1135,7 @@ export default function NewPrescriptionPage() {
                   <div>
                     <p className="text-xs text-slate-400 mb-1">Notes</p>
                     <NotesInput value={med.notesEn} onChange={v=>updateMed(idx,'notesEn',v)}
-                      medicineType={med.medicineType} printLang={printLang}/>
+                      medicineType={med.medicineType} printLang={printLang} savedNotes={savedMedNotes}/>
                   </div>
                 </div>
               </div>
