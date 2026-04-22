@@ -86,7 +86,6 @@ function SmartDaysInput({ value, onChange }) {
         </div>
       )}
     </>
-  <ConfirmDialog {...confirmProps} confirmLabel="Yes, Discard" cancelLabel="Keep Editing"/>
   )
 }
 const TIMING_OPTS = [
@@ -817,6 +816,7 @@ export default function NewPrescriptionPage() {
   )
 
   return (
+    <>
     <div className="fade-in max-w-5xl mx-auto">
       {/* Header — no step numbers */}
       <div className="flex items-center gap-3 mb-5">
@@ -1162,5 +1162,7 @@ export default function NewPrescriptionPage() {
         </div>
       </div>
     </div>
+    <ConfirmDialog {...confirmProps} confirmLabel="Yes, Discard" cancelLabel="Keep Editing"/>
+    </>
   )
 }
