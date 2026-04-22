@@ -950,12 +950,30 @@ export default function NewPrescriptionPage() {
                 <div key={f.key} className="form-group">
                   <label className="form-label">{f.label}</label>
                   {f.key === 'bp' ? (
-                    <div className="flex items-center gap-1">
-                      <input className="form-input text-center" placeholder="120" style={{width:'50%'}}
-                        value={vitals.bpSys||''} onChange={e=>setVitals(p=>({...p,bpSys:e.target.value,bp:e.target.value+(p.bpDia?'/'+p.bpDia:'')}))}/>
-                      <span className="text-slate-400 font-bold text-lg">/</span>
-                      <input className="form-input text-center" placeholder="80" style={{width:'50%'}}
-                        value={vitals.bpDia||''} onChange={e=>setVitals(p=>({...p,bpDia:e.target.value,bp:(p.bpSys||'')+'/'+e.target.value}))}/>
+                    <div className="relative">
+                      <input className="form-input font-mono tracking-wider" placeholder="120/80"
+                        value={vitals.bp||''}
+                        onChange={e => {
+                          let v = e.target.value.replace(/[^0-9/]/g,'')
+                          // Auto-insert / after 3 digits if not already there
+                          if (v.length === 3 && !v.includes('/')) v = v + '/'
+                          // Max format: 3/3 digits
+                          const parts = v.split('/')
+                          if (parts[0] && parts[0].length > 3) return
+                          if (parts[1] && parts[1].length > 3) return
+                          setVitals(p=>({...p, bp:v}))
+                        }}
+                        onKeyDown={e => {
+                          // Auto-jump to diastolic when / is typed
+                          if (e.key === '/' && !vitals.bp?.includes('/')) return
+                        }}
+                        maxLength={7}
+                      />
+                      {!vitals.bp && (
+                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-300 text-sm font-mono">
+                          sys / dia
+                        </span>
+                      )}
                     </div>
                   ) : f.key === 'bmi' ? (
                     <input className="form-input bg-slate-50 text-slate-500" placeholder="Auto" readOnly
