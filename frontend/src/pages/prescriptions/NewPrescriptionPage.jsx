@@ -924,7 +924,7 @@ export default function NewPrescriptionPage() {
         </Card>
 
         {/* Complaint */}
-        <div className={showSection('showComplaint') ? '' : 'hidden'}><Card>
+        <div style={{display: showSection('showComplaint') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Chief Complaint</h3>
             <div className="flex gap-2">
@@ -941,7 +941,7 @@ export default function NewPrescriptionPage() {
         </Card></div>
 
         {/* Diagnosis */}
-        <div className={showSection('showDiagnosis') ? '' : 'hidden'}><Card>
+        <div style={{display: showSection('showDiagnosis') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Diagnosis</h3>
             <div className="flex gap-2">
@@ -1102,7 +1102,7 @@ export default function NewPrescriptionPage() {
         </Card>
 
         {/* Lab Tests */}
-        <div className={showSection('showLabTests') ? '' : 'hidden'}><Card>
+        <div style={{display: showSection('showLabTests') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Lab Tests</h3>
             <div className="flex gap-2">
@@ -1120,7 +1120,7 @@ export default function NewPrescriptionPage() {
         </Card></div>
 
         {/* Advice */}
-        <div className={showSection('showAdvice') ? '' : 'hidden'}><Card>
+        <div style={{display: showSection('showAdvice') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Advice & Precautions</h3>
             <div className="flex gap-2">
