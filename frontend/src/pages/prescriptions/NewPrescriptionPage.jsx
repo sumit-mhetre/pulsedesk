@@ -268,49 +268,18 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex })
 }
 
 // ── Notes field with dropdown for liquids/non-tablets ─────
-function NotesInput({ value, onChange, medicineType, printLang, savedNotes=[] }) {
-  const [open,setOpen] = useState(false)
-  const [q,setQ]       = useState('')
-  const [pos,setPos]   = useState({top:0,left:0,width:0})
-  const ref = useRef(null)
-  const isNT = NON_TABLET.includes(medicineType)
-  // Show liquid notes for non-tablets, general for tablets
-  const baseOptions = isNT ? (printLang==='mr' ? LIQUID_NOTES_MR : LIQUID_NOTES_EN) : []
-  // Merge with saved custom notes (including Marathi)
-  const allOptions = [...new Set([...savedNotes, ...baseOptions])]
-  const filtered = q ? allOptions.filter(n=>n.toLowerCase().includes(q.toLowerCase())) : allOptions
-
-  const calc = () => {
-    if (ref.current) {
-      const r=ref.current.getBoundingClientRect()
-      const ab=window.innerHeight-r.bottom<200&&r.top>200
-      setPos({top:ab?r.top-200-2:r.bottom+2,left:r.left,width:r.width})
-    }
-  }
+function NotesInput({ value, onChange }) {
+  // Plain controlled text input — no dropdown, no intermediate state.
+  // Server still persists every saved note via autoSaveToMaster() on submit,
+  // so notes remain available as master data for templates/reports.
   return (
-    <div className="relative">
-      <input ref={ref}
-        className="w-full h-8 px-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-primary bg-white"
-        placeholder="Notes (optional)..."
-        value={q || value || ''}
-        onChange={e=>{setQ(e.target.value);calc();setOpen(true)}}
-        onFocus={()=>{calc();setOpen(true)}}
-        onBlur={()=>setTimeout(()=>{setOpen(false);if(q){onChange(q);setQ('')}},200)}
-        onKeyDown={e=>{if(e.key==='Enter'&&q){onChange(q);setQ('');setOpen(false);e.preventDefault()}if(e.key==='Escape')setOpen(false)}}
-      />
-      {open && filtered.length > 0 && (q || isNT) && (
-        <div style={{position:'fixed',top:pos.top,left:pos.left,width:Math.max(pos.width,200),zIndex:9999}}
-          className="bg-white rounded-xl shadow-xl border border-blue-100 max-h-48 overflow-y-auto">
-          {filtered.map(note=>(
-            <button key={note} type="button"
-              onMouseDown={e=>{e.preventDefault();onChange(note);setQ('');setOpen(false)}}
-              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-50 last:border-0 text-slate-700">
-              {note}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <input
+      type="text"
+      className="w-full h-8 px-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-primary bg-white"
+      placeholder="Notes (optional)..."
+      value={value || ''}
+      onChange={e => onChange(e.target.value)}
+    />
   )
 }
 
@@ -769,7 +738,6 @@ export default function NewPrescriptionPage() {
       if(field==='dosage')lastUsed.current.dosage=val
       if(field==='days')lastUsed.current.days=val
       if(field==='timing')lastUsed.current.timing=val
-      if(field==='notesEn'&&val?.trim()){setSavedMedNotes(prev=>[...new Set([val,...prev])].slice(0,100))}
       if((field==='dosage'||field==='days')&&!NON_TABLET.includes(u[i].medicineType))
         u[i].qty=calcQty(field==='dosage'?val:u[i].dosage,field==='days'?val:u[i].days,u[i].medicineType||'tablet')
       return u
@@ -1179,14 +1147,11 @@ export default function NewPrescriptionPage() {
                         placeholder={isNT ? '1' : ''}
                         onChange={e=>updateMed(idx,'qty',e.target.value)}/>
                     </td>
-                    {/* Notes — editable for ALL, dropdown options for liquids */}
+                    {/* Notes — plain text field, saved server-side on submit */}
                     <td className="py-1.5 px-1">
                       <NotesInput
                         value={med.notesEn}
                         onChange={v=>updateMed(idx,'notesEn',v)}
-                        medicineType={med.medicineType}
-                        printLang={printLang}
-                        savedNotes={savedMedNotes}
                       />
                     </td>
                     <td className="py-1.5 pl-1">
@@ -1238,8 +1203,7 @@ export default function NewPrescriptionPage() {
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 mb-1">Notes</p>
-                    <NotesInput value={med.notesEn} onChange={v=>updateMed(idx,'notesEn',v)}
-                      medicineType={med.medicineType} printLang={printLang} savedNotes={savedMedNotes}/>
+                    <NotesInput value={med.notesEn} onChange={v=>updateMed(idx,'notesEn',v)}/>
                   </div>
                 </div>
               </div>
