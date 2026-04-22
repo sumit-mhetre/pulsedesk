@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Printer, Edit, Calendar, Receipt } from 'lucide-react'
+import { ArrowLeft, Printer, Edit, Receipt } from 'lucide-react'
 import { Button, Badge } from '../../components/ui'
 import api from '../../lib/api'
 import { format } from 'date-fns'
@@ -161,131 +161,109 @@ export default function ViewPrescriptionPage() {
       </div>
 
       {/* ── Print area ── */}
-      <div className={`bg-white rounded-2xl shadow-card border border-blue-50 p-8 max-w-3xl mx-auto print-area ${cfg?.baseFontSize==='sm'?'text-sm':cfg?.baseFontSize==='lg'?'text-lg':''}`} style={{fontFamily:cfg?.fontFamily==='serif'?'Georgia,serif':cfg?.fontFamily==='mono'?'monospace':'inherit'}}>
+      <div className={`bg-white rounded-2xl shadow-card border border-blue-50 p-6 max-w-3xl mx-auto print-area ${cfg?.baseFontSize==='sm'?'text-sm':cfg?.baseFontSize==='lg'?'text-lg':''}`} style={{fontFamily:cfg?.fontFamily==='serif'?'Georgia,serif':cfg?.fontFamily==='mono'?'monospace':'inherit'}}>
 
         {/* Clinic header */}
-        <div className={`pb-4 mb-5 ${show('headerBorder')?'border-b-2':''}`}
-          style={{borderColor: cfg?.primaryColor||'#1565C0'}}>
-          <div className="flex items-start justify-between">
+        <div className={`pb-2 mb-3 ${show('headerBorder')?'border-b-2 border-slate-400':''}`}>
+          <div className="flex items-start justify-between gap-4">
             <div>
-              {show('showClinicName')    && <h1 className="text-2xl font-bold" style={{color:cfg?.primaryColor||'#1565C0'}}>{clinic?.name||'PulseDesk Clinic'}</h1>}
-              {show('showClinicTagline') && clinic?.tagline && <p className="text-sm text-slate-500 italic">{clinic.tagline}</p>}
-              {show('showClinicAddress') && clinic?.address && <p className="text-xs text-slate-400 mt-1">{clinic.address}</p>}
-              {show('showClinicPhone')   && (clinic?.phone||clinic?.mobile) && <p className="text-xs text-slate-400">📞 {clinic?.mobile||clinic?.phone}</p>}
+              {show('showClinicName')    && <h1 className="text-xl font-bold text-slate-900 print:text-black" style={{color:cfg?.primaryColor||undefined}}>{clinic?.name||'PulseDesk Clinic'}</h1>}
+              {show('showClinicTagline') && clinic?.tagline && <p className="text-xs text-slate-600 italic">{clinic.tagline}</p>}
+              {show('showClinicAddress') && clinic?.address && <p className="text-xs text-slate-600">{clinic.address}</p>}
+              {show('showClinicPhone')   && (clinic?.phone||clinic?.mobile) && <p className="text-xs text-slate-600">Phone: {clinic?.mobile||clinic?.phone}</p>}
             </div>
             <div className="text-right">
-              {show('showDoctorName')  && <p className="font-bold text-slate-700">{doctor?.name}</p>}
-              {show('showDoctorQual')  && doctor?.qualification  && <p className="text-sm text-slate-500">{doctor.qualification}</p>}
-              {show('showDoctorSpec')  && doctor?.specialization && <p className="text-sm text-slate-500">{doctor.specialization}</p>}
-              {show('showDoctorRegNo') && doctor?.regNo          && <p className="text-xs text-slate-400">Reg. No: {doctor.regNo}</p>}
+              {show('showDoctorName')  && <p className="font-bold text-slate-900">{doctor?.name}</p>}
+              {show('showDoctorQual')  && doctor?.qualification  && <p className="text-xs text-slate-700">{doctor.qualification}</p>}
+              {show('showDoctorSpec')  && doctor?.specialization && <p className="text-xs text-slate-700">{doctor.specialization}</p>}
+              {show('showDoctorRegNo') && doctor?.regNo          && <p className="text-xs text-slate-600">Reg. No: {doctor.regNo}</p>}
             </div>
           </div>
         </div>
 
-        {/* Patient info + date */}
-        <div className="flex justify-between items-start mb-5 gap-4">
-          <div className="flex-1 bg-background rounded-xl p-3">
-            <div className="grid grid-cols-2 gap-1 text-sm">
-              {show('showPatient') && <><span className="text-slate-400">{t.patientLabel}</span><span className="font-semibold text-slate-800">{patient?.name}</span></>}
-              {show('showAge')     && <><span className="text-slate-400">{t.ageLabel}</span><span className="font-medium">{patient?.age} yrs</span></>}
-              {show('showGender')  && <><span className="text-slate-400">{t.genderLabel}</span><span className="font-medium">{patient?.gender}</span></>}
-              {show('showAllergy') && patient?.allergies?.length>0 && <>
-                <span className="text-danger font-semibold text-xs">⚠ Allergy:</span>
-                <span className="text-danger text-xs">{patient.allergies.join(', ')}</span>
-              </>}
-            </div>
-          </div>
-          <div className="text-right text-sm">
-            <p className="text-slate-400">{t.dateLabel}</p>
-            <p className="font-bold text-slate-700">{format(new Date(rx.date),'dd / MM / yyyy')}</p>
-            {show('showRxNo') && <p className="text-xs text-slate-400 mt-1 font-mono">{rx.rxNo}</p>}
-          </div>
+        {/* Patient info + date — inline, no background */}
+        <div className="mb-3 border-b border-slate-300 pb-3 text-sm flex flex-wrap items-baseline gap-x-5 gap-y-1">
+          {show('showPatient') && <span><span className="text-slate-500">{t.patientLabel}</span> <span className="font-semibold text-slate-900">{patient?.name}</span></span>}
+          {show('showAge')     && <span><span className="text-slate-500">{t.ageLabel}</span> <span className="text-slate-800">{patient?.age} yrs</span></span>}
+          {show('showGender')  && <span><span className="text-slate-500">{t.genderLabel}</span> <span className="text-slate-800">{patient?.gender}</span></span>}
+          <span className="ml-auto text-right">
+            <span className="text-slate-500">{t.dateLabel}</span> <span className="font-semibold text-slate-900">{format(new Date(rx.date),'dd / MM / yyyy')}</span>
+            {show('showRxNo') && <span className="ml-3 font-mono text-xs text-slate-500">{rx.rxNo}</span>}
+          </span>
         </div>
 
-        {/* Complaint */}
-        {show('showComplaint') && complaints.length > 0 && (
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">CHIEF COMPLAINT</p>
-            <div className="flex flex-wrap gap-1.5">
-              {complaints.map((c,i) => (
-                <span key={i} className="text-sm font-medium text-slate-700 bg-blue-50/60 px-2.5 py-0.5 rounded-lg">{c}</span>
-              ))}
-            </div>
-          </div>
+        {show('showAllergy') && patient?.allergies?.length>0 && (
+          <p className="mb-3 text-sm"><span className="font-bold">⚠ Allergy:</span> {patient.allergies.join(', ')}</p>
         )}
 
-        {/* Diagnosis */}
+        {/* Complaint — inline */}
+        {show('showComplaint') && complaints.length > 0 && (
+          <p className="mb-1.5 text-sm"><span className="font-bold text-slate-900">Chief Complaint:</span> <span className="text-slate-800">{complaints.join(', ')}</span></p>
+        )}
+
+        {/* Diagnosis — inline */}
         {show('showDiagnosis') && diagnoses.length > 0 && (
-          <div className="mb-5">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">DIAGNOSIS</p>
-            <div className="flex flex-wrap gap-1.5">
-              {diagnoses.map((d,i) => (
-                <span key={i} className="text-sm font-medium text-slate-700 bg-orange-50 px-2.5 py-0.5 rounded-lg">{d}</span>
-              ))}
-            </div>
-          </div>
+          <p className="mb-3 text-sm"><span className="font-bold text-slate-900">Diagnosis:</span> <span className="text-slate-800">{diagnoses.join(', ')}</span></p>
         )}
 
         {/* Medicines */}
         {show('showMedicines') && rx.medicines?.length > 0 && (
-          <div className="mb-5">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-2xl font-bold text-primary italic">℞</span>
-              <span className="font-semibold text-slate-600 uppercase text-xs tracking-wider">MEDICINES</span>
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-1.5">
+              {show('showRxSymbol') && <span className="text-xl font-bold italic" style={{color:cfg?.primaryColor||'#000'}}>℞</span>}
+              <span className="font-bold text-slate-900 uppercase text-xs tracking-wider">Medicines</span>
             </div>
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-sm border-collapse border border-slate-400">
               <thead>
-                <tr className="border-b-2 border-primary/20">
-                  <th className="text-left py-2 px-2 text-xs text-slate-400 font-semibold uppercase">#</th>
-                  <th className="text-left py-2 px-2 text-xs text-slate-400 font-semibold uppercase">MEDICINE</th>
-                  {show('showDosage') && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DOSAGE</th>}
+                <tr className="bg-slate-50">
+                  <th className="text-left py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400 w-8">#</th>
+                  <th className="text-left py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Medicine</th>
+                  {show('showDosage') && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Dosage</th>}
                   {compactPrint ? (
-                    // Combined column header — only render if at least one sub-part is visible
                     (show('showWhen') || show('showFrequency') || show('showDays')) && (
-                      <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">
-                        {[show('showWhen') && 'TIMING', show('showFrequency') && 'FREQ.', show('showDays') && 'DURATION'].filter(Boolean).join(' - ')}
+                      <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">
+                        {[show('showWhen') && 'Timing', show('showFrequency') && 'Freq.', show('showDays') && 'Duration'].filter(Boolean).join(' - ')}
                       </th>
                     )
                   ) : (
                     <>
-                      {show('showWhen')      && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">TIMING</th>}
-                      {show('showFrequency') && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">FREQ.</th>}
-                      {show('showDays')      && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DURATION</th>}
+                      {show('showWhen')      && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Timing</th>}
+                      {show('showFrequency') && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Freq.</th>}
+                      {show('showDays')      && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Duration</th>}
                     </>
                   )}
-                  {show('showQty') && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">QTY</th>}
+                  {show('showQty') && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400 w-14">Qty</th>}
                 </tr>
               </thead>
               <tbody>
                 {rx.medicines.map((med, idx) => {
-                  // Build combined cell content for compactPrint mode
                   const parts = []
                   if (show('showWhen'))      parts.push(med.timing ? getTimingLabel(med.timing, lang) : '—')
                   if (show('showFrequency')) parts.push(getFrequencyLabel(med.frequency, lang))
                   if (show('showDays'))      parts.push(translateDays(med.days, lang))
                   const combinedCell = parts.join(' - ')
                   return (
-                    <tr key={med.id} className={`border-b border-slate-50 ${idx%2===0?'':'bg-slate-50/50'}`}>
-                      <td className="py-2 px-2 text-slate-400 text-xs align-top">{idx+1}</td>
-                      <td className="py-2 px-2 align-top">
-                        <p className={show('medicineNameBold')?'font-semibold text-slate-800':'text-slate-800'}>{med.medicineName}</p>
+                    <tr key={med.id}>
+                      <td className="py-1.5 px-2 text-slate-700 text-xs border border-slate-400 align-top">{idx+1}</td>
+                      <td className="py-1.5 px-2 border border-slate-400 align-top">
+                        <p className={show('medicineNameBold')?'font-bold text-slate-900':'text-slate-900'}>{med.medicineName}</p>
                         {show('showNotes') && med.notesEn && (
-                          <p className="text-xs text-slate-400 mt-0.5">{translateNote(med.notesEn, lang)}</p>
+                          <p className="text-xs text-slate-600 mt-0.5 italic">{translateNote(med.notesEn, lang)}</p>
                         )}
                       </td>
-                      {show('showDosage') && <td className="py-2 px-2 text-center font-mono text-slate-700 align-top">{med.dosage||'—'}</td>}
+                      {show('showDosage') && <td className="py-1.5 px-2 text-center font-mono text-slate-800 border border-slate-400 align-top">{med.dosage||'—'}</td>}
                       {compactPrint ? (
                         (show('showWhen') || show('showFrequency') || show('showDays')) && (
-                          <td className="py-2 px-2 text-center text-xs text-slate-600 align-top">{combinedCell}</td>
+                          <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{combinedCell}</td>
                         )
                       ) : (
                         <>
-                          {show('showWhen')      && <td className="py-2 px-2 text-center text-xs text-slate-600 align-top">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
-                          {show('showFrequency') && <td className="py-2 px-2 text-center text-xs text-slate-600 align-top">{getFrequencyLabel(med.frequency, lang)}</td>}
-                          {show('showDays')      && <td className="py-2 px-2 text-center text-slate-700 align-top">{translateDays(med.days, lang)}</td>}
+                          {show('showWhen')      && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
+                          {show('showFrequency') && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{getFrequencyLabel(med.frequency, lang)}</td>}
+                          {show('showDays')      && <td className="py-1.5 px-2 text-center text-slate-800 border border-slate-400 align-top">{translateDays(med.days, lang)}</td>}
                         </>
                       )}
-                      {show('showQty') && <td className="py-2 px-2 text-center font-bold align-top" style={{color:cfg?.primaryColor||'#1565C0'}}>{med.qty||'—'}</td>}
+                      {show('showQty') && <td className="py-1.5 px-2 text-center font-bold text-slate-900 border border-slate-400 align-top">{med.qty||'—'}</td>}
                     </tr>
                   )
                 })}
@@ -295,35 +273,24 @@ export default function ViewPrescriptionPage() {
         )}
 
         {show('showLabTests') && rx.labTests?.length > 0 && (
-          <div className="mb-5">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">LAB TESTS</p>
-            <div className="flex flex-wrap gap-2">
-              {rx.labTests.map(lt => (
-                <span key={lt.id} className="bg-blue-50 border border-blue-100 text-primary text-sm px-3 py-1 rounded-lg font-medium">{lt.labTestName}</span>
-              ))}
-            </div>
-          </div>
+          <p className="mb-1.5 text-sm"><span className="font-bold text-slate-900">Lab Tests:</span> <span className="text-slate-800">{rx.labTests.map(lt => lt.labTestName).join(', ')}</span></p>
         )}
 
         {show('showAdvice') && adviceList.length > 0 && (
-          <div className="mb-5 p-3 bg-amber-50 border border-amber-100 rounded-xl">
-            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">ADVICE & PRECAUTIONS</p>
-            <ul className="space-y-1">
-              {adviceList.map((a,i) => (
-                <li key={i} className="text-sm text-slate-700 flex items-start gap-1.5">
-                  <span className="text-amber-500 mt-0.5">•</span>{a}
-                </li>
-              ))}
-            </ul>
+          <div className="mb-3 text-sm">
+            <span className="font-bold text-slate-900">Advice:</span>{' '}
+            {adviceList.length === 1 ? (
+              <span className="text-slate-800">{adviceList[0]}</span>
+            ) : (
+              <ul className="list-disc pl-6 mt-1 text-slate-800">
+                {adviceList.map((a,i) => (<li key={i}>{a}</li>))}
+              </ul>
+            )}
           </div>
         )}
 
         {show('showNextVisit') && rx.nextVisit && (
-          <div className="mb-5 flex items-center gap-2 text-sm">
-            <Calendar className="w-4 h-4 text-primary"/>
-            <span className="text-slate-500">{t.nextVisitLabel}</span>
-            <span className="font-bold text-primary">{format(new Date(rx.nextVisit),'dd MMMM yyyy')}</span>
-          </div>
+          <p className="mb-3 text-sm"><span className="font-bold text-slate-900">Next Visit:</span> <span className="text-slate-800">{format(new Date(rx.nextVisit),'dd MMMM yyyy')}</span></p>
         )}
 
         {/* Footer */}
