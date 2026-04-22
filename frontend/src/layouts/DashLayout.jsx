@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import { getGlobalDirty, onGlobalDirtyChange } from '../hooks/useUnsavedChanges'
+import { useSessionTimeout } from '../hooks/useSessionTimeout'
 import toast from 'react-hot-toast'
 
 const navItems = [
@@ -47,6 +48,7 @@ export default function DashLayout() {
   const { user, logout } = useAuthStore()
   const navigate         = useNavigate()
   const location         = useLocation()
+  useSessionTimeout()  // Auto-logout after 30 min inactivity
   const [sidebarOpen,   setSidebarOpen]   = useState(false)
   const [profileOpen,   setProfileOpen]   = useState(false)
   const [confirmLogout, setConfirmLogout] = useState(false)

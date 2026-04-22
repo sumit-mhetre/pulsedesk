@@ -1,3 +1,4 @@
+const { audit } = require('../middleware/audit.middleware');
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { generateAccessToken, generateRefreshToken, verifyToken } = require('../lib/jwt');
@@ -46,6 +47,9 @@ async function login(req, res) {
     }).catch(err => console.error('RefreshToken save error (non-fatal):', err.message));
 
     const { password: _, ...userSafe } = user;
+    // Audit login
+    req.clinicId = user.clinicId; req.user = user;
+    audit(req, 'LOGIN', 'user', user.id, { email: user.email, role: user.role })
     return successResponse(res, { accessToken, refreshToken, user: userSafe }, 'Login successful');
   } catch (err) {
     console.error('Login error:', err);
@@ -76,6 +80,7 @@ async function logout(req, res) {
   try {
     const { refreshToken: token } = req.body;
     if (token) await prisma.refreshToken.deleteMany({ where: { token } });
+    audit(req, 'LOGOUT', 'user', req.user?.id)
     return successResponse(res, null, 'Logged out successfully');
   } catch {
     return successResponse(res, null, 'Logged out');

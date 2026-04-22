@@ -1,13 +1,24 @@
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
+const express      = require('express');
+const cors         = require('cors');
+const morgan       = require('morgan');
 const cookieParser = require('cookie-parser');
-const path = require('path');
+const helmet       = require('helmet');
+const path         = require('path');
+
+const { apiLimiter, loginLimiter } = require('./middleware/ratelimit.middleware');
+const { auditMiddleware }          = require('./middleware/audit.middleware');
 
 const app = express();
 
-// ── Middleware ─────────────────────────────────
+// ── Security headers ───────────────────────────────────────
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,  // allow Render to serve correctly
+  contentSecurityPolicy: false,       // handled by frontend
+}))
+app.set('trust proxy', 1) // trust Render's proxy for correct IP
+
+// ── CORS ───────────────────────────────────────────────────
 app.use(cors({
   origin: [
     'http://localhost:5173',
@@ -16,51 +27,65 @@ app.use(cors({
     process.env.FRONTEND_URL,
   ].filter(Boolean),
   credentials: true,
-}));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(morgan('dev'));
+}))
 
-// ── Static uploads ─────────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// ── General middleware ─────────────────────────────────────
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true }))
+app.use(cookieParser())
+app.use(morgan('dev'))
 
-// ── Routes ─────────────────────────────────────
-app.use('/api/auth',         require('./routes/auth.routes'));
-app.use('/api/master',       require('./routes/masterdata.routes'));
-app.use('/api/page-design',  require('./routes/pagedesign.routes'));
-app.use('/api/templates',    require('./routes/template.routes'));
-app.use('/api/reports',      require('./routes/reports.routes'));
-app.use('/api/billing',      require('./routes/billing.routes'));
-app.use('/api/prescriptions',require('./routes/prescription.routes'));
-app.use('/api/patients',     require('./routes/patient.routes'));
-app.use('/api/appointments', require('./routes/appointment.routes'));
-app.use('/api/clinics',      require('./routes/clinic.routes'));
-app.use('/api/users',        require('./routes/user.routes'));
-app.use('/api/super',        require('./routes/super.routes'));
+// ── Rate limiting ──────────────────────────────────────────
+app.use('/api', apiLimiter)
+app.use('/api/auth/login', loginLimiter)
 
-// ── Health check ───────────────────────────────
+// ── Static uploads ─────────────────────────────────────────
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+
+// ── Audit middleware (after auth, logs all mutations) ──────
+app.use('/api', auditMiddleware)
+
+// ── Routes ─────────────────────────────────────────────────
+app.use('/api/auth',         require('./routes/auth.routes'))
+app.use('/api/master',       require('./routes/masterdata.routes'))
+app.use('/api/page-design',  require('./routes/pagedesign.routes'))
+app.use('/api/templates',    require('./routes/template.routes'))
+app.use('/api/reports',      require('./routes/reports.routes'))
+app.use('/api/billing',      require('./routes/billing.routes'))
+app.use('/api/prescriptions',require('./routes/prescription.routes'))
+app.use('/api/patients',     require('./routes/patient.routes'))
+app.use('/api/appointments', require('./routes/appointment.routes'))
+app.use('/api/clinics',      require('./routes/clinic.routes'))
+app.use('/api/users',        require('./routes/user.routes'))
+app.use('/api/super',        require('./routes/super.routes'))
+
+// ── Audit log route ────────────────────────────────────────
+const { authenticate, authorize } = require('./middleware/auth.middleware')
+const { getAuditLogs } = require('./middleware/audit.middleware')
+app.get('/api/audit-logs', authenticate, authorize('ADMIN'), getAuditLogs)
+
+// ── Health check ───────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', app: 'PulseDesk API', version: '1.0.0' });
-});
+  res.json({ status: 'ok', app: 'PulseDesk API', version: '1.0.0' })
+})
 
-// ── 404 handler ────────────────────────────────
+// ── 404 handler ────────────────────────────────────────────
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found' });
-});
+  res.status(404).json({ success: false, message: 'Route not found' })
+})
 
-// ── Global error handler ───────────────────────
+// ── Global error handler ───────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error(err.stack)
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal server error',
-  });
-});
+  })
+})
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
-  console.log(`\n🚀 PulseDesk API running on http://localhost:${PORT}`);
-  console.log(`   Environment: ${process.env.NODE_ENV}`);
-  console.log(`   Allowed origins: localhost:5173, localhost:3000, pulsedesk-testing1.onrender.com`);
-});
+  console.log(`\n🚀 PulseDesk API running on http://localhost:${PORT}`)
+  console.log(`   Environment: ${process.env.NODE_ENV}`)
+  console.log(`   Security: Helmet ✅ | Rate Limiting ✅ | Audit Logs ✅`)
+})
