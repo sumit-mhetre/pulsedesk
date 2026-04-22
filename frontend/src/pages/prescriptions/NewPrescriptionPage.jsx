@@ -549,13 +549,15 @@ export default function NewPrescriptionPage() {
   const [ptResults,  setPtResults]  = useState([])
   const [showPtDrop, setShowPtDrop] = useState(false)
 
-  const [vitals,     setVitals]     = useState({ bp:'',bpSys:'',bpDia:'',sugar:'',weight:'',temp:'',spo2:'',pulse:'',height:'',bmi:'' })
+  const [vitals,     setVitals]     = useState({ bp:'',bpSys:'',bpDia:'',sugar:'',weight:'',temp:'',spo2:'',pulse:'',height:'',bmi:'',heightUnit:'cm' })
   const [showVitals, setShowVitals] = useState(false)
   // Auto-calculate BMI when weight or height changes
   useEffect(() => {
     const w = parseFloat(vitals.weight); const h = parseFloat(vitals.height)
     if (w > 0 && h > 0) {
-      const bmi = (w / Math.pow(h/100, 2)).toFixed(1)
+      // Convert ft to cm if needed (e.g. 5.7 ft = 170.7 cm)
+      const hCm = vitals.heightUnit === 'ft' ? h * 30.48 : h
+      const bmi = (w / Math.pow(hCm/100, 2)).toFixed(1)
       setVitals(p => ({ ...p, bmi }))
     }
   }, [vitals.weight, vitals.height])
@@ -938,7 +940,7 @@ export default function NewPrescriptionPage() {
                 {key:'temp',   label:'Temp (°F)',      ph:'98.6',      cfgKey:'vitalTemp'},
                 {key:'spo2',   label:'SpO2 %',         ph:'98',        cfgKey:'vitalSpo2'},
                 {key:'pulse',  label:'Pulse/min',      ph:'72',        cfgKey:'vitalPulse'},
-                {key:'height', label:'Height (cm)',    ph:'170',       cfgKey:'vitalHeight'},
+                {key:'height', label:`Height (${vitals.heightUnit||'cm'})`, ph: vitals.heightUnit==='ft' ? '5.7' : '170', cfgKey:'vitalHeight'},
                 {key:'bmi',    label:'BMI',            ph:'Auto',      cfgKey:'vitalBMI'},
               ].filter(f => {
                 // Use rx_form config for vital field visibility
@@ -948,24 +950,35 @@ export default function NewPrescriptionPage() {
               })
               .map(f=>(
                 <div key={f.key} className="form-group">
-                  <label className="form-label">{f.label}</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="form-label mb-0">{f.label}</label>
+                    {f.key==='height' && (
+                      <button type="button" onClick={()=>setVitals(p=>({...p,heightUnit:p.heightUnit==='ft'?'cm':'ft',height:''}))}
+                        className="text-xs text-primary hover:underline">{vitals.heightUnit==='ft'?'Switch to cm':'Switch to ft'}</button>
+                    )}
+                  </div>
                   {f.key === 'bp' ? (
                     <div className="relative">
                       <input className="form-input font-mono tracking-wider" placeholder="120/80"
                         value={vitals.bp||''}
                         onChange={e => {
                           let v = e.target.value.replace(/[^0-9/]/g,'')
-                          // Auto-insert / after 3 digits if not already there
-                          if (v.length === 3 && !v.includes('/')) v = v + '/'
-                          // Max format: 3/3 digits
                           const parts = v.split('/')
+                          // Only allow one slash
+                          if (parts.length > 2) return
+                          // Each part max 3 digits
                           if (parts[0] && parts[0].length > 3) return
                           if (parts[1] && parts[1].length > 3) return
+                          // NO auto-insert slash - doctor types it manually
                           setVitals(p=>({...p, bp:v}))
                         }}
                         onKeyDown={e => {
-                          // Auto-jump to diastolic when / is typed
-                          if (e.key === '/' && !vitals.bp?.includes('/')) return
+                          const val = vitals.bp || ''
+                          // After typing 2 digits (systolic done), auto-add slash on next digit press
+                          if (/^[0-9]$/.test(e.key) && !val.includes('/') && val.length >= 2) {
+                            e.preventDefault()
+                            setVitals(p=>({...p, bp: val + '/' + e.key}))
+                          }
                         }}
                         maxLength={7}
                       />
