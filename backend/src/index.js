@@ -1,10 +1,25 @@
-require('dotenv').config();
+// ── Env loading ────────────────────────────────────────────
+// Local dev machines have a backend/.env.development file pointing at localhost.
+// Production (Render) uses environment variables set in the dashboard (and/or .env).
+// The .env.development file is gitignored so it can never leak.
+const path = require('path');
+const fs   = require('fs');
+
+const envDevPath = path.resolve(__dirname, '..', '.env.development');
+const envPath    = path.resolve(__dirname, '..', '.env');
+
+if (fs.existsSync(envDevPath) && process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: envDevPath });
+  console.log('📁 Loaded .env.development (local)');
+} else {
+  require('dotenv').config({ path: envPath });
+}
+
 const express      = require('express');
 const cors         = require('cors');
 const morgan       = require('morgan');
 const cookieParser = require('cookie-parser');
 const helmet       = require('helmet');
-const path         = require('path');
 
 const { apiLimiter, loginLimiter } = require('./middleware/ratelimit.middleware');
 const { auditMiddleware }          = require('./middleware/audit.middleware');

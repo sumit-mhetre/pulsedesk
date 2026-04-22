@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "migrate": "npx prisma migrate dev",
+    "migrate": "node scripts/guard-migrate-dev.js && npx prisma migrate dev",
     "migrate:prod": "npx prisma migrate deploy",
     "generate": "npx prisma generate",
     "seed": "node src/seed.js",
