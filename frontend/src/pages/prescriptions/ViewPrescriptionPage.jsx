@@ -73,7 +73,7 @@ export default function ViewPrescriptionPage() {
   const t = {
     date:'Date', patient:'Patient', age:'Age', gender:'Gender',
     complaint:'CHIEF COMPLAINT', diagnosis:'DIAGNOSIS',
-    medicine:'MEDICINE', dosage:'DOSAGE', days:'DAYS', timing:'TIMING', qty:'QTY',
+    medicine:'MEDICINE', dosage:'DOSAGE', days:'DURATION', timing:'TIMING', qty:'QTY',
     labTests:'LAB TESTS', advice:'ADVICE & PRECAUTIONS', nextVisit:'Next Visit',
     sign:'Signature', medicines:'MEDICINES',
     // Only Patient label row changes for Hindi/Marathi
@@ -200,7 +200,7 @@ export default function ViewPrescriptionPage() {
                   <th className="text-left py-2 px-2 text-xs text-slate-400 font-semibold uppercase">MEDICINE</th>
                   {show('showDosage') && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DOSAGE</th>}
                   {show('showWhen')   && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">TIMING</th>}
-                  {show('showDays')   && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DAYS</th>}
+                  {show('showDays')   && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DURATION</th>}
                   {show('showQty')    && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">QTY</th>}
                 </tr>
               </thead>

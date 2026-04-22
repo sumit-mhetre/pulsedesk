@@ -888,7 +888,7 @@ export default function NewPrescriptionPage() {
         diagnosis:  diagnosisTags.join(' || '),
         advice:     rxAdvice.map(a=>a.name).join('\n'),
         labTests:   rxTests.filter(t=>!t.isNew).map(t=>t.name),
-        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: m.days || null, timing:m.timing, notesEn:m.notesEn })),
+        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: m.days || null, timing:m.timing, qty:m.qty||null, notesEn:m.notesEn })),
       })
       toast.success(`Template "${templateName}" saved!`)
     } catch { toast.error('Failed to save template') }
@@ -1152,6 +1152,7 @@ export default function NewPrescriptionPage() {
                     </td>
                     <td className="py-1.5 px-1">
                       <MedInput value={med.medicineName} medicineId={med.medicineId} onSelect={handleMedSelect} onTyped={handleMedTyped} medicines={medicines} rowIndex={idx}/>
+                      {med.notesEn && <p className="text-xs text-slate-400 mt-0.5 px-1 truncate">{med.notesEn}</p>}
                     </td>
                     <td className="py-1.5 px-1">
                       {isNT ? <div className="h-8 px-2 flex items-center text-xs text-slate-300 bg-slate-50 rounded-lg border border-slate-100">N/A</div>
@@ -1164,8 +1165,11 @@ export default function NewPrescriptionPage() {
                       <SmartDaysInput value={med.days} onChange={v=>updateMed(idx,'days',v)}/>
                     </td>
                     <td className="py-1.5 px-1">
-                      {isNT ? <div className="h-8 flex items-center justify-center text-xs text-slate-300 bg-slate-50 rounded-lg border border-slate-100">—</div>
-                        : <input type="number" min="0" className="w-full h-8 px-1 text-sm text-center font-bold border border-slate-200 rounded-lg focus:outline-none focus:border-primary bg-white" value={med.qty} onChange={e=>updateMed(idx,'qty',e.target.value)}/>}
+                      <input type="number" min="0"
+                        className="w-full h-8 px-1 text-sm text-center font-bold border border-slate-200 rounded-lg focus:outline-none focus:border-primary bg-white"
+                        value={med.qty||''}
+                        placeholder={isNT ? '1' : ''}
+                        onChange={e=>updateMed(idx,'qty',e.target.value)}/>
                     </td>
                     {/* Notes — editable for ALL, dropdown options for liquids */}
                     <td className="py-1.5 px-1">
