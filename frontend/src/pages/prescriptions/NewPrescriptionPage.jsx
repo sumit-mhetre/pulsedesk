@@ -537,8 +537,6 @@ export default function NewPrescriptionPage() {
 
   const [vitals,     setVitals]     = useState({ bp:'',sugar:'',weight:'',temp:'',spo2:'',pulse:'' })
   const [showVitals, setShowVitals] = useState(false)
-  // Auto-open vitals if enabled in clinic setup
-  useEffect(() => { if (pdLoaded && pageDesign?.showVitals === true) setShowVitals(true) }, [pdLoaded])
   const [complaintTags, setComplaintTags] = useState([])
   const [diagnosisTags, setDiagnosisTags] = useState([])
   const [rxMeds,    setRxMeds]    = useState([{...emptyMed}])
@@ -554,6 +552,8 @@ export default function NewPrescriptionPage() {
   const [allTemplates, setAllTemplates] = useState([])
   const [pageDesign,   setPageDesign]   = useState(null)
   const [pdLoaded,     setPdLoaded]     = useState(false)
+  // Auto-open vitals when rx_form config loads and showVitals is true
+  useEffect(() => { if (pdLoaded && pageDesign?.showVitals === true) setShowVitals(true) }, [pdLoaded])
   // Before config loads: show all. After load: hide if explicitly set to false
   const showSection = (key) => !pdLoaded ? true : (pageDesign === null ? true : pageDesign[key] !== false)
 
