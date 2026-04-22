@@ -429,7 +429,7 @@ model TemplateMedicine {
   templateId  String
   medicineId  String
   dosage      String?
-  days        Int?
+  days        String?  // e.g. '7 days', '2 weeks', '1 month'
   timing      String?
   notesEn     String?
   notesHi     String?
@@ -602,7 +602,7 @@ model DoctorMedicinePreference {
   medicineId  String
   dosage      String?
   timing      String?
-  days        Int?
+  days        String?  // e.g. '7 days', '2 weeks', '1 month'
   usageCount  Int      @default(1)
   updatedAt   DateTime @updatedAt
 

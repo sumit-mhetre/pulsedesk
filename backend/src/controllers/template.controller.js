@@ -70,7 +70,7 @@ async function createTemplate(req, res) {
             templateId: t.id,
             medicineId: m.medicineId,
             dosage:     m.dosage  || null,
-            days:       m.days    ? parseInt(m.days) : null,
+            days:       m.days    || null,
             timing:     m.timing  || null,
             notesEn:    m.notesEn || null,
             sortOrder:  idx,
@@ -122,7 +122,7 @@ async function updateTemplate(req, res) {
               templateId: req.params.id,
               medicineId: m.medicineId,
               dosage:     m.dosage  || null,
-              days:       m.days    ? parseInt(m.days) : null,
+              days:       m.days    || null,
               timing:     m.timing  || null,
               notesEn:    m.notesEn || null,
               sortOrder:  idx,
@@ -186,7 +186,7 @@ async function useTemplate(req, res) {
           days:    m.days ? String(m.days) : '',
           timing:  m.timing || 'AF',
           notesEn: m.notesEn || '',
-          qty:     m.dosage && m.days ? String((({ '1-0-0':1,'0-1-0':1,'0-0-1':1,'1-0-1':2,'1-1-0':2,'0-1-1':2,'1-1-1':3,'1-1-1-1':4,'OD':1,'BD':2,'TDS':3,'QID':4,'HS':1 })[m.dosage] || 0) * m.days) : '',
+          qty:     m.dosage && m.days ? String((({ '1-0-0':1,'0-1-0':1,'0-0-1':1,'1-0-1':2,'1-1-0':2,'0-1-1':2,'1-1-1':3,'1-1-1-1':4,'OD':1,'BD':2,'TDS':3,'QID':4,'HS':1 })[m.dosage] || 0) * (parseInt(String(m.days).match(/\d+/)?.[0]) || 0)) : '',
         };
       })
     );
@@ -231,7 +231,7 @@ async function saveAsTemplate(req, res) {
             data: medicines.map((m, idx) => ({
               templateId: existing.id,
               medicineId: m.medicineId,
-              dosage: m.dosage||null, days: m.days?parseInt(m.days):null,
+              dosage: m.dosage||null, days:       m.days    || null,
               timing: m.timing||null, notesEn: m.notesEn||null, sortOrder: idx,
             })),
           });
@@ -249,7 +249,7 @@ async function saveAsTemplate(req, res) {
         await tx.templateMedicine.createMany({
           data: medicines.map((m, idx) => ({
             templateId: t.id, medicineId: m.medicineId,
-            dosage: m.dosage||null, days: m.days?parseInt(m.days):null,
+            dosage: m.dosage||null, days:       m.days    || null,
             timing: m.timing||null, notesEn: m.notesEn||null, sortOrder: idx,
           })),
         });

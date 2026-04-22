@@ -707,6 +707,28 @@ export default function NewPrescriptionPage() {
   // Before config loads: show all. After load: hide if explicitly set to false
   const showSection = (key) => !pdLoaded ? true : (pageDesign === null ? true : pageDesign[key] !== false)
 
+  // ── Section auto-scroll (next-section navigation) ───────────────
+  const SECTION_ORDER = [
+    { id: 'sec-patient',   key: null },                // always visible
+    { id: 'sec-vitals',    key: 'showVitals' },
+    { id: 'sec-complaint', key: 'showComplaint' },
+    { id: 'sec-diagnosis', key: 'showDiagnosis' },
+    { id: 'sec-medicines', key: 'showMedicines' },
+    { id: 'sec-labtests',  key: 'showLabTests' },
+    { id: 'sec-advice',    key: 'showAdvice' },
+  ]
+  const scrollToNext = (fromId) => {
+    const idx = SECTION_ORDER.findIndex(s => s.id === fromId)
+    if (idx < 0) return
+    // Walk forward to find next visible section
+    for (let i = idx + 1; i < SECTION_ORDER.length; i++) {
+      const { id, key } = SECTION_ORDER[i]
+      if (key && !showSection(key)) continue
+      const el = document.getElementById(id)
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
+    }
+  }
+
   useEffect(() => {
     // Load sequentially in small groups to avoid overwhelming Render free tier
     const loadMaster = async () => {
@@ -803,8 +825,8 @@ export default function NewPrescriptionPage() {
     // Priority: doctor's personal preference > medicine default > last used
     const pref   = doctorPrefs[med.id] || {}
     const dosage = isNT ? '' : (pref.dosage || med.defaultDosage || lastUsed.current.dosage)
-    // pref.days from DB is Int - add 'days' unit for display
-    const rawDays = pref.days ? `${pref.days} days` : (med.defaultDays ? `${med.defaultDays} days` : lastUsed.current.days)
+    // pref.days is now a full string like "5 days" (was Int before migration)
+    const rawDays = pref.days || (med.defaultDays ? `${med.defaultDays} days` : lastUsed.current.days)
     const days = rawDays || ''
     const timing = pref.timing || med.defaultTiming || lastUsed.current.timing
     setRxMeds(prev => {
@@ -999,7 +1021,7 @@ export default function NewPrescriptionPage() {
 
       <div className="space-y-4">
         {/* Patient */}
-        <Card>
+        <div id="sec-patient" className="scroll-mt-20"><Card>
           <h3 className="font-bold text-slate-700 mb-3">Patient</h3>
           {!patient ? (
             <div className="relative">
@@ -1041,10 +1063,10 @@ export default function NewPrescriptionPage() {
               </div>
             </div>
           )}
-        </Card>
+        </Card></div>
 
         {/* Vitals */}
-        <div style={{display: showSection('showVitals') ? '' : 'none'}}><Card>
+        <div id="sec-vitals" className="scroll-mt-20" style={{display: showSection('showVitals') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">Vitals <Badge variant="gray">Optional</Badge></h3>
             <button type="button" onClick={()=>setShowVitals(v=>!v)} className="text-sm text-primary hover:underline flex items-center gap-1">
@@ -1092,10 +1114,18 @@ export default function NewPrescriptionPage() {
               ))}
             </div>
           )}
+          {showVitals && (
+            <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
+              <button type="button" onClick={()=>scrollToNext('sec-vitals')}
+                className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+                Continue <ChevronDown className="w-3.5 h-3.5"/>
+              </button>
+            </div>
+          )}
         </Card></div>
 
         {/* Complaint */}
-        <div style={{display: showSection('showComplaint') ? '' : 'none'}}><Card>
+        <div id="sec-complaint" className="scroll-mt-20" style={{display: showSection('showComplaint') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Chief Complaint</h3>
             <div className="flex gap-2">
@@ -1109,10 +1139,16 @@ export default function NewPrescriptionPage() {
             onRemove={t=>setComplaintTags(p=>p.filter(x=>x!==t))}
             items={complaints}
             placeholder="Type complaint or select, press Enter to add another..."/>
+          <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
+            <button type="button" onClick={()=>scrollToNext('sec-complaint')}
+              className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+              Continue <ChevronDown className="w-3.5 h-3.5"/>
+            </button>
+          </div>
         </Card></div>
 
         {/* Diagnosis */}
-        <div style={{display: showSection('showDiagnosis') ? '' : 'none'}}><Card>
+        <div id="sec-diagnosis" className="scroll-mt-20" style={{display: showSection('showDiagnosis') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Diagnosis</h3>
             <div className="flex gap-2">
@@ -1126,10 +1162,16 @@ export default function NewPrescriptionPage() {
             onRemove={t=>setDiagnosisTags(p=>p.filter(x=>x!==t))}
             items={diagnoses}
             placeholder="Type diagnosis or select, press Enter to add another..."/>
+          <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
+            <button type="button" onClick={()=>scrollToNext('sec-diagnosis')}
+              className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+              Continue <ChevronDown className="w-3.5 h-3.5"/>
+            </button>
+          </div>
         </Card></div>
 
         {/* Medicines */}
-        <Card>
+        <div id="sec-medicines" className="scroll-mt-20"><Card>
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">
               Medicines <Badge variant="primary">{rxMeds.filter(m=>m.medicineName).length}</Badge>
@@ -1276,10 +1318,16 @@ export default function NewPrescriptionPage() {
             className="mt-3 w-full border-2 border-dashed border-blue-100 rounded-xl py-2 text-sm text-slate-400 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2">
             <Plus className="w-4 h-4"/>Add Medicine Row
           </button>
-        </Card>
+          <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
+            <button type="button" onClick={()=>scrollToNext('sec-medicines')}
+              className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+              Continue <ChevronDown className="w-3.5 h-3.5"/>
+            </button>
+          </div>
+        </Card></div>
 
         {/* Lab Tests */}
-        <div style={{display: showSection('showLabTests') ? '' : 'none'}}><Card>
+        <div id="sec-labtests" className="scroll-mt-20" style={{display: showSection('showLabTests') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Lab Tests</h3>
             <div className="flex gap-2">
@@ -1294,10 +1342,16 @@ export default function NewPrescriptionPage() {
             items={labTestList}
             placeholder="Search lab test or type new name (auto-saved)..."
             allowCustom={true}/>
+          <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
+            <button type="button" onClick={()=>scrollToNext('sec-labtests')}
+              className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+              Continue <ChevronDown className="w-3.5 h-3.5"/>
+            </button>
+          </div>
         </Card></div>
 
         {/* Advice */}
-        <div style={{display: showSection('showAdvice') ? '' : 'none'}}><Card>
+        <div id="sec-advice" className="scroll-mt-20" style={{display: showSection('showAdvice') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Advice & Precautions</h3>
             <div className="flex gap-2">
