@@ -448,13 +448,14 @@ function PatientModal({ mode, initialForm, onClose, onSaved, navigate }) {
       {/* Confirm close dialog */}
       {confirmClose && (
         <ConfirmDialog
-          type="warning"
+          open={confirmClose}
+          variant="warning"
           title="Discard Changes?"
           message="You have unsaved information. If you close now, all entered data will be lost."
           confirmLabel="Yes, Discard"
           cancelLabel="Keep Editing"
-          onConfirm={()=>{ setConfirmClose(false); onClose() }}
-          onCancel={()=>setConfirmClose(false)}
+          onConfirm={()=>{ setConfirmClose(false); setIsDirty(false); onClose() }}
+          onClose={()=>setConfirmClose(false)}
         />
       )}
     </>

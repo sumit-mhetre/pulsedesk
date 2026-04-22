@@ -1,17 +1,36 @@
 import { useState, useEffect, useCallback } from 'react'
 
+// Global dirty state — shared across all pages
+// DashLayout reads this to intercept sidebar navigation
+let _isDirty = false
+const _listeners = new Set()
+
+export function setGlobalDirty(val) {
+  _isDirty = val
+  _listeners.forEach(fn => fn(val))
+}
+export function getGlobalDirty() { return _isDirty }
+export function onGlobalDirtyChange(fn) {
+  _listeners.add(fn)
+  return () => _listeners.delete(fn)
+}
+
 /**
- * useUnsavedChanges — simple dirty tracking without useBlocker
- * Works with React Router v6.22+
+ * useUnsavedChanges
+ * Call setDirty(true) when form has changes.
+ * Call guardedAction(fn) instead of navigate/close directly.
  */
 export function useUnsavedChanges() {
   const [isDirty, setDirtyState] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
 
-  const setDirty = useCallback((v = true) => setDirtyState(v), [])
+  const setDirty = useCallback((v = true) => {
+    setDirtyState(v)
+    setGlobalDirty(v)
+  }, [])
 
-  // Block browser refresh/tab close when dirty
+  // Block browser refresh/tab close
   useEffect(() => {
     if (!isDirty) return
     const handler = (e) => { e.preventDefault(); e.returnValue = '' }
@@ -19,8 +38,11 @@ export function useUnsavedChanges() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
-  // Call this instead of directly calling onClose/navigate
-  // If dirty → show confirm, else run immediately
+  // Clean up global dirty on unmount
+  useEffect(() => {
+    return () => setGlobalDirty(false)
+  }, [])
+
   const guardedAction = useCallback((action) => {
     if (isDirty) {
       setPendingAction(() => action)
@@ -33,6 +55,7 @@ export function useUnsavedChanges() {
   const handleConfirmLeave = () => {
     setShowConfirm(false)
     setDirtyState(false)
+    setGlobalDirty(false)
     pendingAction?.()
     setPendingAction(null)
   }
