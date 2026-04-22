@@ -115,6 +115,7 @@ model Clinic {
   complaints       Complaint[]
   diagnoses        Diagnosis[]
   adviceOptions    AdviceOption[]
+  medicineNotes    MedicineNote[]
   billingItems     BillingItem[]
   templates        PrescriptionTemplate[]
   dosageOptions    DosageOption[]
@@ -334,6 +335,22 @@ model AdviceOption {
 
   @@unique([clinicId, nameEn])
   @@map("advice_options")
+}
+
+model MedicineNote {
+  id        String   @id @default(uuid())
+  clinicId  String
+  nameEn    String
+  nameHi    String?
+  nameMr    String?
+  usageCount Int     @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, nameEn])
+  @@map("medicine_notes")
 }
 
 model BillingItem {

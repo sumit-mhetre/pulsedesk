@@ -273,13 +273,14 @@ async function seedMasterData(req, res) {
   }
 }
 
-const complainCtrl  = masterController('complaint',    'nameEn');
-const diagnosisCtrl = masterController('diagnosis',    'nameEn');
-const adviceCtrl    = masterController('adviceOption', 'nameEn');
-const labTestCtrl   = masterController('labTest',      'name');
+const complainCtrl    = masterController('complaint',    'nameEn');
+const diagnosisCtrl   = masterController('diagnosis',    'nameEn');
+const adviceCtrl      = masterController('adviceOption', 'nameEn');
+const medicineNoteCtrl= masterController('medicineNote', 'nameEn');
+const labTestCtrl     = masterController('labTest',      'name');
 
 module.exports = {
   medicineCtrl, labTestCtrl, complainCtrl,
-  diagnosisCtrl, adviceCtrl, billingItemCtrl,
+  diagnosisCtrl, adviceCtrl, medicineNoteCtrl, billingItemCtrl,
   dosageCtrl, timingCtrl, seedMasterData,
 };

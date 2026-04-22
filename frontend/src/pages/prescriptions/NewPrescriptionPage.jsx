@@ -687,12 +687,14 @@ export default function NewPrescriptionPage() {
         setDiagnoses(diag.data.data)
       } catch {}
       try {
-        const [adv, tmpl] = await Promise.all([
+        const [adv, tmpl, notes] = await Promise.all([
           api.get('/master/advice'),
           api.get('/templates'),
+          api.get('/master/medicine-notes'),
         ])
         setAdviceList(adv.data.data)
         setAllTemplates(tmpl.data.data)
+        setSavedMedNotes((notes.data.data || []).map(n => n.nameEn))
       } catch {}
       try {
         const pd = await api.get('/page-design?type=rx_form')
@@ -703,9 +705,6 @@ export default function NewPrescriptionPage() {
       try {
         const prefs = await api.get('/prescriptions/doctor-preferences')
         setDoctorPrefs(prefs.data.data || {})
-        // Load saved notes from localStorage
-        const notes = JSON.parse(localStorage.getItem('pulsedesk_notes') || '[]')
-        setSavedMedNotes(notes)
       } catch {}
     }
     loadMaster()
@@ -770,7 +769,7 @@ export default function NewPrescriptionPage() {
       if(field==='dosage')lastUsed.current.dosage=val
       if(field==='days')lastUsed.current.days=val
       if(field==='timing')lastUsed.current.timing=val
-      if(field==='notesEn'&&val?.trim()){setSavedMedNotes(prev=>{const updated=[...new Set([val,...prev])].slice(0,50);localStorage.setItem('pulsedesk_notes',JSON.stringify(updated));return updated})}
+      if(field==='notesEn'&&val?.trim()){setSavedMedNotes(prev=>[...new Set([val,...prev])].slice(0,100))}
       if((field==='dosage'||field==='days')&&!NON_TABLET.includes(u[i].medicineType))
         u[i].qty=calcQty(field==='dosage'?val:u[i].dosage,field==='days'?val:u[i].days,u[i].medicineType||'tablet')
       return u
@@ -860,6 +859,15 @@ export default function NewPrescriptionPage() {
     }
     for (const a of rxAdvice) {
       if (a.isNew) try { await api.post('/master/advice', buildPayload(a.name,'advice')) } catch {}
+    }
+    // Save any new medicine notes to master (mirrors advice pattern)
+    const existingNotes = new Set(savedMedNotes.map(n=>n.toLowerCase()))
+    for (const m of rxMeds) {
+      const note = m.notesEn?.trim()
+      if (note && !existingNotes.has(note.toLowerCase())) {
+        try { await api.post('/master/medicine-notes', buildPayload(note,'advice')) } catch {}
+        existingNotes.add(note.toLowerCase())
+      }
     }
     return savedTests
   }
@@ -1153,7 +1161,6 @@ export default function NewPrescriptionPage() {
                     </td>
                     <td className="py-1.5 px-1">
                       <MedInput value={med.medicineName} medicineId={med.medicineId} onSelect={handleMedSelect} onTyped={handleMedTyped} medicines={medicines} rowIndex={idx}/>
-                      {med.notesEn && <p className="text-xs text-slate-400 mt-0.5 px-1 truncate">{med.notesEn}</p>}
                     </td>
                     <td className="py-1.5 px-1">
                       {isNT ? <div className="h-8 px-2 flex items-center text-xs text-slate-300 bg-slate-50 rounded-lg border border-slate-100">N/A</div>
@@ -1179,6 +1186,7 @@ export default function NewPrescriptionPage() {
                         onChange={v=>updateMed(idx,'notesEn',v)}
                         medicineType={med.medicineType}
                         printLang={printLang}
+                        savedNotes={savedMedNotes}
                       />
                     </td>
                     <td className="py-1.5 pl-1">

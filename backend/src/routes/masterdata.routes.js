@@ -2,7 +2,7 @@ const router = require('express').Router();
 const { authenticate, authorize } = require('../middleware/auth.middleware');
 const {
   medicineCtrl, labTestCtrl, complainCtrl,
-  diagnosisCtrl, adviceCtrl, billingItemCtrl,
+  diagnosisCtrl, adviceCtrl, medicineNoteCtrl, billingItemCtrl,
   dosageCtrl, timingCtrl, seedMasterData,
 } = require('../controllers/masterdata.controller');
 
@@ -35,6 +35,12 @@ router.get   ('/advice',             authenticate, adviceCtrl.getAll);
 router.post  ('/advice',             authenticate, adviceCtrl.create);
 router.put   ('/advice/:id',         authenticate, authorize('ADMIN'), adviceCtrl.update);
 router.delete('/advice/:id',         authenticate, authorize('ADMIN'), adviceCtrl.remove);
+
+// ── Medicine Notes ────────────────────────────────────────
+router.get   ('/medicine-notes',     authenticate, medicineNoteCtrl.getAll);
+router.post  ('/medicine-notes',     authenticate, medicineNoteCtrl.create);
+router.put   ('/medicine-notes/:id', authenticate, authorize('ADMIN'), medicineNoteCtrl.update);
+router.delete('/medicine-notes/:id', authenticate, authorize('ADMIN'), medicineNoteCtrl.remove);
 
 // ── Billing Items ─────────────────────────────────────────
 router.get   ('/billing-items',      authenticate, billingItemCtrl.getAll);
