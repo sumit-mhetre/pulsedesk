@@ -101,8 +101,9 @@ const LIQUID_NOTES_EN = ['5ml twice daily','5ml thrice daily','2.5ml twice daily
 const LIQUID_NOTES_MR = ['दिवसातून 2 वेळा 5ml','दिवसातून 3 वेळा 5ml','दिवसातून 2 वेळा 2.5ml','दिवसातून 2 वेळा 10ml','दिवसातून 2 वेळा 2 थेंब','दिवसातून 3 वेळा 2 थेंब','दिवसातून 3 वेळा 1 चमचा','दिवसातून 2 वेळा 2 चमचे','सांगितल्याप्रमाणे','दिवसातून 2 वेळा पातळ थर लावा']
 
 const calcQty = (dosage, days, type='tablet') => {
-  // Liquid/syrup/drops → qty always 1 bottle (editable)
-  if (['liquid','drops','cream','inhaler','injection','powder','sachet'].includes(type)) return '1'
+  // Liquid/syrup/drops/cream/etc → qty always 1 bottle/tube (editable)
+  // Uses NON_TABLET + 'sachet' as single source of truth to avoid duplicate-list drift
+  if (NON_TABLET.includes(type) || type === 'sachet') return '1'
   const t=FREQ_MAP[dosage]
   // Extract number from days string like "7 days", "2 weeks"
   const d = days ? parseInt(String(days).match(/\d+/)?.[0]) : 0
@@ -740,7 +741,7 @@ export default function NewPrescriptionPage() {
       setRxMeds(rx.medicines.length > 0 ? rx.medicines.map(m=>({
         medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType,
         dosage:m.dosage||'', days:m.days?String(m.days):'', timing:m.timing||'AF',
-        qty:m.qty?String(m.qty):'', notesEn:m.notesEn||''
+        qty:m.qty?String(m.qty):(NON_TABLET.includes(m.medicineType)?'1':''), notesEn:m.notesEn||''
       })) : [{...emptyMed}])
       setRxTests(rx.labTests.map(t=>({ id:t.labTestId, name:t.labTestName })))
       setRxAdvice(rx.advice ? rx.advice.split('\n').filter(Boolean).map((a,i)=>({ id:'adv_'+i, name:a })) : [])
