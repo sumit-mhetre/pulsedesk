@@ -1042,13 +1042,13 @@ export default function NewPrescriptionPage() {
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div>
                     <p className="text-xs text-slate-400 mb-1">Dosage</p>
-                    <ColDrop value={med.dosage} options={dosages.map(d=>({code:d.code,label:d.code}))}
+                    <ColDrop value={med.dosage} options={DOSAGE_OPTS}
                       placeholder="Select" onChange={v=>updateMed(idx,'dosage',v)}/>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 mb-1">When</p>
-                    <ColDrop value={med.timing} options={timings.map(t=>({code:t.code,label:t.labelEn}))}
-                      placeholder="Select" onChange={v=>updateMed(idx,'timing',v)}/>
+                    <ColDrop value={med.timing} options={TIMING_OPTS}
+                      placeholder="When" onChange={v=>updateMed(idx,'timing',v)}/>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
