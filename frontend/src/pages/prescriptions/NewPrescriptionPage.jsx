@@ -240,7 +240,7 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex })
           if (e.key==='Escape') { setOpen(false); setFoc(false) }
         }}
       />
-      {open && filtered.length > 0 && (q || isNT) && (
+      {open && filtered.length > 0 && (
         <div style={{ position:'fixed',top:pos.top,left:pos.left,width:Math.max(pos.width+80,280),zIndex:9999 }}
           className="bg-white rounded-xl shadow-xl border border-blue-100 max-h-56 overflow-y-auto">
           {filtered.map(m=>(
@@ -1133,7 +1133,7 @@ export default function NewPrescriptionPage() {
                 </th>
                 <th className="pb-2 px-1">
                   <div className="flex items-center gap-1">
-                    <span className="text-xs font-semibold text-slate-400 uppercase">Days</span>
+                    <span className="text-xs font-semibold text-slate-400 uppercase">Duration</span>
                     <ArrowDown active={rxMeds.some(m=>m.days)} onClick={()=>applyToAll('days')}/>
                   </div>
                 </th>
@@ -1214,7 +1214,7 @@ export default function NewPrescriptionPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <p className="text-xs text-slate-400 mb-1">Days</p>
+                    <p className="text-xs text-slate-400 mb-1">Duration</p>
                     <SmartDaysInput value={med.days} onChange={v=>updateMed(idx,'days',v)}/>
                   </div>
                   <div>
