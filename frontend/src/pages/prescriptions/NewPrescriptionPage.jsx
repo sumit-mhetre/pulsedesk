@@ -888,7 +888,7 @@ export default function NewPrescriptionPage() {
         diagnosis:  diagnosisTags.join(' || '),
         advice:     rxAdvice.map(a=>a.name).join('\n'),
         labTests:   rxTests.filter(t=>!t.isNew).map(t=>t.name),
-        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: m.days ? parseInt(String(m.days)) || m.days : null, timing:m.timing, notesEn:m.notesEn })),
+        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: m.days || null,  // Keep as string '7 weeks', '5 days' etc timing:m.timing, notesEn:m.notesEn })),
       })
       toast.success(`Template "${templateName}" saved!`)
     } catch { toast.error('Failed to save template') }

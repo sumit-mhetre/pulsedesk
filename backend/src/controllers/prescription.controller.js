@@ -158,9 +158,9 @@ async function createPrescription(req, res) {
             medicineName,
             medicineType,
             dosage:   m.dosage  || null,
-            days:     m.days    ? parseInt(m.days) : null,
+            days:     m.days    || null,  // stored as string e.g. '7 days'
             timing:   m.timing  || null,
-            qty:      qty !== null && qty !== '' ? parseInt(qty) : null,
+            qty:      qty !== null && qty !== '' ? String(qty) : null,
             notesEn:  m.notesEn || null,
             notesHi:  m.notesHi || null,
             notesMr:  m.notesMr || null,
@@ -178,13 +178,13 @@ async function createPrescription(req, res) {
                 where: { id: med.medicineId, clinicId: req.clinicId },
                 data: { usageCount: { increment: 1 } },
               })
-              // Save per-doctor preference (dosage/timing/days used last time)
+              // Save per-doctor preference (dosage/timing/days used last time) — non-blocking
               if (med.dosage || med.timing || med.days) {
-                await prisma.doctorMedicinePreference.upsert({
+                prisma.doctorMedicinePreference.upsert({
                   where: { clinicId_doctorId_medicineId: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId } },
                   create: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId, dosage: med.dosage||null, timing: med.timing||null, days: med.days||null },
                   update: { dosage: med.dosage||null, timing: med.timing||null, days: med.days||null, usageCount: { increment: 1 } },
-                }).catch(()=>{})
+                }).catch(()=>{}) // non-blocking — won't crash if table missing
               }
             }
           }
@@ -294,9 +294,9 @@ async function updatePrescription(req, res) {
               medicineName,
               medicineType,
               dosage:   m.dosage  || null,
-              days:     m.days    ? parseInt(m.days) : null,
+              days:     m.days    || null,  // stored as string e.g. '7 days'
               timing:   m.timing  || null,
-              qty:      qty !== null && qty !== '' ? parseInt(qty) : null,
+              qty:      qty !== null && qty !== '' ? String(qty) : null,
               notesEn:  m.notesEn || null,
               notesHi:  m.notesHi || null,
               notesMr:  m.notesMr || null,

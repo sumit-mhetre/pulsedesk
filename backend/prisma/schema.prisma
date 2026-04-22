@@ -462,9 +462,9 @@ model PrescriptionMedicine {
   medicineName   String
   medicineType   MedicineType @default(tablet)
   dosage         String?
-  days           Int?
+  days           String?  // e.g. '7 days', '2 weeks', '1 month'
   timing         String?
-  qty            Int?
+  qty            String?  // String to support '1' for syrups and calculated values
   notesEn        String?
   notesHi        String?
   notesMr        String?

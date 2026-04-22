@@ -216,7 +216,7 @@ export default function ViewPrescriptionPage() {
                     </td>
                     {show('showDosage') && <td className="py-2.5 px-2 text-center font-mono text-slate-700">{med.dosage||'—'}</td>}
                     {show('showWhen')   && <td className="py-2.5 px-2 text-center text-xs text-slate-600">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
-                    {show('showDays')   && <td className="py-2.5 px-2 text-center text-slate-700">{med.days?`${med.days}d`:'—'}</td>}
+                    {show('showDays')   && <td className="py-2.5 px-2 text-center text-slate-700">{med.days || '—'}</td>}
                     {show('showQty')    && <td className="py-2.5 px-2 text-center font-bold" style={{color:cfg?.primaryColor||'#1565C0'}}>{med.qty||'—'}</td>}
                   </tr>
                 ))}
