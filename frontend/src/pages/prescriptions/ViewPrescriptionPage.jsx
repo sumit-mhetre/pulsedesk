@@ -31,6 +31,19 @@ function getTimingLabel(code, lang) {
   return TIMING_LABELS[code]||code
 }
 
+// ── Duration translation (e.g. "5 days" → "5 दिवस" / "5 दिन") ──
+const DAYS_UNIT_HI = { day:'दिन', days:'दिन', week:'हफ्ता', weeks:'हफ्ते', month:'महीना', months:'महीने', year:'साल', years:'साल' }
+const DAYS_UNIT_MR = { day:'दिवस', days:'दिवस', week:'आठवडा', weeks:'आठवडे', month:'महिना', months:'महिने', year:'वर्ष', years:'वर्षे' }
+function translateDays(days, lang) {
+  if (!days) return '—'
+  if (lang === 'en') return days
+  const m = String(days).match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)\s*$/i)
+  if (!m) return days  // unrecognized format → show as-is (don't break custom durations)
+  const map = lang === 'hi' ? DAYS_UNIT_HI : lang === 'mr' ? DAYS_UNIT_MR : null
+  if (!map) return days
+  return `${m[1]} ${map[m[2].toLowerCase()] || m[2]}`
+}
+
 export default function ViewPrescriptionPage() {
   const { id }    = useParams()
   const navigate  = useNavigate()
@@ -216,7 +229,7 @@ export default function ViewPrescriptionPage() {
                     </td>
                     {show('showDosage') && <td className="py-2.5 px-2 text-center font-mono text-slate-700">{med.dosage||'—'}</td>}
                     {show('showWhen')   && <td className="py-2.5 px-2 text-center text-xs text-slate-600">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
-                    {show('showDays')   && <td className="py-2.5 px-2 text-center text-slate-700">{med.days || '—'}</td>}
+                    {show('showDays')   && <td className="py-2.5 px-2 text-center text-slate-700">{translateDays(med.days, lang)}</td>}
                     {show('showQty')    && <td className="py-2.5 px-2 text-center font-bold" style={{color:cfg?.primaryColor||'#1565C0'}}>{med.qty||'—'}</td>}
                   </tr>
                 ))}

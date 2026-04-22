@@ -777,6 +777,18 @@ export default function NewPrescriptionPage() {
     }
   }
 
+  // Track sections already auto-scrolled this session so we don't interrupt editing.
+  // First time user finishes a section → scroll. Subsequent blurs → stay put.
+  const autoScrolledRef = useRef(new Set())
+  const handleSectionBlur = (sectionId, hasContent) => (e) => {
+    // Only fire when focus is actually leaving the section (not moving within)
+    if (e.currentTarget.contains(e.relatedTarget)) return
+    if (!hasContent) return
+    if (autoScrolledRef.current.has(sectionId)) return
+    autoScrolledRef.current.add(sectionId)
+    setTimeout(() => scrollToNext(sectionId), 150)
+  }
+
   useEffect(() => {
     // Load sequentially in small groups to avoid overwhelming Render free tier
     const loadMaster = async () => {
@@ -1118,7 +1130,8 @@ export default function NewPrescriptionPage() {
         </Card></div>
 
         {/* Vitals */}
-        <div id="sec-vitals" className="scroll-mt-20" style={{display: showSection('showVitals') ? '' : 'none'}}><Card>
+        <div id="sec-vitals" className="scroll-mt-20" style={{display: showSection('showVitals') ? '' : 'none'}}
+             onBlur={handleSectionBlur('sec-vitals', Object.values(vitals).some(v => v && String(v).trim() !== ''))}><Card>
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">Vitals <Badge variant="gray">Optional</Badge></h3>
             <button type="button" onClick={()=>setShowVitals(v=>!v)} className="text-sm text-primary hover:underline flex items-center gap-1">
@@ -1166,18 +1179,11 @@ export default function NewPrescriptionPage() {
               ))}
             </div>
           )}
-          {showVitals && (
-            <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
-              <button type="button" onClick={()=>scrollToNext('sec-vitals')}
-                className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
-                Continue <ChevronDown className="w-3.5 h-3.5"/>
-              </button>
-            </div>
-          )}
         </Card></div>
 
         {/* Complaint */}
-        <div id="sec-complaint" className="scroll-mt-20" style={{display: showSection('showComplaint') ? '' : 'none'}}><Card>
+        <div id="sec-complaint" className="scroll-mt-20" style={{display: showSection('showComplaint') ? '' : 'none'}}
+             onBlur={handleSectionBlur('sec-complaint', complaintTags.length > 0)}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Chief Complaint</h3>
             <div className="flex gap-2">
@@ -1191,16 +1197,11 @@ export default function NewPrescriptionPage() {
             onRemove={t=>setComplaintTags(p=>p.filter(x=>x!==t))}
             items={complaints}
             placeholder="Type complaint or select, press Enter to add another..."/>
-          <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
-            <button type="button" onClick={()=>scrollToNext('sec-complaint')}
-              className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
-              Continue <ChevronDown className="w-3.5 h-3.5"/>
-            </button>
-          </div>
         </Card></div>
 
         {/* Diagnosis */}
-        <div id="sec-diagnosis" className="scroll-mt-20" style={{display: showSection('showDiagnosis') ? '' : 'none'}}><Card>
+        <div id="sec-diagnosis" className="scroll-mt-20" style={{display: showSection('showDiagnosis') ? '' : 'none'}}
+             onBlur={handleSectionBlur('sec-diagnosis', diagnosisTags.length > 0)}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Diagnosis</h3>
             <div className="flex gap-2">
@@ -1214,16 +1215,11 @@ export default function NewPrescriptionPage() {
             onRemove={t=>setDiagnosisTags(p=>p.filter(x=>x!==t))}
             items={diagnoses}
             placeholder="Type diagnosis or select, press Enter to add another..."/>
-          <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
-            <button type="button" onClick={()=>scrollToNext('sec-diagnosis')}
-              className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
-              Continue <ChevronDown className="w-3.5 h-3.5"/>
-            </button>
-          </div>
         </Card></div>
 
         {/* Medicines */}
-        <div id="sec-medicines" className="scroll-mt-20"><Card>
+        <div id="sec-medicines" className="scroll-mt-20"
+             onBlur={handleSectionBlur('sec-medicines', rxMeds.some(m => m.medicineName))}><Card>
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">
               Medicines <Badge variant="primary">{rxMeds.filter(m=>m.medicineName).length}</Badge>
@@ -1370,16 +1366,11 @@ export default function NewPrescriptionPage() {
             className="mt-3 w-full border-2 border-dashed border-blue-100 rounded-xl py-2 text-sm text-slate-400 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2">
             <Plus className="w-4 h-4"/>Add Medicine Row
           </button>
-          <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
-            <button type="button" onClick={()=>scrollToNext('sec-medicines')}
-              className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
-              Continue <ChevronDown className="w-3.5 h-3.5"/>
-            </button>
-          </div>
         </Card></div>
 
         {/* Lab Tests */}
-        <div id="sec-labtests" className="scroll-mt-20" style={{display: showSection('showLabTests') ? '' : 'none'}}><Card>
+        <div id="sec-labtests" className="scroll-mt-20" style={{display: showSection('showLabTests') ? '' : 'none'}}
+             onBlur={handleSectionBlur('sec-labtests', rxTests.length > 0)}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Lab Tests</h3>
             <div className="flex gap-2">
@@ -1394,12 +1385,6 @@ export default function NewPrescriptionPage() {
             items={labTestList}
             placeholder="Search lab test or type new name (auto-saved)..."
             allowCustom={true}/>
-          <div className="flex justify-end pt-3 mt-3 border-t border-slate-50">
-            <button type="button" onClick={()=>scrollToNext('sec-labtests')}
-              className="text-xs text-primary font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
-              Continue <ChevronDown className="w-3.5 h-3.5"/>
-            </button>
-          </div>
         </Card></div>
 
         {/* Advice */}
