@@ -59,7 +59,7 @@ export default function ClinicSetupPage() {
   useEffect(() => {
     Promise.all([
       api.get('/clinics/me'),
-      api.get('/page-design?type=prescription').catch(() => ({ data: { data: null } })),
+      api.get('/page-design?type=rx_form').catch(() => ({ data: { data: null } })),
     ]).then(([clinicRes, pdRes]) => {
       const c = clinicRes.data.data
       setForm({
@@ -95,9 +95,9 @@ export default function ClinicSetupPage() {
     setLoading(true)
     try {
       // Save to page-design with merged config
-      const existing = await api.get('/page-design?type=prescription').catch(() => ({ data: { data: { config: {} } } }))
+      const existing = await api.get('/page-design?type=rx_form').catch(() => ({ data: { data: { config: {} } } }))
       const merged = { ...(existing.data.data?.config || {}), ...rxForm }
-      await api.post('/page-design', { type: 'prescription', config: merged })
+      await api.post('/page-design', { type: 'rx_form', config: merged })
       toast.success('Prescription form settings saved!')
       setGlobalDirty(false)
     } catch { toast.error('Failed to save') }

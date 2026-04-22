@@ -550,8 +550,10 @@ export default function NewPrescriptionPage() {
   const [lastRx,    setLastRx]    = useState(null)
   const [doctorPrefs, setDoctorPrefs] = useState({})
   const [allTemplates, setAllTemplates] = useState([])
-  const [pageDesign,   setPageDesign]   = useState({})
-  const showSection = (key) => pageDesign[key] !== false
+  const [pageDesign,   setPageDesign]   = useState(null)
+  const [pdLoaded,     setPdLoaded]     = useState(false)
+  // Before config loads: show all. After load: hide if explicitly set to false
+  const showSection = (key) => !pdLoaded ? true : (pageDesign === null ? true : pageDesign[key] !== false)
 
   useEffect(() => {
     // Load sequentially in small groups to avoid overwhelming Render free tier
@@ -581,9 +583,10 @@ export default function NewPrescriptionPage() {
         setAllTemplates(tmpl.data.data)
       } catch {}
       try {
-        const pd = await api.get('/page-design?type=prescription')
-        if (pd.data.data?.config) setPageDesign(pd.data.data.config)
-      } catch {}
+        const pd = await api.get('/page-design?type=rx_form')
+        if (pd.data.data?.config) { setPageDesign(pd.data.data.config); setPdLoaded(true) }
+        else setPdLoaded(true)
+      } catch { setPdLoaded(true) }
       // Load doctor's medicine preferences last (non-critical)
       try {
         const prefs = await api.get('/prescriptions/doctor-preferences')

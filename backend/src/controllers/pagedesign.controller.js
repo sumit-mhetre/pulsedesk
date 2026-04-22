@@ -78,6 +78,24 @@ const DEFAULT_BILL_CONFIG = {
   thankYouMessage:   'Thank you for visiting!',
 };
 
+const DEFAULT_RX_FORM_CONFIG = {
+  showComplaint:  true,
+  showDiagnosis:  true,
+  showVitals:     false,
+  showMedicines:  true,
+  showLabTests:   true,
+  showAdvice:     true,
+  showNextVisit:  true,
+  vitalBP:        true,
+  vitalSugar:     true,
+  vitalWeight:    true,
+  vitalTemp:      true,
+  vitalSpo2:      true,
+  vitalPulse:     true,
+  vitalHeight:    false,
+  vitalBMI:       false,
+};
+
 // ── Get design for clinic ─────────────────────────────────
 async function getDesign(req, res) {
   try {
@@ -87,7 +105,7 @@ async function getDesign(req, res) {
     });
     if (!design) {
       // Return default config without saving
-      const config = type === 'bill' ? DEFAULT_BILL_CONFIG : DEFAULT_RX_CONFIG;
+      const config = type === 'bill' ? DEFAULT_BILL_CONFIG : type === 'rx_form' ? DEFAULT_RX_FORM_CONFIG : DEFAULT_RX_CONFIG;
       return successResponse(res, { type, config, isDefault: true, id: null });
     }
     return successResponse(res, design);
@@ -136,7 +154,7 @@ async function resetDesign(req, res) {
   try {
     const { type = 'prescription' } = req.query;
     await prisma.pageDesign.deleteMany({ where: { clinicId: req.clinicId, type } });
-    const config = type === 'bill' ? DEFAULT_BILL_CONFIG : DEFAULT_RX_CONFIG;
+    const config = type === 'bill' ? DEFAULT_BILL_CONFIG : type === 'rx_form' ? DEFAULT_RX_FORM_CONFIG : DEFAULT_RX_CONFIG;
     return successResponse(res, { type, config }, 'Reset to defaults');
   } catch (err) {
     return errorResponse(res, 'Failed to reset', 500);
