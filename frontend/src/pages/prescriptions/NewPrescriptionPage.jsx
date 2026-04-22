@@ -537,6 +537,8 @@ export default function NewPrescriptionPage() {
 
   const [vitals,     setVitals]     = useState({ bp:'',sugar:'',weight:'',temp:'',spo2:'',pulse:'' })
   const [showVitals, setShowVitals] = useState(false)
+  // Auto-open vitals if enabled in clinic setup
+  useEffect(() => { if (pdLoaded && pageDesign?.showVitals === true) setShowVitals(true) }, [pdLoaded])
   const [complaintTags, setComplaintTags] = useState([])
   const [diagnosisTags, setDiagnosisTags] = useState([])
   const [rxMeds,    setRxMeds]    = useState([{...emptyMed}])
@@ -893,7 +895,7 @@ export default function NewPrescriptionPage() {
         </Card>
 
         {/* Vitals */}
-        <Card>
+        <div style={{display: showSection('showVitals') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">Vitals <Badge variant="gray">Optional</Badge></h3>
             <button type="button" onClick={()=>setShowVitals(v=>!v)} className="text-sm text-primary hover:underline flex items-center gap-1">
@@ -912,8 +914,9 @@ export default function NewPrescriptionPage() {
                 {key:'height', label:'Height (cm)',    ph:'170',       cfgKey:'vitalHeight'},
                 {key:'bmi',    label:'BMI',            ph:'Auto',      cfgKey:'vitalBMI'},
               ].filter(f => {
-                // Use page design config if loaded, else show standard vitals only
-                if (pageDesign && pageDesign[f.cfgKey] !== undefined) return pageDesign[f.cfgKey] !== false
+                // Use rx_form config for vital field visibility
+                if (pdLoaded && pageDesign && pageDesign[f.cfgKey] !== undefined) return pageDesign[f.cfgKey] !== false
+                // Default: show standard 6 vitals, hide Height and BMI
                 return f.cfgKey !== 'vitalHeight' && f.cfgKey !== 'vitalBMI'
               })
               .map(f=>(
@@ -924,7 +927,7 @@ export default function NewPrescriptionPage() {
               ))}
             </div>
           )}
-        </Card>
+        </Card></div>
 
         {/* Complaint */}
         <div style={{display: showSection('showComplaint') ? '' : 'none'}}><Card>
