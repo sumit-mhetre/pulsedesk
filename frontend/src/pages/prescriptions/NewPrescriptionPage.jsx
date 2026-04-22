@@ -700,32 +700,13 @@ export default function NewPrescriptionPage() {
   useEffect(() => {
     // Load sequentially in small groups to avoid overwhelming Render free tier
     const loadMaster = async () => {
-      try {
-        const [meds, labs] = await Promise.all([
-          api.get('/master/medicines'),
-          api.get('/master/lab-tests'),
-        ])
-        setMedicines(meds.data.data)
-        setLabTestList(labs.data.data)
-      } catch {}
-      try {
-        const [comp, diag] = await Promise.all([
-          api.get('/master/complaints'),
-          api.get('/master/diagnoses'),
-        ])
-        setComplaints(comp.data.data)
-        setDiagnoses(diag.data.data)
-      } catch {}
-      try {
-        const [adv, tmpl, notes] = await Promise.all([
-          api.get('/master/advice'),
-          api.get('/templates'),
-          api.get('/master/medicine-notes'),
-        ])
-        setAdviceList(adv.data.data)
-        setAllTemplates(tmpl.data.data)
-        setSavedMedNotes((notes.data.data || []).map(n => n.nameEn))
-      } catch {}
+      try { const meds = await api.get('/master/medicines');   setMedicines(meds.data.data) }   catch {}
+      try { const labs = await api.get('/master/lab-tests');    setLabTestList(labs.data.data) } catch {}
+      try { const comp = await api.get('/master/complaints');   setComplaints(comp.data.data) }  catch {}
+      try { const diag = await api.get('/master/diagnoses');    setDiagnoses(diag.data.data) }   catch {}
+      try { const adv   = await api.get('/master/advice');         setAdviceList(adv.data.data) }     catch {}
+      try { const tmpl  = await api.get('/templates');              setAllTemplates(tmpl.data.data) }  catch {}
+      try { const notes = await api.get('/master/medicine-notes');  setSavedMedNotes((notes.data.data || []).map(n => n.nameEn)) } catch {}
       try {
         const pd = await api.get('/page-design?type=rx_form')
         if (pd.data.data?.config) { setPageDesign(pd.data.data.config); setPdLoaded(true) }
