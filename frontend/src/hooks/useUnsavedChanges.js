@@ -1,69 +1,57 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate, useBlocker } from 'react-router-dom'
 
 /**
- * useUnsavedChanges
- * Tracks dirty state and blocks navigation when unsaved changes exist.
- * Returns { isDirty, setDirty, confirmProps, ConfirmUnsaved }
+ * useUnsavedChanges — simple dirty tracking without useBlocker
+ * Works with React Router v6.22+
  */
 export function useUnsavedChanges() {
   const [isDirty, setDirtyState] = useState(false)
-  const [pendingNav, setPendingNav] = useState(null)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
 
   const setDirty = useCallback((v = true) => setDirtyState(v), [])
 
-  // Block React Router navigation when dirty
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname
-  )
-
-  useEffect(() => {
-    if (blocker.state === 'blocked') {
-      setShowConfirm(true)
-      setPendingNav(() => blocker.proceed)
-    }
-  }, [blocker.state])
-
-  // Block browser back/refresh
+  // Block browser refresh/tab close when dirty
   useEffect(() => {
     if (!isDirty) return
-    const handler = (e) => {
-      e.preventDefault()
-      e.returnValue = ''
-    }
+    const handler = (e) => { e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
+
+  // Call this instead of directly calling onClose/navigate
+  // If dirty → show confirm, else run immediately
+  const guardedAction = useCallback((action) => {
+    if (isDirty) {
+      setPendingAction(() => action)
+      setShowConfirm(true)
+    } else {
+      action?.()
+    }
   }, [isDirty])
 
   const handleConfirmLeave = () => {
     setShowConfirm(false)
     setDirtyState(false)
-    if (pendingNav) { pendingNav(); setPendingNav(null) }
-    if (blocker.state === 'blocked') blocker.proceed?.()
+    pendingAction?.()
+    setPendingAction(null)
   }
 
   const handleCancelLeave = () => {
     setShowConfirm(false)
-    setPendingNav(null)
-    if (blocker.state === 'blocked') blocker.reset?.()
+    setPendingAction(null)
   }
-
-  // For modals/forms — call this instead of direct onClose
-  const guardedClose = useCallback((onClose) => {
-    if (isDirty) setShowConfirm(true)
-    else onClose?.()
-  }, [isDirty])
 
   const confirmProps = {
     open: showConfirm,
     title: 'Discard Changes?',
     message: 'You have unsaved changes. If you leave now, all entered data will be lost.',
     variant: 'warning',
+    confirmLabel: 'Yes, Discard',
+    cancelLabel: 'Keep Editing',
     onConfirm: handleConfirmLeave,
     onClose: handleCancelLeave,
   }
 
-  return { isDirty, setDirty, confirmProps, guardedClose }
+  return { isDirty, setDirty, confirmProps, guardedAction }
 }

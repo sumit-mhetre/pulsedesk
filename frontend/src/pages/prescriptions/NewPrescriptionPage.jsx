@@ -519,7 +519,7 @@ function SectionTemplate({ label, onApply, templates, section }) {
 // ── Main Page ─────────────────────────────────────────────
 export default function NewPrescriptionPage() {
   const navigate   = useNavigate()
-  const { isDirty, setDirty, confirmProps } = useUnsavedChanges()
+  const { isDirty, setDirty, confirmProps, guardedAction } = useUnsavedChanges()
   const [params]   = useSearchParams()
   const { id: editId } = useParams()
   const isEdit     = !!editId
@@ -1154,7 +1154,7 @@ export default function NewPrescriptionPage() {
             Save as Template
           </Button>
           <div className="flex gap-3">
-            <Button variant="ghost" onClick={()=>navigate('/prescriptions')}>Cancel</Button>
+            <Button variant="ghost" onClick={()=>guardedAction(()=>navigate('/prescriptions'))}>Cancel</Button>
             <Button variant="primary" loading={saving} size="lg" icon={<Save className="w-5 h-5"/>} onClick={handleSave}>
               {isEdit ? 'Update Prescription' : 'Save Prescription'}
             </Button>
