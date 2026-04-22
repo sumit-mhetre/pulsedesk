@@ -158,17 +158,35 @@ export function PageHeader({ title, subtitle, action }) {
 }
 
 // ── Confirm Dialog ────────────────────────────────────────
-export function ConfirmDialog({ open, onClose, onConfirm, title, message, loading, variant = 'danger' }) {
+export function ConfirmDialog({ open, onClose, onConfirm, title, message, loading,
+  confirmLabel, cancelLabel, variant = 'danger' }) {
+  if (!open) return null
   return (
-    <Modal open={open} onClose={onClose} title={title} size="sm"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant={variant} loading={loading} onClick={onConfirm}>Confirm</Button>
-        </>
-      }
-    >
-      <p className="text-slate-600 text-sm">{message}</p>
-    </Modal>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}/>
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div className="p-6 text-center">
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
+            variant==='warning'?'bg-orange-50':variant==='danger'?'bg-red-50':'bg-blue-50'}`}>
+            <span className="text-2xl">{variant==='warning'?'⚠️':variant==='danger'?'🗑️':'ℹ️'}</span>
+          </div>
+          <h3 className="font-bold text-slate-800 text-lg mb-2">{title}</h3>
+          <p className="text-sm text-slate-500 leading-relaxed">{message}</p>
+        </div>
+        <div className="flex border-t border-slate-100">
+          <button onClick={onClose}
+            className="flex-1 py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors border-r border-slate-100">
+            {cancelLabel || 'Cancel'}
+          </button>
+          <button onClick={onConfirm} disabled={loading}
+            className={`flex-1 py-3.5 text-sm font-bold transition-colors text-white
+              ${variant==='warning'?'bg-warning hover:bg-warning/90':
+                variant==='success'?'bg-success hover:bg-success/90':
+                'bg-danger hover:bg-danger/90'}`}>
+            {loading ? '...' : (confirmLabel || 'Confirm')}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
