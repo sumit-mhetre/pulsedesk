@@ -530,6 +530,90 @@ function SectionTemplate({ label, onApply, templates, section }) {
   )
 }
 
+// ── Blood Pressure Input Component ───────────────────────
+function BloodPressureInput({ value = '', onChange }) {
+  const sysRef = useRef(null)
+  const diaRef = useRef(null)
+  const [focused, setFocused] = useState(false)
+
+  const hasSlash = value.includes('/')
+  const [rawSys, rawDia] = hasSlash ? value.split('/') : [value, '']
+  const systolic  = (rawSys || '').replace(/\D/g, '').slice(0, 3)
+  const diastolic = (rawDia || '').replace(/\D/g, '').slice(0, 3)
+
+  const emit = (sys, dia, keepSlash = hasSlash) => {
+    if (!sys && !dia && !keepSlash) return onChange('')
+    if (dia || keepSlash) return onChange(`${sys}/${dia}`)
+    onChange(sys)
+  }
+
+  const handleSysChange = (e) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 3)
+    emit(v, diastolic)
+    if (v.length === 3) diaRef.current?.focus()
+  }
+
+  const handleSysKeyDown = (e) => {
+    if ((e.key === '/' || e.key === ' ' || e.key === '-') && systolic.length >= 2) {
+      e.preventDefault()
+      emit(systolic, diastolic, true)
+      diaRef.current?.focus()
+    }
+  }
+
+  const handleDiaChange = (e) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 3)
+    emit(systolic, v, true)
+  }
+
+  const handleDiaKeyDown = (e) => {
+    if (e.key === 'Backspace' && !diastolic) {
+      e.preventDefault()
+      emit(systolic, '', false)
+      sysRef.current?.focus()
+      requestAnimationFrame(() => {
+        const el = sysRef.current
+        if (el) el.setSelectionRange(el.value.length, el.value.length)
+      })
+    }
+  }
+
+  const sysNum = systolic ? parseInt(systolic, 10) : null
+  const diaNum = diastolic ? parseInt(diastolic, 10) : null
+  const invalid = (sysNum !== null && (sysNum < 50 || sysNum > 300)) ||
+                  (diaNum !== null && (diaNum < 30 || diaNum > 200))
+
+  const borderClass = invalid
+    ? 'border-danger ring-1 ring-danger/30'
+    : focused
+    ? 'border-primary ring-1 ring-primary/20'
+    : 'border-slate-200'
+
+  return (
+    <div>
+      <div className={`flex items-center gap-1 rounded-xl border bg-white px-3 py-1.5 transition-colors h-9 ${borderClass}`}
+        onClick={() => sysRef.current?.focus()}>
+        <input ref={sysRef} type="text" inputMode="numeric" autoComplete="off"
+          value={systolic} onChange={handleSysChange} onKeyDown={handleSysKeyDown}
+          onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+          placeholder="120" aria-label="Systolic"
+          className="w-10 bg-transparent text-center text-sm tabular-nums outline-none placeholder:text-slate-300"
+        />
+        <span className="select-none text-slate-400 font-medium">/</span>
+        <input ref={diaRef} type="text" inputMode="numeric" autoComplete="off"
+          value={diastolic} onChange={handleDiaChange} onKeyDown={handleDiaKeyDown}
+          onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+          placeholder="80" aria-label="Diastolic"
+          className="w-10 bg-transparent text-center text-sm tabular-nums outline-none placeholder:text-slate-300"
+        />
+        <span className="ml-auto select-none text-xs text-slate-300">mmHg</span>
+      </div>
+      {invalid && <p className="text-xs text-danger mt-1">Check BP range</p>}
+    </div>
+  )
+}
+
+
 // ── Main Page ─────────────────────────────────────────────
 export default function NewPrescriptionPage() {
   const navigate   = useNavigate()
@@ -958,36 +1042,10 @@ export default function NewPrescriptionPage() {
                     )}
                   </div>
                   {f.key === 'bp' ? (
-                    <div className="relative">
-                      <input className="form-input font-mono tracking-wider" placeholder="120/80"
-                        value={vitals.bp||''}
-                        onChange={e => {
-                          let v = e.target.value.replace(/[^0-9/]/g,'')
-                          const parts = v.split('/')
-                          // Only allow one slash
-                          if (parts.length > 2) return
-                          // Each part max 3 digits
-                          if (parts[0] && parts[0].length > 3) return
-                          if (parts[1] && parts[1].length > 3) return
-                          // NO auto-insert slash - doctor types it manually
-                          setVitals(p=>({...p, bp:v}))
-                        }}
-                        onKeyDown={e => {
-                          const val = vitals.bp || ''
-                          // After typing 2 digits (systolic done), auto-add slash on next digit press
-                          if (/^[0-9]$/.test(e.key) && !val.includes('/') && val.length >= 2) {
-                            e.preventDefault()
-                            setVitals(p=>({...p, bp: val + '/' + e.key}))
-                          }
-                        }}
-                        maxLength={7}
-                      />
-                      {!vitals.bp && (
-                        <span className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-300 text-sm font-mono">
-                          sys / dia
-                        </span>
-                      )}
-                    </div>
+                    <BloodPressureInput
+                      value={vitals.bp||''}
+                      onChange={v=>setVitals(p=>({...p,bp:v}))}
+                    />
                   ) : f.key === 'bmi' ? (
                     <input className="form-input bg-slate-50 text-slate-500" placeholder="Auto" readOnly
                       value={vitals.bmi||''} title="Auto-calculated from Weight and Height"/>
