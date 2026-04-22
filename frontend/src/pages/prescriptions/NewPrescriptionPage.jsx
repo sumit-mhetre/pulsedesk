@@ -268,18 +268,79 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex })
 }
 
 // ── Notes field with dropdown for liquids/non-tablets ─────
-function NotesInput({ value, onChange }) {
-  // Plain controlled text input — no dropdown, no intermediate state.
-  // Server still persists every saved note via autoSaveToMaster() on submit,
-  // so notes remain available as master data for templates/reports.
+function NotesInput({ value, onChange, medicineType, printLang, savedNotes=[], onNoteCommit }) {
+  // Controlled text input with a type-aware suggestion dropdown.
+  // - Syrups/liquids → hardcoded liquid options (EN/MR) + saved history
+  // - Tablets/capsules → doctor's saved history only
+  // Dropdown opens on focus, filters live as user types.
+  // Input is purely controlled by `value` (no intermediate state → no backspace ghost).
+  // New notes are committed to suggestion list on blur (not per keystroke → no "स", "2 d" pollution).
+  const [open, setOpen] = useState(false)
+  const [pos, setPos]   = useState({ top:0, left:0, width:0 })
+  const ref = useRef(null)
+  const isNT = NON_TABLET.includes(medicineType)
+
+  // Build suggestion pool based on medicine type
+  const baseOptions = isNT ? (printLang === 'mr' ? LIQUID_NOTES_MR : LIQUID_NOTES_EN) : []
+  const allOptions  = [...new Set([...(savedNotes || []), ...baseOptions])]
+
+  // Derive filter query directly from the controlled value (no separate state)
+  const q = (value || '').trim().toLowerCase()
+  const filtered = q
+    ? allOptions.filter(n => n.toLowerCase().includes(q) && n.toLowerCase() !== q).slice(0, 10)
+    : allOptions.slice(0, 10)
+
+  const calc = () => {
+    if (ref.current) {
+      const r  = ref.current.getBoundingClientRect()
+      const ab = window.innerHeight - r.bottom < 200 && r.top > 200
+      setPos({ top: ab ? r.top - 200 - 2 : r.bottom + 2, left: r.left, width: r.width })
+    }
+  }
+
+  // Reposition while open (scroll/resize)
+  useEffect(() => {
+    if (!open) return
+    const s = () => calc()
+    window.addEventListener('scroll', s, true)
+    window.addEventListener('resize', s)
+    return () => { window.removeEventListener('scroll', s, true); window.removeEventListener('resize', s) }
+  }, [open])
+
+  const handleBlur = () => setTimeout(() => {
+    setOpen(false)
+    // Commit final value to the in-session suggestion list (server-side POST still happens on form submit)
+    const v = (value || '').trim()
+    if (v && onNoteCommit && !(savedNotes || []).some(n => n.toLowerCase() === v.toLowerCase())) {
+      onNoteCommit(v)
+    }
+  }, 200)
+
   return (
-    <input
-      type="text"
-      className="w-full h-8 px-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-primary bg-white"
-      placeholder="Notes (optional)..."
-      value={value || ''}
-      onChange={e => onChange(e.target.value)}
-    />
+    <div className="relative">
+      <input ref={ref}
+        type="text"
+        className="w-full h-8 px-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-primary bg-white"
+        placeholder="Notes (optional)..."
+        value={value || ''}
+        onChange={e => { onChange(e.target.value); calc(); setOpen(true) }}
+        onFocus={() => { calc(); setOpen(true) }}
+        onBlur={handleBlur}
+        onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{ position:'fixed', top:pos.top, left:pos.left, width:Math.max(pos.width, 200), zIndex:9999 }}
+          className="bg-white rounded-xl shadow-xl border border-blue-100 max-h-48 overflow-y-auto">
+          {filtered.map(note => (
+            <button key={note} type="button"
+              onMouseDown={e => { e.preventDefault(); onChange(note); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 border-b border-slate-50 last:border-0 text-slate-700">
+              {note}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -1147,11 +1208,15 @@ export default function NewPrescriptionPage() {
                         placeholder={isNT ? '1' : ''}
                         onChange={e=>updateMed(idx,'qty',e.target.value)}/>
                     </td>
-                    {/* Notes — plain text field, saved server-side on submit */}
+                    {/* Notes — smart suggestions per medicine type, server-synced on submit */}
                     <td className="py-1.5 px-1">
                       <NotesInput
                         value={med.notesEn}
                         onChange={v=>updateMed(idx,'notesEn',v)}
+                        medicineType={med.medicineType}
+                        printLang={printLang}
+                        savedNotes={savedMedNotes}
+                        onNoteCommit={v => setSavedMedNotes(prev => [v, ...prev.filter(n => n.toLowerCase() !== v.toLowerCase())].slice(0, 100))}
                       />
                     </td>
                     <td className="py-1.5 pl-1">
@@ -1203,7 +1268,9 @@ export default function NewPrescriptionPage() {
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 mb-1">Notes</p>
-                    <NotesInput value={med.notesEn} onChange={v=>updateMed(idx,'notesEn',v)}/>
+                    <NotesInput value={med.notesEn} onChange={v=>updateMed(idx,'notesEn',v)}
+                      medicineType={med.medicineType} printLang={printLang} savedNotes={savedMedNotes}
+                      onNoteCommit={v => setSavedMedNotes(prev => [v, ...prev.filter(n => n.toLowerCase() !== v.toLowerCase())].slice(0, 100))}/>
                   </div>
                 </div>
               </div>
