@@ -939,13 +939,15 @@ export default function NewPrescriptionPage() {
             <h3 className="font-bold text-slate-700 flex items-center gap-2">
               Medicines <Badge variant="primary">{rxMeds.filter(m=>m.medicineName).length}</Badge>
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {rxMeds.filter(m=>m.medicineName).length>0 && <button type="button" onClick={()=>setRxMeds([{...emptyMed}])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}
               <SectionTemplate label="Medicine Templates" section="medicines" templates={allTemplates} onApply={t=>{ if(t.medicines?.length>0){api.post(`/templates/${t.id}/use`).then(({data})=>{setRxMeds(p=>{const existing=p.filter(m=>m.medicineName);const newMeds=data.data.medicines||[];return[...existing,...newMeds,{...emptyMed}]});toast.success(`${t.name} medicines loaded!`)}).catch(()=>{})} }}/><Button variant="outline" size="sm" icon={<Plus className="w-3.5 h-3.5"/>} onClick={addRow}>Add Row</Button></div>
           </div>
           <p className="text-xs text-slate-400 mb-3">💡 Click <strong className="text-primary">↓</strong> in headers to apply value to all rows</p>
 
-          <table className="w-full" style={{tableLayout:'fixed'}}>
+          {/* ── Medicine table — desktop ── */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full" style={{tableLayout:'fixed'}}>
             <colgroup>
               <col style={{width:'26px'}}/><col style={{width:'200px'}}/><col style={{width:'108px'}}/>
               <col style={{width:'115px'}}/><col style={{width:'100px'}}/><col style={{width:'54px'}}/>
@@ -1021,6 +1023,54 @@ export default function NewPrescriptionPage() {
               })}
             </tbody>
           </table>
+          </div>
+
+          {/* ── Medicine rows — mobile card style ── */}
+          <div className="md:hidden space-y-3">
+            {rxMeds.map((med, idx) => (
+              <div key={idx} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="w-6 h-6 rounded-lg bg-primary text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{idx+1}</span>
+                  <button type="button" onClick={()=>removeRow(idx)} className="text-slate-300 hover:text-danger transition-colors"><Trash2 className="w-4 h-4"/></button>
+                </div>
+                <div className="mb-2">
+                  <p className="text-xs text-slate-400 mb-1">Medicine</p>
+                  <MedInput value={med.medicineName} medicineId={med.medicineId}
+                    onSelect={handleMedSelect} onTyped={handleMedTyped}
+                    medicines={medicines} rowIndex={idx}/>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Dosage</p>
+                    <ColDrop value={med.dosage} options={dosages.map(d=>({code:d.code,label:d.code}))}
+                      placeholder="Select" onChange={v=>updateMed(idx,'dosage',v)}/>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">When</p>
+                    <ColDrop value={med.timing} options={timings.map(t=>({code:t.code,label:t.labelEn}))}
+                      placeholder="Select" onChange={v=>updateMed(idx,'timing',v)}/>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Days</p>
+                    <SmartDaysInput value={med.days} onChange={v=>updateMed(idx,'days',v)}/>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Qty</p>
+                    <input type="number" min="0"
+                      className="w-full h-8 px-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-primary bg-white font-bold text-center"
+                      value={med.qty||''} onChange={e=>updateMed(idx,'qty',e.target.value)}/>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Notes</p>
+                    <NotesInput value={med.notesEn} onChange={v=>updateMed(idx,'notesEn',v)}
+                      medicineType={med.medicineType} printLang={printLang}/>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
           <button type="button" onClick={addRow}
             className="mt-3 w-full border-2 border-dashed border-blue-100 rounded-xl py-2 text-sm text-slate-400 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2">
             <Plus className="w-4 h-4"/>Add Medicine Row
@@ -1085,7 +1135,7 @@ export default function NewPrescriptionPage() {
           </div>
         </Card>
 
-        <div className="flex justify-between gap-3 pb-8 flex-wrap">
+        <div className="flex flex-col sm:flex-row justify-between gap-3 pb-8">
           <Button variant="outline" icon={<BookOpen className="w-4 h-4"/>} onClick={handleSaveAsTemplate}>
             Save as Template
           </Button>

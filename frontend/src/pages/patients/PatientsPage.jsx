@@ -6,7 +6,7 @@ import api from '../../lib/api'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
 
-const PREFIXES      = ['Mr', 'Mrs', 'Ms', 'Dr', 'Baby', 'Master', 'Miss', 'Er']
+const PREFIXES      = ['Mr', 'Mrs', 'Ms', 'Dr', 'Baby', 'Master', 'Er']
 const BLOOD_GROUPS  = ['A+','A-','B+','B-','AB+','AB-','O+','O-']
 const LANGUAGES     = ['English','Hindi','Marathi']
 const COMMON_ALLERGIES  = ['Penicillin','Sulfa drugs','Aspirin','Ibuprofen','Latex','Pollen','Dust','Nuts','Eggs','Milk']
@@ -15,7 +15,7 @@ const COMMON_CONDITIONS = ['Hypertension','Type 2 Diabetes','Asthma','Hypothyroi
 // Auto-set gender from prefix
 const PREFIX_GENDER = {
   'Mr':'Male', 'Master':'Male', 'Er':'Male',
-  'Mrs':'Female', 'Ms':'Female', 'Miss':'Female',
+  'Mrs':'Female', 'Ms':'Female',
 }
 
 const emptyForm = {
@@ -622,7 +622,7 @@ export default function PatientsPage() {
                     {p._count?.prescriptions > 0 && ` • ${p._count.prescriptions} Rx`}
                   </p>
                 </div>
-                <div className="flex gap-1 flex-shrink-0" onClick={e=>e.stopPropagation()}>
+                <div className="flex gap-1 flex-shrink-0 ml-auto" onClick={e=>e.stopPropagation()}>
                   <button onClick={()=>openEdit(p.id)} title="Edit Patient"
                     disabled={loadingEdit}
                     className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors">

@@ -182,7 +182,7 @@ export default function DashLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-6 fade-in"><Outlet /></main>
+        <main className="flex-1 p-3 sm:p-6 fade-in"><Outlet /></main>
       </div>
     </div>
   </>
