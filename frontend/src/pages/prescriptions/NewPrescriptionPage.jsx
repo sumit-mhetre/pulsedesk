@@ -551,8 +551,6 @@ export default function NewPrescriptionPage() {
   const [doctorPrefs, setDoctorPrefs] = useState({})
   const [allTemplates, setAllTemplates] = useState([])
   const [pageDesign,   setPageDesign]   = useState({})
-  // Form section visibility from clinic setup
-  const showSection = (key) => pageDesign[key] !== false
 
   useEffect(() => {
     // Load sequentially in small groups to avoid overwhelming Render free tier
@@ -925,7 +923,7 @@ export default function NewPrescriptionPage() {
         </Card>
 
         {/* Complaint */}
-        {showSection('showComplaint') && <Card>
+        <Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Chief Complaint</h3>
             <div className="flex gap-2">
@@ -939,10 +937,10 @@ export default function NewPrescriptionPage() {
             onRemove={t=>setComplaintTags(p=>p.filter(x=>x!==t))}
             items={complaints}
             placeholder="Type complaint or select, press Enter to add another..."/>
-        </Card>}
+        </Card>
 
         {/* Diagnosis */}
-        {showSection('showDiagnosis') && <Card>
+        <Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Diagnosis</h3>
             <div className="flex gap-2">
