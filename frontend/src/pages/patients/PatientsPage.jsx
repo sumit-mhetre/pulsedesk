@@ -25,52 +25,6 @@ const emptyForm = {
   preferredLanguage:'English', allergies:[], chronicConditions:[],
 }
 
-// ── Confirmation Dialog ───────────────────────────────────
-function ConfirmDialog({ title, message, confirmLabel='Confirm', cancelLabel='Cancel',
-  type='warning', onConfirm, onCancel }) {
-  const icons = {
-    warning: <AlertTriangle className="w-8 h-8 text-warning"/>,
-    danger:  <AlertCircle   className="w-8 h-8 text-danger"/>,
-    info:    <Info          className="w-8 h-8 text-primary"/>,
-    success: <CheckCircle   className="w-8 h-8 text-success"/>,
-  }
-  const colors = {
-    warning: 'bg-orange-50 border-orange-100',
-    danger:  'bg-red-50 border-red-100',
-    info:    'bg-blue-50 border-blue-100',
-    success: 'bg-green-50 border-green-100',
-  }
-  const btnColors = {
-    warning: 'bg-warning hover:bg-warning/90 text-white',
-    danger:  'bg-danger hover:bg-danger/90 text-white',
-    info:    'bg-primary hover:bg-primary/90 text-white',
-    success: 'bg-success hover:bg-success/90 text-white',
-  }
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel}/>
-      <div className={`relative bg-white rounded-2xl shadow-2xl w-full max-w-sm border-2 ${colors[type]} overflow-hidden`}>
-        <div className="p-6 text-center">
-          <div className="flex justify-center mb-3">{icons[type]}</div>
-          <h3 className="font-bold text-slate-800 text-lg mb-2">{title}</h3>
-          <p className="text-sm text-slate-500 leading-relaxed">{message}</p>
-        </div>
-        <div className="flex border-t border-slate-100">
-          <button onClick={onCancel}
-            className="flex-1 py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors border-r border-slate-100">
-            {cancelLabel}
-          </button>
-          <button onClick={onConfirm}
-            className={`flex-1 py-3.5 text-sm font-bold transition-colors ${btnColors[type]}`}>
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Error / Warning Banner inside modal ───────────────────
 function AlertBanner({ type='error', message, onDismiss }) {
   const styles = {
