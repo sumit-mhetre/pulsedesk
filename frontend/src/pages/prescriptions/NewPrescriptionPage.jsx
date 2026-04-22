@@ -113,6 +113,16 @@ const calcQty = (dosage, days, type='tablet') => {
   return (t && d) ? String(t * d * multiplier) : ''
 }
 
+// Normalize a duration value to include a unit — bare numbers default to "days".
+// Examples: "5" → "5 days" | "7 weeks" → "7 weeks" | "" → null | "  5  " → "5 days"
+const normalizeDays = (d) => {
+  if (d === null || d === undefined) return null
+  const s = String(d).trim()
+  if (!s) return null
+  if (/^\d+$/.test(s)) return `${s} days`   // bare number → add unit
+  return s                                   // already has a unit (days/weeks/months/years)
+}
+
 // ── Fixed position portal dropdown ───────────────────────
 function PortalDrop({ anchorRef, open, options, value, onSelect, onClose }) {
   const [pos, setPos] = useState({ top:0, left:0, width:0 })
@@ -679,7 +689,7 @@ export default function NewPrescriptionPage() {
   const [complaintTags, setComplaintTags] = useState([])
   const [diagnosisTags, setDiagnosisTags] = useState([])
   const [rxMeds,    setRxMeds]    = useState([{...emptyMed}])
-  const lastUsed    = useRef({ dosage:'1-0-1', days:'5', timing:'' })
+  const lastUsed    = useRef({ dosage:'1-0-1', days:'5 days', timing:'' })
   const [rxTests,   setRxTests]   = useState([])
   const [rxAdvice,  setRxAdvice]  = useState([])
   const [nextVisit, setNextVisit] = useState('')
@@ -804,7 +814,7 @@ export default function NewPrescriptionPage() {
       return u
     })
     if (!isNT&&med.defaultDosage) lastUsed.current.dosage=med.defaultDosage
-    if (med.defaultDays) lastUsed.current.days=String(med.defaultDays)
+    if (med.defaultDays) lastUsed.current.days=`${med.defaultDays} days`
     if (med.defaultTiming) lastUsed.current.timing=med.defaultTiming
     setTimeout(()=>{ const el=document.getElementById(`med-input-${rowIdx+1}`); if(el)el.focus() },60)
   }, [])
@@ -854,28 +864,33 @@ export default function NewPrescriptionPage() {
   const autoSaveToMaster = async () => {
     for (const tag of complaintTags) {
       if (!complaints.some(c=>c.nameEn?.toLowerCase()===tag.toLowerCase()))
-        try { await api.post('/master/complaints', buildPayload(tag, 'complaint')) } catch {}
+        try { await api.post('/master/complaints', buildPayload(tag, 'complaint')) } catch (e) { console.warn('[autoSave complaint]', tag, e?.response?.status, e?.response?.data) }
     }
     for (const tag of diagnosisTags) {
       if (!diagnoses.some(d=>d.nameEn?.toLowerCase()===tag.toLowerCase()))
-        try { await api.post('/master/diagnoses', buildPayload(tag, 'diagnosis')) } catch {}
+        try { await api.post('/master/diagnoses', buildPayload(tag, 'diagnosis')) } catch (e) { console.warn('[autoSave diagnosis]', tag, e?.response?.status, e?.response?.data) }
     }
     const savedTests=[]
     for (const t of rxTests) {
       if (t.isNew) {
         try { const{data}=await api.post('/master/lab-tests', buildPayload(t.name,'lab')); savedTests.push({id:data.data.id,name:t.name}) }
-        catch { savedTests.push(t) }
+        catch (e) { console.warn('[autoSave labTest]', t.name, e?.response?.status, e?.response?.data); savedTests.push(t) }
       } else savedTests.push(t)
     }
     for (const a of rxAdvice) {
-      if (a.isNew) try { await api.post('/master/advice', buildPayload(a.name,'advice')) } catch {}
+      if (a.isNew) try { await api.post('/master/advice', buildPayload(a.name,'advice')) } catch (e) { console.warn('[autoSave advice]', a.name, e?.response?.status, e?.response?.data) }
     }
     // Save any new medicine notes to master (mirrors advice pattern)
     const existingNotes = new Set(savedMedNotes.map(n=>n.toLowerCase()))
     for (const m of rxMeds) {
       const note = m.notesEn?.trim()
       if (note && !existingNotes.has(note.toLowerCase())) {
-        try { await api.post('/master/medicine-notes', buildPayload(note,'advice')) } catch {}
+        try {
+          await api.post('/master/medicine-notes', buildPayload(note,'advice'))
+          console.log('[autoSave note saved]', note)
+        } catch (e) {
+          console.warn('[autoSave note FAILED]', note, 'status:', e?.response?.status, 'data:', e?.response?.data)
+        }
         existingNotes.add(note.toLowerCase())
       }
     }
@@ -907,7 +922,7 @@ export default function NewPrescriptionPage() {
         diagnosis:  diagnosisTags.join(' || '),
         advice:     rxAdvice.map(a=>a.name).join('\n'),
         labTests:   rxTests.filter(t=>!t.isNew).map(t=>t.name),
-        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: m.days || null, timing:m.timing, qty:m.qty||null, notesEn:m.notesEn })),
+        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: normalizeDays(m.days), timing:m.timing, qty:m.qty||null, notesEn:m.notesEn })),
       })
       toast.success(`Template "${templateName}" saved!`)
     } catch { toast.error('Failed to save template') }
@@ -936,7 +951,7 @@ export default function NewPrescriptionPage() {
         diagnosis:  diagnosisTags.join(' || '),
         advice:     rxAdvice.map(a=>a.name).join('\n'),
         nextVisit:  nextVisit||null, printLang, customRxNo: customRxNo||null,
-        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName),
+        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({...m, days: normalizeDays(m.days)})),
         labTests:   savedTests.filter(t=>t.id&&!t.isNew).map(t=>({labTestId:t.id,labTestName:t.name})),
       }
       if (isEdit) {
