@@ -11,6 +11,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <App />
       <Toaster
         position="top-right"
+        containerClassName="no-print"
         toastOptions={{
           duration: 3500,
           style: {

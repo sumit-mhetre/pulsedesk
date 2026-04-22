@@ -91,6 +91,7 @@ const DEFAULT_RX_PRINT = {
   showComplaint: true, showDiagnosis: true, showMedicines: true, showLabTests: true,
   showAdvice: true, showNextVisit: true, showVitals: false,
   showDosage: true, showWhen: true, showFrequency: true, showDays: true, showQty: true, showNotes: true,
+  compactPrint: true,  // Combine Timing-Freq-Duration into one column for denser layout
   fontFamily: 'default', baseFontSize: 'md', medicineNameBold: true,
   showSignature: true, showGeneratedBy: true, showRxSymbol: true,
   primaryColor: '#1565C0', showRxNo: true,
@@ -440,6 +441,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
             </CollapsibleSection>
 
             <CollapsibleSection title="Medicine Table Columns">
+              <Toggle checked={cfg.compactPrint !== false} onChange={v => set('compactPrint', v)} label="Compact Columns" sub="Combine Timing – Freq. – Duration into a single column (saves horizontal space)"/>
               <Toggle checked={cfg.showDosage}       onChange={v => set('showDosage', v)}       label="Dosage" sub="e.g. 1-0-1"/>
               <Toggle checked={cfg.showWhen}         onChange={v => set('showWhen', v)}         label="When / Timing" sub="After Food, Before Food etc."/>
               <Toggle checked={cfg.showFrequency}    onChange={v => set('showFrequency', v)}    label="Frequency" sub="Daily, Alternate Days, Weekly etc."/>
