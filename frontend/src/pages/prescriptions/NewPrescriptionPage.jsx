@@ -550,6 +550,7 @@ export default function NewPrescriptionPage() {
   const [lastRx,    setLastRx]    = useState(null)
   const [doctorPrefs, setDoctorPrefs] = useState({})
   const [allTemplates, setAllTemplates] = useState([])
+  const [pageDesign,   setPageDesign]   = useState(null)
 
   useEffect(() => {
     // Load sequentially in small groups to avoid overwhelming Render free tier
@@ -577,6 +578,10 @@ export default function NewPrescriptionPage() {
         ])
         setAdviceList(adv.data.data)
         setAllTemplates(tmpl.data.data)
+      } catch {}
+      try {
+        const pd = await api.get('/page-design?type=prescription')
+        if (pd.data.data?.config) setPageDesign(pd.data.data.config)
       } catch {}
       // Load doctor's medicine preferences last (non-critical)
       try {
