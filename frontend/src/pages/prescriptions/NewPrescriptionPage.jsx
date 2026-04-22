@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom'
 import { Plus, Trash2, ArrowLeft, Save, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap } from 'lucide-react'
@@ -175,7 +175,7 @@ function ColDrop({ value, options, onChange, disabled, placeholder }) {
 }
 
 // ── Medicine search ───────────────────────────────────────
-function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex }) {
+function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex, recentIds = [] }) {
   const [q,setQ]       = useState(value||'')
   const [open,setOpen] = useState(false)
   const [foc,setFoc]   = useState(false)
@@ -185,9 +185,22 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex })
   // Keep local input in sync with parent (e.g. edit mode load)
   useEffect(()=>setQ(value||''),[value])
 
+  // Recently-used medicines (when input is empty + focused).
+  // recentIds is doctor's medicine ids ordered most-recent first.
+  const recentMeds = recentIds
+    .map(id => medicines.find(m => m.id === id))
+    .filter(Boolean)
+    .slice(0, 8)
+
+  // If query present → filter; else when focused → show all master list (used to).
+  // Now: if query empty AND we have recentMeds → show those first, then fall through.
+  const qLc = q.toLowerCase()
   const filtered = foc
-    ? (q.length>=1 ? medicines.filter(m=>m.name.toLowerCase().includes(q.toLowerCase())) : medicines).slice(0,14)
+    ? (q.length >= 1
+        ? medicines.filter(m => m.name.toLowerCase().includes(qLc)).slice(0, 14)
+        : medicines.slice(0, 14))
     : []
+  const showRecentHeader = foc && q.length === 0 && recentMeds.length > 0
 
   const upd = useCallback(()=>{
     if (ref.current) {
@@ -251,9 +264,36 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex })
           if (e.key==='Escape') { setOpen(false); setFoc(false) }
         }}
       />
-      {open && filtered.length > 0 && (
+      {open && (filtered.length > 0 || recentMeds.length > 0) && (
         <div style={{ position:'fixed',top:pos.top,left:pos.left,width:Math.max(pos.width+80,280),zIndex:9999 }}
-          className="bg-white rounded-xl shadow-xl border border-blue-100 max-h-56 overflow-y-auto">
+          className="bg-white rounded-xl shadow-xl border border-blue-100 max-h-72 overflow-y-auto">
+
+          {/* ── Recently used (only when input is empty) ── */}
+          {showRecentHeader && (
+            <>
+              <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide bg-slate-50 border-b border-slate-100 sticky top-0">
+                Recently Prescribed
+              </div>
+              {recentMeds.map(m => (
+                <button key={`r-${m.id}`} type="button" onMouseDown={e=>{ e.preventDefault(); sel(m) }}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 flex items-center gap-2.5 border-b border-slate-50">
+                  <span className={`text-xs px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${TC[m.type]||'bg-slate-100 text-slate-600'}`}>{m.type}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-700 truncate">{m.name}</p>
+                    {m.category && <p className="text-xs text-slate-400">{m.category}</p>}
+                  </div>
+                  <span className="text-[10px] text-primary font-semibold flex-shrink-0">★ recent</span>
+                </button>
+              ))}
+              {filtered.length > 0 && (
+                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide bg-slate-50 border-b border-slate-100 sticky top-0">
+                  All Medicines
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── Filtered (or all when no query) ── */}
           {filtered.map(m=>(
             <button key={m.id} type="button" onMouseDown={e=>{ e.preventDefault(); sel(m) }}
               className="w-full text-left px-3 py-2 hover:bg-blue-50 flex items-center gap-2.5 border-b border-slate-50 last:border-0">
@@ -265,7 +305,7 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex })
             </button>
           ))}
           {/* Show option to add as custom if no exact match */}
-          {q.length>1 && !medicines.find(m=>m.name.toLowerCase()===q.toLowerCase()) && (
+          {q.length>1 && !medicines.find(m=>m.name.toLowerCase()===qLc) && (
             <button type="button" onMouseDown={e=>{ e.preventDefault(); commitTyped(); setOpen(false) }}
               className="w-full text-left px-3 py-2 hover:bg-green-50 border-t border-slate-100 flex items-center gap-2 text-success text-sm font-medium">
               <Plus className="w-3.5 h-3.5"/>Use "{q.trim()}" as new medicine
@@ -702,6 +742,14 @@ export default function NewPrescriptionPage() {
   const [allTemplates, setAllTemplates] = useState([])
   const [pageDesign,   setPageDesign]   = useState(null)
   const [pdLoaded,     setPdLoaded]     = useState(false)
+
+  // Medicine IDs sorted by "recently prescribed" for this doctor — shown at top of medicine dropdown
+  const recentMedIds = useMemo(() => {
+    return Object.entries(doctorPrefs)
+      .filter(([, p]) => p && p.updatedAt)
+      .sort((a, b) => new Date(b[1].updatedAt) - new Date(a[1].updatedAt))
+      .map(([id]) => id)
+  }, [doctorPrefs])
   // Auto-open vitals when rx_form config loads and showVitals is true
   useEffect(() => { if (pdLoaded && pageDesign?.showVitals === true) setShowVitals(true) }, [pdLoaded])
   // Before config loads: show all. After load: hide if explicitly set to false
@@ -829,9 +877,13 @@ export default function NewPrescriptionPage() {
     const rawDays = pref.days || (med.defaultDays ? `${med.defaultDays} days` : lastUsed.current.days)
     const days = rawDays || ''
     const timing = pref.timing || med.defaultTiming || lastUsed.current.timing
+    // Notes also carry over from doctor's last-used settings for this medicine
+    const notesEn = pref.notesEn || ''
+    const notesHi = pref.notesHi || ''
+    const notesMr = pref.notesMr || ''
     setRxMeds(prev => {
       const u=[...prev]
-      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, notesEn:'', qty: isNT?'1':calcQty(dosage,days,med.type) }
+      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, notesEn, notesHi, notesMr, qty: isNT?'1':calcQty(dosage,days,med.type) }
       if (rowIdx===u.length-1) u.push({...emptyMed})
       return u
     })
@@ -839,7 +891,7 @@ export default function NewPrescriptionPage() {
     if (med.defaultDays) lastUsed.current.days=`${med.defaultDays} days`
     if (med.defaultTiming) lastUsed.current.timing=med.defaultTiming
     setTimeout(()=>{ const el=document.getElementById(`med-input-${rowIdx+1}`); if(el)el.focus() },60)
-  }, [])
+  }, [doctorPrefs])
 
   // Called when doctor types a medicine name without selecting from dropdown
   const handleMedTyped = useCallback((name, rowIdx) => {
@@ -1227,7 +1279,7 @@ export default function NewPrescriptionPage() {
                       <span className="w-5 h-5 rounded bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">{idx+1}</span>
                     </td>
                     <td className="py-1.5 px-1">
-                      <MedInput value={med.medicineName} medicineId={med.medicineId} onSelect={handleMedSelect} onTyped={handleMedTyped} medicines={medicines} rowIndex={idx}/>
+                      <MedInput value={med.medicineName} medicineId={med.medicineId} onSelect={handleMedSelect} onTyped={handleMedTyped} medicines={medicines} rowIndex={idx} recentIds={recentMedIds}/>
                     </td>
                     <td className="py-1.5 px-1">
                       {isNT ? <div className="h-8 px-2 flex items-center text-xs text-slate-300 bg-slate-50 rounded-lg border border-slate-100">N/A</div>
@@ -1279,7 +1331,7 @@ export default function NewPrescriptionPage() {
                   <p className="text-xs text-slate-400 mb-1">Medicine</p>
                   <MedInput value={med.medicineName} medicineId={med.medicineId}
                     onSelect={handleMedSelect} onTyped={handleMedTyped}
-                    medicines={medicines} rowIndex={idx}/>
+                    medicines={medicines} rowIndex={idx} recentIds={recentMedIds}/>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div>

@@ -178,13 +178,13 @@ async function createPrescription(req, res) {
                 where: { id: med.medicineId, clinicId: req.clinicId },
                 data: { usageCount: { increment: 1 } },
               })
-              // Save per-doctor preference (dosage/timing/days used last time) — non-blocking
-              if (med.dosage || med.timing || med.days) {
+              // Save per-doctor preference (dosage/timing/days/notes used last time) — non-blocking
+              if (med.dosage || med.timing || med.days || med.notesEn) {
                 prisma.doctorMedicinePreference.upsert({
                   where: { clinicId_doctorId_medicineId: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId } },
-                  create: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId, dosage: med.dosage||null, timing: med.timing||null, days: med.days||null },
-                  update: { dosage: med.dosage||null, timing: med.timing||null, days: med.days||null, usageCount: { increment: 1 } },
-                }).catch(()=>{}) // non-blocking — won't crash if table missing
+                  create: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId, dosage: med.dosage||null, timing: med.timing||null, days: med.days||null, notesEn: med.notesEn||null, notesHi: med.notesHi||null, notesMr: med.notesMr||null },
+                  update: { dosage: med.dosage||null, timing: med.timing||null, days: med.days||null, notesEn: med.notesEn||null, notesHi: med.notesHi||null, notesMr: med.notesMr||null, usageCount: { increment: 1 } },
+                }).catch((e)=>{ console.error('[pref upsert failed]', e?.message) }) // log so we stop silent failures
               }
             }
           }
@@ -394,10 +394,21 @@ async function getDoctorPreferences(req, res) {
   try {
     const prefs = await prisma.doctorMedicinePreference.findMany({
       where: { clinicId: req.clinicId, doctorId: req.user.id },
+      orderBy: { updatedAt: 'desc' },
     })
-    // Return as map: { medicineId: { dosage, timing, days } }
+    // Return as map: { medicineId: { dosage, timing, days, notesEn, updatedAt } }
     const map = {}
-    prefs.forEach(p => { map[p.medicineId] = { dosage: p.dosage, timing: p.timing, days: p.days } })
+    prefs.forEach(p => {
+      map[p.medicineId] = {
+        dosage:    p.dosage,
+        timing:    p.timing,
+        days:      p.days,
+        notesEn:   p.notesEn,
+        notesHi:   p.notesHi,
+        notesMr:   p.notesMr,
+        updatedAt: p.updatedAt,
+      }
+    })
     return successResponse(res, map)
   } catch (err) {
     return successResponse(res, {}) // non-critical, return empty on error

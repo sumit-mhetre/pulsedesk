@@ -603,9 +603,13 @@ model DoctorMedicinePreference {
   dosage      String?
   timing      String?
   days        String?  // e.g. '7 days', '2 weeks', '1 month'
+  notesEn     String?
+  notesHi     String?
+  notesMr     String?
   usageCount  Int      @default(1)
   updatedAt   DateTime @updatedAt
 
   @@unique([clinicId, doctorId, medicineId])
+  @@index([clinicId, doctorId, updatedAt])
   @@map("doctor_medicine_preferences")
 }
