@@ -108,17 +108,27 @@ const emptyMed    = { medicineId:'',medicineName:'',medicineType:'tablet',dosage
 const LIQUID_NOTES_EN = ['5ml twice daily','5ml thrice daily','2.5ml twice daily','10ml twice daily','2 drops twice daily','2 drops thrice daily','1 teaspoon thrice daily','2 teaspoons twice daily','As directed','Apply thin layer twice daily']
 const LIQUID_NOTES_MR = ['दिवसातून 2 वेळा 5ml','दिवसातून 3 वेळा 5ml','दिवसातून 2 वेळा 2.5ml','दिवसातून 2 वेळा 10ml','दिवसातून 2 वेळा 2 थेंब','दिवसातून 3 वेळा 2 थेंब','दिवसातून 3 वेळा 1 चमचा','दिवसातून 2 वेळा 2 चमचे','सांगितल्याप्रमाणे','दिवसातून 2 वेळा पातळ थर लावा']
 
-const calcQty = (dosage, days, type='tablet') => {
+// Frequency divisor — how many days between doses
+const FREQ_DIV = { DAILY: 1, ALT_DAYS: 2, EVERY_3D: 3, WEEKLY: 7 }
+
+const calcQty = (dosage, days, type='tablet', frequency='DAILY') => {
   // Liquid/syrup/drops/cream/etc → qty always 1 bottle/tube (editable)
   // Uses NON_TABLET + 'sachet' as single source of truth to avoid duplicate-list drift
   if (NON_TABLET.includes(type) || type === 'sachet') return '1'
+  // SOS = as-needed; no fixed schedule, let doctor fill in manually
+  if (frequency === 'SOS') return ''
   const t=FREQ_MAP[dosage]
   // Extract number from days string like "7 days", "2 weeks"
   const d = days ? parseInt(String(days).match(/\d+/)?.[0]) : 0
   const multiplier = String(days).toLowerCase().includes('week') ? 7
     : String(days).toLowerCase().includes('month') ? 30
     : String(days).toLowerCase().includes('year') ? 365 : 1
-  return (t && d) ? String(t * d * multiplier) : ''
+  if (!t || !d) return ''
+  const totalDays = d * multiplier
+  const divisor = FREQ_DIV[frequency] || 1
+  // Ceil so the patient always has enough for the full duration (medically safer)
+  const doses = Math.ceil(totalDays / divisor)
+  return String(t * doses)
 }
 
 // Normalize a duration value to include a unit — bare numbers default to "days".
@@ -881,8 +891,15 @@ export default function NewPrescriptionPage() {
       if(field==='dosage')lastUsed.current.dosage=val
       if(field==='days')lastUsed.current.days=val
       if(field==='timing')lastUsed.current.timing=val
-      if((field==='dosage'||field==='days')&&!NON_TABLET.includes(u[i].medicineType))
-        u[i].qty=calcQty(field==='dosage'?val:u[i].dosage,field==='days'?val:u[i].days,u[i].medicineType||'tablet')
+      // Recalc qty whenever dosage/days/frequency change
+      if((field==='dosage'||field==='days'||field==='frequency')&&!NON_TABLET.includes(u[i].medicineType)) {
+        u[i].qty = calcQty(
+          field==='dosage'    ? val : u[i].dosage,
+          field==='days'      ? val : u[i].days,
+          u[i].medicineType || 'tablet',
+          field==='frequency' ? val : (u[i].frequency || 'DAILY')
+        )
+      }
       return u
     })
   }
@@ -906,7 +923,7 @@ export default function NewPrescriptionPage() {
     const notesMr = pref.notesMr || ''
     setRxMeds(prev => {
       const u=[...prev]
-      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, frequency, notesEn, notesHi, notesMr, qty: isNT?'1':calcQty(dosage,days,med.type) }
+      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, frequency, notesEn, notesHi, notesMr, qty: isNT?'1':calcQty(dosage,days,med.type,frequency) }
       if (rowIdx===u.length-1) u.push({...emptyMed})
       return u
     })
@@ -940,8 +957,24 @@ export default function NewPrescriptionPage() {
     return next
   })
   const applyToAll = (field) => {
-    const val=lastUsed.current[field]; if(!val)return
-    setRxMeds(prev=>prev.map(m=>{ const u={...m,[field]:val}; if((field==='dosage'||field==='days')&&!NON_TABLET.includes(m.medicineType))u.qty=calcQty(field==='dosage'?val:m.dosage,field==='days'?val:m.days); return u }))
+    // Frequency uses a different source (most common from current rows) since lastUsed doesn't track it
+    let val = lastUsed.current[field]
+    if (field === 'frequency') {
+      val = rxMeds.find(m => m.frequency && m.frequency !== 'DAILY')?.frequency || 'DAILY'
+    }
+    if (!val) return
+    setRxMeds(prev => prev.map(m => {
+      const u = { ...m, [field]: val }
+      if ((field==='dosage' || field==='days' || field==='frequency') && !NON_TABLET.includes(m.medicineType)) {
+        u.qty = calcQty(
+          field==='dosage'    ? val : m.dosage,
+          field==='days'      ? val : m.days,
+          m.medicineType || 'tablet',
+          field==='frequency' ? val : (m.frequency || 'DAILY')
+        )
+      }
+      return u
+    }))
     toast.success(`"${val}" applied to all rows`)
   }
 

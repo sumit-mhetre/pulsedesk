@@ -10,18 +10,31 @@ async function generateRxNo(clinicId, doctorId) {
   return `RX/${year}/${seq}`;
 }
 
-// ── Calculate quantity from dosage + days ─────────────────
-function calcQty(dosageCode, days) {
+// ── Calculate quantity from dosage + days + frequency ─────
+// days can be: "7 days" | "2 weeks" | "1 month" | "1 year" | bare number
+// frequency: DAILY | ALT_DAYS | EVERY_3D | WEEKLY | SOS
+function calcQty(dosageCode, days, frequency = 'DAILY') {
   if (!dosageCode || !days) return null;
+  if (frequency === 'SOS') return null;  // As-needed — doctor fills manually
   const dosageMap = {
     '1-0-0': 1, '0-1-0': 1, '0-0-1': 1,
     '1-0-1': 2, '1-1-0': 2, '0-1-1': 2,
     '1-1-1': 3, '1-1-1-1': 4,
     'OD': 1, 'BD': 2, 'TDS': 3, 'QID': 4, 'HS': 1,
   };
+  const freqDiv = { DAILY: 1, ALT_DAYS: 2, EVERY_3D: 3, WEEKLY: 7 };
   const times = dosageMap[dosageCode];
   if (!times) return null;
-  return times * parseInt(days);
+  const daysStr = String(days).toLowerCase();
+  const n = parseInt(daysStr.match(/\d+/)?.[0]);
+  if (!n) return null;
+  const multiplier = daysStr.includes('week')  ? 7
+                   : daysStr.includes('month') ? 30
+                   : daysStr.includes('year')  ? 365 : 1;
+  const totalDays = n * multiplier;
+  const divisor = freqDiv[frequency] || 1;
+  // Ceil so the patient never runs short of medication
+  return times * Math.ceil(totalDays / divisor);
 }
 
 // ── Get all prescriptions ─────────────────────────────────
@@ -151,7 +164,7 @@ async function createPrescription(req, res) {
 
           if (!medicineName) return null  // skip empty rows
 
-          const qty = m.qty ?? calcQty(m.dosage, m.days)
+          const qty = m.qty ?? calcQty(m.dosage, m.days, m.frequency)
           return {
             prescriptionId: rx.id,
             medicineId,
@@ -288,7 +301,7 @@ async function updatePrescription(req, res) {
               }
             }
 
-            const qty = m.qty ?? calcQty(m.dosage, m.days)
+            const qty = m.qty ?? calcQty(m.dosage, m.days, m.frequency)
             return {
               prescriptionId: req.params.id,
               medicineId,
@@ -383,8 +396,8 @@ async function getLastPrescription(req, res) {
 // ── Calculate quantity helper (API) ──────────────────────
 async function calculateQty(req, res) {
   try {
-    const { dosage, days } = req.body;
-    const qty = calcQty(dosage, days);
+    const { dosage, days, frequency } = req.body;
+    const qty = calcQty(dosage, days, frequency);
     return successResponse(res, { qty });
   } catch (err) {
     return errorResponse(res, 'Calculation failed', 500);

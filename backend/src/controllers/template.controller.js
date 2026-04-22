@@ -189,7 +189,19 @@ async function useTemplate(req, res) {
           timing:  m.timing || 'AF',
           frequency: m.frequency || 'DAILY',
           notesEn: m.notesEn || '',
-          qty:     m.dosage && m.days ? String((({ '1-0-0':1,'0-1-0':1,'0-0-1':1,'1-0-1':2,'1-1-0':2,'0-1-1':2,'1-1-1':3,'1-1-1-1':4,'OD':1,'BD':2,'TDS':3,'QID':4,'HS':1 })[m.dosage] || 0) * (parseInt(String(m.days).match(/\d+/)?.[0]) || 0)) : '',
+          qty:     (() => {
+            if (!m.dosage || !m.days) return ''
+            if (m.frequency === 'SOS') return ''
+            const dMap = { '1-0-0':1,'0-1-0':1,'0-0-1':1,'1-0-1':2,'1-1-0':2,'0-1-1':2,'1-1-1':3,'1-1-1-1':4,'OD':1,'BD':2,'TDS':3,'QID':4,'HS':1 }
+            const fDiv = { DAILY:1, ALT_DAYS:2, EVERY_3D:3, WEEKLY:7 }
+            const t = dMap[m.dosage] || 0
+            const n = parseInt(String(m.days).match(/\d+/)?.[0]) || 0
+            if (!t || !n) return ''
+            const s = String(m.days).toLowerCase()
+            const mult = s.includes('week') ? 7 : s.includes('month') ? 30 : s.includes('year') ? 365 : 1
+            const div = fDiv[m.frequency || 'DAILY'] || 1
+            return String(t * Math.ceil(n * mult / div))
+          })(),
         };
       })
     );
