@@ -93,7 +93,7 @@ const TIMING_OPTS = [
   { code:'MO', label:'Morning Only' }, { code:'AN', label:'At Night' },
 ]
 const FREQ_MAP    = { '1-0-0':1,'0-1-0':1,'0-0-1':1,'1-0-1':2,'1-1-0':2,'0-1-1':2,'1-1-1':3,'1-1-1-1':4,'OD':1,'BD':2,'TDS':3,'QID':4,'HS':1 }
-const NON_TABLET  = ['liquid','drops','cream','inhaler','injection','powder']
+const NON_TABLET  = ['liquid','drops','cream','inhaler','injection','powder','syrup','suspension','gel','lotion','ointment','spray']
 const emptyMed    = { medicineId:'',medicineName:'',medicineType:'tablet',dosage:'',days:'',timing:'',qty:'',notesEn:'' }
 
 // Syrup/liquid notes options (bilingual)
@@ -240,7 +240,7 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex })
           if (e.key==='Escape') { setOpen(false); setFoc(false) }
         }}
       />
-      {open && filtered.length > 0 && (
+      {open && filtered.length > 0 && (q || isNT) && (
         <div style={{ position:'fixed',top:pos.top,left:pos.left,width:Math.max(pos.width+80,280),zIndex:9999 }}
           className="bg-white rounded-xl shadow-xl border border-blue-100 max-h-56 overflow-y-auto">
           {filtered.map(m=>(
@@ -297,7 +297,7 @@ function NotesInput({ value, onChange, medicineType, printLang, savedNotes=[] })
         onBlur={()=>setTimeout(()=>{setOpen(false);if(q){onChange(q);setQ('')}},200)}
         onKeyDown={e=>{if(e.key==='Enter'&&q){onChange(q);setQ('');setOpen(false);e.preventDefault()}if(e.key==='Escape')setOpen(false)}}
       />
-      {open && filtered.length > 0 && (
+      {open && filtered.length > 0 && (q || isNT) && (
         <div style={{position:'fixed',top:pos.top,left:pos.left,width:Math.max(pos.width,200),zIndex:9999}}
           className="bg-white rounded-xl shadow-xl border border-blue-100 max-h-48 overflow-y-auto">
           {filtered.map(note=>(
