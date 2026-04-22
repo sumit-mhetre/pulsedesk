@@ -160,6 +160,7 @@ async function createPrescription(req, res) {
             dosage:   m.dosage  || null,
             days:     m.days    || null,  // stored as string e.g. '7 days'
             timing:   m.timing  || null,
+            frequency: m.frequency || 'DAILY',
             qty:      qty !== null && qty !== '' ? String(qty) : null,
             notesEn:  m.notesEn || null,
             notesHi:  m.notesHi || null,
@@ -178,13 +179,13 @@ async function createPrescription(req, res) {
                 where: { id: med.medicineId, clinicId: req.clinicId },
                 data: { usageCount: { increment: 1 } },
               })
-              // Save per-doctor preference (dosage/timing/days/notes used last time) — non-blocking
-              if (med.dosage || med.timing || med.days || med.notesEn) {
+              // Save per-doctor preference (dosage/timing/days/frequency/notes used last time) — non-blocking
+              if (med.dosage || med.timing || med.days || med.frequency || med.notesEn) {
                 prisma.doctorMedicinePreference.upsert({
                   where: { clinicId_doctorId_medicineId: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId } },
-                  create: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId, dosage: med.dosage||null, timing: med.timing||null, days: med.days||null, notesEn: med.notesEn||null, notesHi: med.notesHi||null, notesMr: med.notesMr||null },
-                  update: { dosage: med.dosage||null, timing: med.timing||null, days: med.days||null, notesEn: med.notesEn||null, notesHi: med.notesHi||null, notesMr: med.notesMr||null, usageCount: { increment: 1 } },
-                }).catch((e)=>{ console.error('[pref upsert failed]', e?.message) }) // log so we stop silent failures
+                  create: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId, dosage: med.dosage||null, timing: med.timing||null, days: med.days||null, frequency: med.frequency||null, notesEn: med.notesEn||null, notesHi: med.notesHi||null, notesMr: med.notesMr||null },
+                  update: { dosage: med.dosage||null, timing: med.timing||null, days: med.days||null, frequency: med.frequency||null, notesEn: med.notesEn||null, notesHi: med.notesHi||null, notesMr: med.notesMr||null, usageCount: { increment: 1 } },
+                }).catch((e)=>{ console.error('[pref upsert failed]', e?.message) })
               }
             }
           }
@@ -296,6 +297,7 @@ async function updatePrescription(req, res) {
               dosage:   m.dosage  || null,
               days:     m.days    || null,  // stored as string e.g. '7 days'
               timing:   m.timing  || null,
+              frequency: m.frequency || 'DAILY',
               qty:      qty !== null && qty !== '' ? String(qty) : null,
               notesEn:  m.notesEn || null,
               notesHi:  m.notesHi || null,
@@ -396,13 +398,14 @@ async function getDoctorPreferences(req, res) {
       where: { clinicId: req.clinicId, doctorId: req.user.id },
       orderBy: { updatedAt: 'desc' },
     })
-    // Return as map: { medicineId: { dosage, timing, days, notesEn, updatedAt } }
+    // Return as map: { medicineId: { dosage, timing, days, frequency, notesEn, updatedAt } }
     const map = {}
     prefs.forEach(p => {
       map[p.medicineId] = {
         dosage:    p.dosage,
         timing:    p.timing,
         days:      p.days,
+        frequency: p.frequency,
         notesEn:   p.notesEn,
         notesHi:   p.notesHi,
         notesMr:   p.notesMr,

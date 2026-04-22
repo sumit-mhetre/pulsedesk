@@ -90,7 +90,7 @@ const DEFAULT_RX_PRINT = {
   showPatient: true, showAge: true, showGender: true, showAllergy: true,
   showComplaint: true, showDiagnosis: true, showMedicines: true, showLabTests: true,
   showAdvice: true, showNextVisit: true, showVitals: false,
-  showDosage: true, showWhen: true, showDays: true, showQty: true, showNotes: true,
+  showDosage: true, showWhen: true, showFrequency: true, showDays: true, showQty: true, showNotes: true,
   fontFamily: 'default', baseFontSize: 'md', medicineNameBold: true,
   showSignature: true, showGeneratedBy: true, showRxSymbol: true,
   primaryColor: '#1565C0', showRxNo: true,
@@ -442,6 +442,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
             <CollapsibleSection title="Medicine Table Columns">
               <Toggle checked={cfg.showDosage}       onChange={v => set('showDosage', v)}       label="Dosage" sub="e.g. 1-0-1"/>
               <Toggle checked={cfg.showWhen}         onChange={v => set('showWhen', v)}         label="When / Timing" sub="After Food, Before Food etc."/>
+              <Toggle checked={cfg.showFrequency}    onChange={v => set('showFrequency', v)}    label="Frequency" sub="Daily, Alternate Days, Weekly etc."/>
               <Toggle checked={cfg.showDays}         onChange={v => set('showDays', v)}         label="Duration"/>
               <Toggle checked={cfg.showQty}          onChange={v => set('showQty', v)}          label="Quantity"/>
               <Toggle checked={cfg.showNotes}        onChange={v => set('showNotes', v)}        label="Notes" sub="Instructions below medicine name"/>

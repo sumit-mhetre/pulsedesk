@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom'
-import { Plus, Trash2, ArrowLeft, Save, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap } from 'lucide-react'
+import { Plus, Trash2, ArrowLeft, Save, Printer, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap } from 'lucide-react'
 import { Button, Badge, Card, PageHeader, ConfirmDialog } from '../../components/ui'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -92,9 +92,17 @@ const TIMING_OPTS = [
   { code:'WM', label:'With Milk' }, { code:'WW', label:'With Water' },
   { code:'MO', label:'Morning Only' }, { code:'AN', label:'At Night' },
 ]
+// Frequency — how often across days (different from Timing which is when within a day)
+const FREQ_OPTS = [
+  { code:'DAILY',    label:'Daily' },
+  { code:'ALT_DAYS', label:'Alternate Days' },
+  { code:'EVERY_3D', label:'Every 3 Days' },
+  { code:'WEEKLY',   label:'Weekly' },
+  { code:'SOS',      label:'As Needed (SOS)' },
+]
 const FREQ_MAP    = { '1-0-0':1,'0-1-0':1,'0-0-1':1,'1-0-1':2,'1-1-0':2,'0-1-1':2,'1-1-1':3,'1-1-1-1':4,'OD':1,'BD':2,'TDS':3,'QID':4,'HS':1 }
 const NON_TABLET  = ['liquid','drops','cream','inhaler','injection','powder','syrup','suspension','gel','lotion','ointment','spray']
-const emptyMed    = { medicineId:'',medicineName:'',medicineType:'tablet',dosage:'',days:'',timing:'',qty:'',notesEn:'' }
+const emptyMed    = { medicineId:'',medicineName:'',medicineType:'tablet',dosage:'',days:'',timing:'',frequency:'DAILY',qty:'',notesEn:'' }
 
 // Syrup/liquid notes options (bilingual)
 const LIQUID_NOTES_EN = ['5ml twice daily','5ml thrice daily','2.5ml twice daily','10ml twice daily','2 drops twice daily','2 drops thrice daily','1 teaspoon thrice daily','2 teaspoons twice daily','As directed','Apply thin layer twice daily']
@@ -729,7 +737,7 @@ export default function NewPrescriptionPage() {
   const [complaintTags, setComplaintTags] = useState([])
   const [diagnosisTags, setDiagnosisTags] = useState([])
   const [rxMeds,    setRxMeds]    = useState([{...emptyMed}])
-  const lastUsed    = useRef({ dosage:'1-0-1', days:'5 days', timing:'' })
+  const lastUsed    = useRef({ dosage:'1-0-1', days:'5 days', timing:'AF' })
   const [rxTests,   setRxTests]   = useState([])
   const [rxAdvice,  setRxAdvice]  = useState([])
   const [nextVisit, setNextVisit] = useState('')
@@ -843,6 +851,7 @@ export default function NewPrescriptionPage() {
       setRxMeds(rx.medicines.length > 0 ? rx.medicines.map(m=>({
         medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType,
         dosage:m.dosage||'', days:m.days?String(m.days):'', timing:m.timing||'AF',
+        frequency: m.frequency||'DAILY',
         qty:m.qty?String(m.qty):(NON_TABLET.includes(m.medicineType)?'1':''), notesEn:m.notesEn||''
       })) : [{...emptyMed}])
       setRxTests(rx.labTests.map(t=>({ id:t.labTestId, name:t.labTestName })))
@@ -889,13 +898,15 @@ export default function NewPrescriptionPage() {
     const rawDays = pref.days || (med.defaultDays ? `${med.defaultDays} days` : lastUsed.current.days)
     const days = rawDays || ''
     const timing = pref.timing || med.defaultTiming || lastUsed.current.timing
+    // Frequency defaults to DAILY if no pref exists yet
+    const frequency = pref.frequency || 'DAILY'
     // Notes also carry over from doctor's last-used settings for this medicine
     const notesEn = pref.notesEn || ''
     const notesHi = pref.notesHi || ''
     const notesMr = pref.notesMr || ''
     setRxMeds(prev => {
       const u=[...prev]
-      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, notesEn, notesHi, notesMr, qty: isNT?'1':calcQty(dosage,days,med.type) }
+      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, frequency, notesEn, notesHi, notesMr, qty: isNT?'1':calcQty(dosage,days,med.type) }
       if (rowIdx===u.length-1) u.push({...emptyMed})
       return u
     })
@@ -1008,7 +1019,7 @@ export default function NewPrescriptionPage() {
         diagnosis:  diagnosisTags.join(' || '),
         advice:     rxAdvice.map(a=>a.name).join('\n'),
         labTests:   rxTests.filter(t=>!t.isNew).map(t=>t.name),
-        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: normalizeDays(m.days), timing:m.timing, qty:m.qty||null, notesEn:m.notesEn })),
+        medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: normalizeDays(m.days), timing:m.timing, frequency:m.frequency||'DAILY', qty:m.qty||null, notesEn:m.notesEn })),
       })
       toast.success(`Template "${templateName}" saved!`)
     } catch { toast.error('Failed to save template') }
@@ -1016,16 +1027,19 @@ export default function NewPrescriptionPage() {
 
   const carryForward = () => {
     if (!lastRx) return
-    setRxMeds(lastRx.medicines.map(m=>({medicineId:m.medicineId,medicineName:m.medicineName,medicineType:m.medicineType,dosage:m.dosage||'',days:m.days?String(m.days):'',timing:m.timing||'AF',qty:m.qty?String(m.qty):'',notesEn:''})))
+    setRxMeds(lastRx.medicines.map(m=>({medicineId:m.medicineId,medicineName:m.medicineName,medicineType:m.medicineType,dosage:m.dosage||'',days:m.days?String(m.days):'',timing:m.timing||'AF',frequency:m.frequency||'DAILY',qty:m.qty?String(m.qty):'',notesEn:''})))
     if (lastRx.complaint) setComplaintTags(lastRx.complaint.split('||').map(s=>s.trim()).filter(Boolean))
     if (lastRx.diagnosis) setDiagnosisTags(lastRx.diagnosis.split('||').map(s=>s.trim()).filter(Boolean))
     if (lastRx.advice)    setRxAdvice(lastRx.advice.split('\n').filter(Boolean).map((a,i)=>({id:'adv_'+i,name:a})))
     toast.success('Last prescription loaded!')
   }
 
-  const handleSave = async () => {
+  // handleSave supports two modes:
+  //   'stay'  → save, reset dirty flag, stay on page (switches URL to /prescriptions/:id/edit for new saves)
+  //   'print' → save, navigate to /prescriptions/:id?print=1 which auto-opens print dialog
+  const handleSave = async (mode = 'stay') => {
     if (!patient) { toast.error('Please select a patient'); return }
-    if (saving) return  // ✅ prevent double-click duplicate
+    if (saving) return  // prevent double-click
     setSaving(true)
     try {
       const savedTests = await autoSaveToMaster()
@@ -1040,14 +1054,22 @@ export default function NewPrescriptionPage() {
         medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({...m, days: normalizeDays(m.days)})),
         labTests:   savedTests.filter(t=>t.id&&!t.isNew).map(t=>({labTestId:t.id,labTestName:t.name})),
       }
+      let savedId = editId
       if (isEdit) {
         await api.put(`/prescriptions/${editId}`, payload)
-        toast.success('Prescription updated!'); setDirty(false)
-        navigate(`/prescriptions/${editId}`)
+        toast.success('Prescription updated!')
       } else {
-        const {data} = await api.post('/prescriptions', payload)
+        const { data } = await api.post('/prescriptions', payload)
+        savedId = data.data.id
         toast.success(`Prescription ${data.data.rxNo} saved!`)
-        navigate(`/prescriptions/${data.data.id}`)
+      }
+      setDirty(false)
+      // Route based on requested mode
+      if (mode === 'print') {
+        navigate(`/prescriptions/${savedId}?print=1`)
+      } else {
+        // 'stay' — keep user on the form but switch to edit mode so further Saves update
+        if (!isEdit) navigate(`/prescriptions/${savedId}/edit`, { replace: true })
       }
     } catch {} finally { setSaving(false) }
   }
@@ -1064,22 +1086,27 @@ export default function NewPrescriptionPage() {
   return (
     <>
     <div className="fade-in max-w-5xl mx-auto">
-      {/* Header — no step numbers */}
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={()=>navigate('/prescriptions')} className="btn-ghost btn-icon"><ArrowLeft className="w-5 h-5"/></button>
-        <div className="flex-1">
-          <h1 className="page-title">{isEdit ? 'Edit Prescription' : 'New Prescription'}</h1>
-          <p className="page-subtitle">{format(new Date(),'EEEE, dd MMMM yyyy')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select className="form-select w-36 text-sm" value={printLang} onChange={e=>setPrintLang(e.target.value)}>
-            <option value="en">🇬🇧 English</option>
-            <option value="hi">🇮🇳 Hindi</option>
-            <option value="mr">🇮🇳 Marathi</option>
-          </select>
-          <Button variant="primary" loading={saving} icon={<Save className="w-4 h-4"/>} onClick={handleSave}>
-            {isEdit ? 'Update' : 'Save'}
-          </Button>
+      {/* Sticky header — stays pinned while the form scrolls */}
+      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-sm -mx-3 sm:-mx-6 px-3 sm:px-6 py-3 mb-4 border-b border-blue-100">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button onClick={()=>navigate('/prescriptions')} className="btn-ghost btn-icon flex-shrink-0"><ArrowLeft className="w-5 h-5"/></button>
+          <div className="flex-1 min-w-0">
+            <h1 className="page-title text-base sm:text-xl truncate">{isEdit ? 'Edit Prescription' : 'New Prescription'}</h1>
+            <p className="page-subtitle text-xs hidden sm:block">{format(new Date(),'EEEE, dd MMMM yyyy')}</p>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <select className="form-select w-24 sm:w-32 text-xs sm:text-sm" value={printLang} onChange={e=>setPrintLang(e.target.value)}>
+              <option value="en">🇬🇧 EN</option>
+              <option value="hi">🇮🇳 HI</option>
+              <option value="mr">🇮🇳 MR</option>
+            </select>
+            <Button variant="outline" size="sm" loading={saving} icon={<Save className="w-4 h-4"/>} onClick={()=>handleSave('stay')} title="Save and stay on this page">
+              <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
+            </Button>
+            <Button variant="primary" size="sm" loading={saving} icon={<Printer className="w-4 h-4"/>} onClick={()=>handleSave('print')} title="Save and open print view">
+              <span className="hidden sm:inline">Save &amp; Print</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1234,8 +1261,8 @@ export default function NewPrescriptionPage() {
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full" style={{tableLayout:'fixed'}}>
             <colgroup>
-              <col style={{width:'26px'}}/><col style={{width:'200px'}}/><col style={{width:'108px'}}/>
-              <col style={{width:'115px'}}/><col style={{width:'100px'}}/><col style={{width:'54px'}}/>
+              <col style={{width:'26px'}}/><col style={{width:'180px'}}/><col style={{width:'100px'}}/>
+              <col style={{width:'105px'}}/><col style={{width:'110px'}}/><col style={{width:'95px'}}/><col style={{width:'50px'}}/>
               <col/><col style={{width:'26px'}}/>
             </colgroup>
             <thead>
@@ -1253,6 +1280,12 @@ export default function NewPrescriptionPage() {
                   <div className="flex items-center gap-1">
                     <span className="text-xs font-semibold text-slate-400 uppercase">When</span>
                     <ArrowDown active={rxMeds.some(m=>m.timing)} onClick={()=>applyToAll('timing')}/>
+                  </div>
+                </th>
+                <th className="pb-2 px-1">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold text-slate-400 uppercase">Freq.</span>
+                    <ArrowDown active={rxMeds.some(m=>m.frequency && m.frequency !== 'DAILY')} onClick={()=>applyToAll('frequency')}/>
                   </div>
                 </th>
                 <th className="pb-2 px-1">
@@ -1283,6 +1316,9 @@ export default function NewPrescriptionPage() {
                     </td>
                     <td className="py-1.5 px-1">
                       <ColDrop value={med.timing} options={TIMING_OPTS} placeholder="When" onChange={v=>updateMed(idx,'timing',v)}/>
+                    </td>
+                    <td className="py-1.5 px-1">
+                      <ColDrop value={med.frequency||'DAILY'} options={FREQ_OPTS} placeholder="Freq." onChange={v=>updateMed(idx,'frequency',v)}/>
                     </td>
                     <td className="py-1.5 px-1">
                       <SmartDaysInput value={med.days} onChange={v=>updateMed(idx,'days',v)}/>
@@ -1329,7 +1365,7 @@ export default function NewPrescriptionPage() {
                     onSelect={handleMedSelect} onTyped={handleMedTyped}
                     medicines={medicines} rowIndex={idx} recentIds={recentMedIds}/>
                 </div>
-                <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="grid grid-cols-3 gap-2 mb-2">
                   <div>
                     <p className="text-xs text-slate-400 mb-1">Dosage</p>
                     <ColDrop value={med.dosage} options={DOSAGE_OPTS}
@@ -1339,6 +1375,11 @@ export default function NewPrescriptionPage() {
                     <p className="text-xs text-slate-400 mb-1">When</p>
                     <ColDrop value={med.timing} options={TIMING_OPTS}
                       placeholder="When" onChange={v=>updateMed(idx,'timing',v)}/>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">Freq.</p>
+                    <ColDrop value={med.frequency||'DAILY'} options={FREQ_OPTS}
+                      placeholder="Freq." onChange={v=>updateMed(idx,'frequency',v)}/>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -1431,10 +1472,13 @@ export default function NewPrescriptionPage() {
           <Button variant="outline" icon={<BookOpen className="w-4 h-4"/>} onClick={handleSaveAsTemplate}>
             Save as Template
           </Button>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button variant="ghost" onClick={()=>guardedAction(()=>navigate('/prescriptions'))}>Cancel</Button>
-            <Button variant="primary" loading={saving} size="lg" icon={<Save className="w-5 h-5"/>} onClick={handleSave}>
-              {isEdit ? 'Update Prescription' : 'Save Prescription'}
+            <Button variant="outline" loading={saving} size="lg" icon={<Save className="w-5 h-5"/>} onClick={()=>handleSave('stay')}>
+              {isEdit ? 'Update' : 'Save'}
+            </Button>
+            <Button variant="primary" loading={saving} size="lg" icon={<Printer className="w-5 h-5"/>} onClick={()=>handleSave('print')}>
+              Save &amp; Print
             </Button>
           </div>
         </div>

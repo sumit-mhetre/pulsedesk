@@ -431,6 +431,7 @@ model TemplateMedicine {
   dosage      String?
   days        String?  // e.g. '7 days', '2 weeks', '1 month'
   timing      String?
+  frequency   String?  // DAILY, ALT_DAYS, EVERY_3D, WEEKLY, SOS
   notesEn     String?
   notesHi     String?
   notesMr     String?
@@ -481,6 +482,7 @@ model PrescriptionMedicine {
   dosage         String?
   days           String?  // e.g. '7 days', '2 weeks', '1 month'
   timing         String?
+  frequency      String?  @default("DAILY")  // DAILY, ALT_DAYS, EVERY_3D, WEEKLY, SOS
   qty            String?  // String to support '1' for syrups and calculated values
   notesEn        String?
   notesHi        String?
@@ -603,6 +605,7 @@ model DoctorMedicinePreference {
   dosage      String?
   timing      String?
   days        String?  // e.g. '7 days', '2 weeks', '1 month'
+  frequency   String?  // DAILY, ALT_DAYS, EVERY_3D, WEEKLY, SOS
   notesEn     String?
   notesHi     String?
   notesMr     String?

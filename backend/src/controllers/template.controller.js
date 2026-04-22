@@ -72,6 +72,7 @@ async function createTemplate(req, res) {
             dosage:     m.dosage  || null,
             days:       m.days    || null,
             timing:     m.timing  || null,
+            frequency:  m.frequency || null,
             notesEn:    m.notesEn || null,
             sortOrder:  idx,
           })),
@@ -124,6 +125,7 @@ async function updateTemplate(req, res) {
               dosage:     m.dosage  || null,
               days:       m.days    || null,
               timing:     m.timing  || null,
+              frequency:  m.frequency || null,
               notesEn:    m.notesEn || null,
               sortOrder:  idx,
             })),
@@ -185,6 +187,7 @@ async function useTemplate(req, res) {
           dosage:  m.dosage || '',
           days:    m.days ? String(m.days) : '',
           timing:  m.timing || 'AF',
+          frequency: m.frequency || 'DAILY',
           notesEn: m.notesEn || '',
           qty:     m.dosage && m.days ? String((({ '1-0-0':1,'0-1-0':1,'0-0-1':1,'1-0-1':2,'1-1-0':2,'0-1-1':2,'1-1-1':3,'1-1-1-1':4,'OD':1,'BD':2,'TDS':3,'QID':4,'HS':1 })[m.dosage] || 0) * (parseInt(String(m.days).match(/\d+/)?.[0]) || 0)) : '',
         };

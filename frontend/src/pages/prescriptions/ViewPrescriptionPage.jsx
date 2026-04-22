@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Printer, Edit, Calendar, Receipt } from 'lucide-react'
 import { Button, Badge } from '../../components/ui'
 import api from '../../lib/api'
@@ -31,6 +31,17 @@ function getTimingLabel(code, lang) {
   return TIMING_LABELS[code]||code
 }
 
+// ── Frequency labels + translations ──
+const FREQ_LABELS = { DAILY:'Daily', ALT_DAYS:'Alternate Days', EVERY_3D:'Every 3 Days', WEEKLY:'Weekly', SOS:'As Needed' }
+const FREQ_HI     = { DAILY:'रोज़', ALT_DAYS:'एक दिन छोड़कर', EVERY_3D:'हर तीसरे दिन', WEEKLY:'हफ्ते में एक बार', SOS:'ज़रूरत अनुसार' }
+const FREQ_MR     = { DAILY:'दररोज', ALT_DAYS:'एका दिवसा आड', EVERY_3D:'दर ३ दिवसांनी', WEEKLY:'आठवड्यातून एकदा', SOS:'गरजेनुसार' }
+function getFrequencyLabel(code, lang) {
+  if (!code) code = 'DAILY'
+  if (lang === 'hi') return FREQ_HI[code] || FREQ_LABELS[code] || code
+  if (lang === 'mr') return FREQ_MR[code] || FREQ_LABELS[code] || code
+  return FREQ_LABELS[code] || code
+}
+
 // ── Duration translation (e.g. "5 days" → "5 दिवस" / "5 दिन") ──
 const DAYS_UNIT_HI = { day:'दिन', days:'दिन', week:'हफ्ता', weeks:'हफ्ते', month:'महीना', months:'महीने', year:'साल', years:'साल' }
 const DAYS_UNIT_MR = { day:'दिवस', days:'दिवस', week:'आठवडा', weeks:'आठवडे', month:'महिना', months:'महिने', year:'वर्ष', years:'वर्षे' }
@@ -47,6 +58,7 @@ function translateDays(days, lang) {
 export default function ViewPrescriptionPage() {
   const { id }    = useParams()
   const navigate  = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user }  = useAuthStore()
   const [rx, setRx]       = useState(null)
   const [loading, setLoading] = useState(true)
@@ -64,6 +76,19 @@ export default function ViewPrescriptionPage() {
     }).catch(() => navigate('/prescriptions'))
     .finally(() => setLoading(false))
   }, [id])
+
+  // If URL has ?print=1, open the print dialog once the page has rendered.
+  // Then strip the param so refreshing doesn't re-open the dialog.
+  useEffect(() => {
+    if (loading || !rx) return
+    if (searchParams.get('print') !== '1') return
+    const t = setTimeout(() => {
+      window.print()
+      searchParams.delete('print')
+      setSearchParams(searchParams, { replace: true })
+    }, 400)  // let fonts/images render first
+    return () => clearTimeout(t)
+  }, [loading, rx])
 
   // Shorthand: show(key) returns true if cfg doesn't explicitly disable it
   const show = (key) => cfg ? (cfg[key] !== false) : true
@@ -211,10 +236,11 @@ export default function ViewPrescriptionPage() {
                 <tr className="border-b-2 border-primary/20">
                   <th className="text-left py-2 px-2 text-xs text-slate-400 font-semibold uppercase">#</th>
                   <th className="text-left py-2 px-2 text-xs text-slate-400 font-semibold uppercase">MEDICINE</th>
-                  {show('showDosage') && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DOSAGE</th>}
-                  {show('showWhen')   && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">TIMING</th>}
-                  {show('showDays')   && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DURATION</th>}
-                  {show('showQty')    && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">QTY</th>}
+                  {show('showDosage')    && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DOSAGE</th>}
+                  {show('showWhen')      && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">TIMING</th>}
+                  {show('showFrequency') && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">FREQ.</th>}
+                  {show('showDays')      && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">DURATION</th>}
+                  {show('showQty')       && <th className="text-center py-2 px-2 text-xs text-slate-400 font-semibold uppercase">QTY</th>}
                 </tr>
               </thead>
               <tbody>
@@ -227,10 +253,11 @@ export default function ViewPrescriptionPage() {
                         <p className="text-xs text-slate-400 mt-0.5">{translateNote(med.notesEn, lang)}</p>
                       )}
                     </td>
-                    {show('showDosage') && <td className="py-2.5 px-2 text-center font-mono text-slate-700">{med.dosage||'—'}</td>}
-                    {show('showWhen')   && <td className="py-2.5 px-2 text-center text-xs text-slate-600">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
-                    {show('showDays')   && <td className="py-2.5 px-2 text-center text-slate-700">{translateDays(med.days, lang)}</td>}
-                    {show('showQty')    && <td className="py-2.5 px-2 text-center font-bold" style={{color:cfg?.primaryColor||'#1565C0'}}>{med.qty||'—'}</td>}
+                    {show('showDosage')    && <td className="py-2.5 px-2 text-center font-mono text-slate-700">{med.dosage||'—'}</td>}
+                    {show('showWhen')      && <td className="py-2.5 px-2 text-center text-xs text-slate-600">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
+                    {show('showFrequency') && <td className="py-2.5 px-2 text-center text-xs text-slate-600">{getFrequencyLabel(med.frequency, lang)}</td>}
+                    {show('showDays')      && <td className="py-2.5 px-2 text-center text-slate-700">{translateDays(med.days, lang)}</td>}
+                    {show('showQty')       && <td className="py-2.5 px-2 text-center font-bold" style={{color:cfg?.primaryColor||'#1565C0'}}>{med.qty||'—'}</td>}
                   </tr>
                 ))}
               </tbody>
