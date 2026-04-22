@@ -8,7 +8,7 @@ import SuperLayout         from './layouts/SuperLayout'
 
 import LoginPage           from './pages/auth/LoginPage'
 import DashboardPage       from './pages/dashboard/DashboardPage'
-import ClinicSetupPage     from './pages/clinic/ClinicSetupPage'
+import SettingsPage        from './pages/settings/SettingsPage'
 import UsersPage           from './pages/users/UsersPage'
 import ProfilePage         from './pages/users/ProfilePage'
 import PatientsPage        from './pages/patients/PatientsPage'
@@ -22,7 +22,6 @@ import BillsPage      from './pages/billing/BillsPage'
 import ReportsPage      from './pages/reports/ReportsPage'
 import TemplatesPage    from './pages/templates/TemplatesPage'
 import TemplateEditorPage  from './pages/templates/TemplateEditorPage'
-import PageDesignerPage    from './pages/pagedesigner/PageDesignerPage'
 import NewBillPage    from './pages/billing/NewBillPage'
 import ViewBillPage   from './pages/billing/ViewBillPage'
 import SuperDashboard      from './pages/super/SuperDashboard'
@@ -69,11 +68,13 @@ export default function App() {
           <Route path="/templates"        element={<TemplatesPage />} />
           <Route path="/templates/new"    element={<TemplateEditorPage />} />
           <Route path="/templates/:id/edit"  element={<TemplateEditorPage />} />
-          <Route path="/page-designer"         element={<PageDesignerPage />} />
+          {/* Old URLs redirected to /settings for backwards compatibility */}
+          <Route path="/page-designer" element={<Navigate to="/settings" replace />} />
+          <Route path="/clinic/setup"  element={<Navigate to="/settings" replace />} />
           <Route path="/billing/new"   element={<NewBillPage />} />
           <Route path="/billing/:id"   element={<ViewBillPage />} />
           <Route element={<RoleRoute roles={['ADMIN']} />}>
-            <Route path="/clinic/setup"         element={<ClinicSetupPage />} />
+            <Route path="/settings"             element={<SettingsPage />} />
             <Route path="/users"                element={<UsersPage />} />
             <Route path="/master-data"          element={<MasterDataPage />} />
           </Route>

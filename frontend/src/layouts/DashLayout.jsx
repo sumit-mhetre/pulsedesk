@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, Users, Settings, LogOut, Database, FileText, Receipt, BookOpen, Palette,
+  LayoutDashboard, Users, Settings, LogOut, Database, FileText, Receipt, BookOpen,
   Menu, X, User, ChevronDown, Building2, CalendarDays, BarChart3,
 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
@@ -17,10 +17,9 @@ const navItems = [
   { label: 'Billing',      icon: Receipt,         to: '/billing',       roles: ['ADMIN','DOCTOR','RECEPTIONIST'] },
   { label: 'Reports',      icon: BarChart3,       to: '/reports',       roles: ['ADMIN','DOCTOR'] },
   { label: 'Templates',    icon: BookOpen,        to: '/templates',     roles: ['ADMIN','DOCTOR'] },
-  { label: 'Page Designer',icon: Palette,         to: '/page-designer', roles: ['ADMIN','DOCTOR'] },
   { label: 'Master Data',  icon: Database,        to: '/master-data',   roles: ['ADMIN'] },
-  { label: 'Clinic Setup', icon: Building2,       to: '/clinic/setup',  roles: ['ADMIN'] },
   { label: 'Users',        icon: Users,           to: '/users',         roles: ['ADMIN'] },
+  { label: 'Settings',     icon: Settings,        to: '/settings',      roles: ['ADMIN'] },
 ]
 
 function DiscardDialog({ onConfirm, onCancel }) {
@@ -195,8 +194,8 @@ export default function DashLayout() {
                     <User className="w-4 h-4 text-primary"/> My Profile
                   </button>
                   {user?.role === 'ADMIN' && (
-                    <button onClick={() => { navigate('/clinic/setup'); setProfileOpen(false) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 transition-colors">
-                      <Settings className="w-4 h-4 text-primary"/> Clinic Settings
+                    <button onClick={() => { navigate('/settings'); setProfileOpen(false) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 transition-colors">
+                      <Settings className="w-4 h-4 text-primary"/> Settings
                     </button>
                   )}
                   <div className="border-t border-slate-100 my-1"/>
