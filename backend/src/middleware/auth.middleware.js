@@ -1,6 +1,7 @@
 const { verifyToken } = require('../lib/jwt');
 const { errorResponse } = require('../lib/response');
 const prisma = require('../lib/prisma');
+const permissionsLib = require('../lib/permissions');
 
 // Verify JWT and attach user to request
 async function authenticate(req, res, next) {
@@ -53,14 +54,21 @@ function authorize(...roles) {
 
 // Check specific permission — respects role defaults + per-user overrides.
 // SuperAdmin always passes. ADMIN/DOCTOR/RECEPTIONIST are resolved via permissions lib.
-const { userCan } = require('../lib/permissions');
-
 function requirePermission(permission) {
   return (req, res, next) => {
     const user = req.user;
     if (!user) return errorResponse(res, 'Authentication required', 401);
-    if (userCan(user, permission)) return next();
-    // Include the missing permission so frontend can show a specific message
+
+    // SuperAdmin bypasses all permission checks
+    if (user.role === 'SUPER_ADMIN') return next();
+
+    // Defensive: if the lib import failed, log clearly rather than throwing cryptic error
+    if (!permissionsLib || typeof permissionsLib.userCan !== 'function') {
+      console.error('[requirePermission] permissions lib not loaded — check backend/src/lib/permissions.js');
+      return errorResponse(res, 'Server configuration error', 500);
+    }
+
+    if (permissionsLib.userCan(user, permission)) return next();
     return errorResponse(res, `You do not have permission: ${permission}`, 403, { missingPermission: permission });
   };
 }
