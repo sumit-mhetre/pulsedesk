@@ -164,14 +164,22 @@ async function createPrescription(req, res) {
 
           if (!medicineName) return null  // skip empty rows
 
+          // Snapshot generic name: prefer what client sent; fall back to current master value
+          let genericName = m.genericName || null
+          if (!genericName && medicineId) {
+            const med = await tx.medicine.findUnique({ where: { id: medicineId }, select: { genericName: true } })
+            genericName = med?.genericName || null
+          }
+
           const qty = m.qty ?? calcQty(m.dosage, m.days, m.frequency)
           return {
             prescriptionId: rx.id,
             medicineId,
             medicineName,
+            genericName,
             medicineType,
             dosage:   m.dosage  || null,
-            days:     m.days    || null,  // stored as string e.g. '7 days'
+            days:     m.days    || null,
             timing:   m.timing  || null,
             frequency: m.frequency || 'DAILY',
             qty:      qty !== null && qty !== '' ? String(qty) : null,
@@ -301,14 +309,22 @@ async function updatePrescription(req, res) {
               }
             }
 
+            // Snapshot generic name: prefer client-sent, fall back to master
+            let genericName = m.genericName || null
+            if (!genericName && medicineId) {
+              const med = await tx.medicine.findUnique({ where: { id: medicineId }, select: { genericName: true } })
+              genericName = med?.genericName || null
+            }
+
             const qty = m.qty ?? calcQty(m.dosage, m.days, m.frequency)
             return {
               prescriptionId: req.params.id,
               medicineId,
               medicineName,
+              genericName,
               medicineType,
               dosage:   m.dosage  || null,
-              days:     m.days    || null,  // stored as string e.g. '7 days'
+              days:     m.days    || null,
               timing:   m.timing  || null,
               frequency: m.frequency || 'DAILY',
               qty:      qty !== null && qty !== '' ? String(qty) : null,

@@ -254,6 +254,7 @@ model Medicine {
   id             String       @id @default(uuid())
   clinicId       String
   name           String
+  genericName    String?      // Active ingredient / composition, e.g. "Paracetamol 500mg" — clinic-wide, editable by Doctor/Admin
   type           MedicineType @default(tablet)
   category       String?
   defaultDosage  String?
@@ -478,6 +479,7 @@ model PrescriptionMedicine {
   prescriptionId String
   medicineId     String
   medicineName   String
+  genericName    String?       // Snapshot of Medicine.genericName at save time (keeps old prescriptions stable if master edited later)
   medicineType   MedicineType @default(tablet)
   dosage         String?
   days           String?  // e.g. '7 days', '2 weeks', '1 month'

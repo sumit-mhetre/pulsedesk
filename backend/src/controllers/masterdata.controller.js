@@ -86,7 +86,7 @@ const medicineCtrl = {
 
   create: async (req, res) => {
     try {
-      const { name, type, category, defaultDosage, defaultDays, defaultTiming, notesEn, notesHi, notesMr } = req.body;
+      const { name, type, category, genericName, defaultDosage, defaultDays, defaultTiming, notesEn, notesHi, notesMr } = req.body;
       const existing = await prisma.medicine.findFirst({
         where: { clinicId: req.clinicId, name: { equals: name, mode: 'insensitive' } },
       });
@@ -115,10 +115,11 @@ const medicineCtrl = {
         data: {
           clinicId: req.clinicId,
           name,
+          genericName:    genericName?.trim() || null,
           type: detectedType,
           category:       category       || null,
           defaultDosage:  defaultDosage  || null,
-          defaultDays:    defaultDays    ? parseInt(defaultDays) : null,  // ✅ FIX: parse to Int
+          defaultDays:    defaultDays    ? parseInt(defaultDays) : null,
           defaultTiming:  defaultTiming  || null,
           notesEn:        notesEn        || null,
           notesHi:        notesHi        || null,
@@ -153,6 +154,24 @@ const medicineCtrl = {
       return successResponse(res, null, 'Medicine removed');
     } catch (err) {
       return errorResponse(res, 'Failed to remove medicine', 500);
+    }
+  },
+
+  // Focused endpoint for inline generic-name edit from the prescription form.
+  // Doctor/Admin only — enforced on the route via requireRoles middleware.
+  setGeneric: async (req, res) => {
+    try {
+      const { genericName } = req.body;
+      const existing = await prisma.medicine.findFirst({ where: { id: req.params.id, clinicId: req.clinicId } });
+      if (!existing) return errorResponse(res, 'Medicine not found', 404);
+      const updated = await prisma.medicine.update({
+        where: { id: req.params.id },
+        data:  { genericName: genericName?.trim() || null },
+      });
+      return successResponse(res, updated, 'Generic name saved');
+    } catch (err) {
+      console.error('[setGeneric]', err?.message);
+      return errorResponse(res, 'Failed to save generic name', 500);
     }
   },
 };

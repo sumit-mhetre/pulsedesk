@@ -247,6 +247,9 @@ export default function ViewPrescriptionPage() {
                       <td className="py-1.5 px-2 text-slate-700 text-xs border border-slate-400 align-top">{idx+1}</td>
                       <td className="py-1.5 px-2 border border-slate-400 align-top">
                         <p className={show('medicineNameBold')?'font-bold text-slate-900':'text-slate-900'}>{med.medicineName}</p>
+                        {show('showGeneric') && med.genericName && (
+                          <p className="text-xs text-slate-700 italic mt-0.5">{med.genericName}</p>
+                        )}
                         {show('showNotes') && med.notesEn && (
                           <p className="text-xs text-slate-600 mt-0.5 italic">{translateNote(med.notesEn, lang)}</p>
                         )}

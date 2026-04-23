@@ -6,6 +6,7 @@ import { Button, Badge, Card, PageHeader, ConfirmDialog } from '../../components
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { format, addDays } from 'date-fns'
+import useAuthStore from '../../store/authStore'
 
 const DOSAGE_OPTS = ['1-0-0','0-1-0','0-0-1','1-0-1','1-1-0','0-1-1','1-1-1','1-1-1-1','OD','BD','TDS','QID','HS','SOS','STAT']
 const DAYS_OPTS   = ['1','2','3','5','7','10','14','15','21','30']
@@ -102,7 +103,7 @@ const FREQ_OPTS = [
 ]
 const FREQ_MAP    = { '1-0-0':1,'0-1-0':1,'0-0-1':1,'1-0-1':2,'1-1-0':2,'0-1-1':2,'1-1-1':3,'1-1-1-1':4,'OD':1,'BD':2,'TDS':3,'QID':4,'HS':1 }
 const NON_TABLET  = ['liquid','drops','cream','inhaler','injection','powder','syrup','suspension','gel','lotion','ointment','spray']
-const emptyMed    = { medicineId:'',medicineName:'',medicineType:'tablet',dosage:'',days:'',timing:'',frequency:'DAILY',qty:'',notesEn:'' }
+const emptyMed    = { medicineId:'',medicineName:'',medicineType:'tablet',genericName:null,dosage:'',days:'',timing:'',frequency:'DAILY',qty:'',notesEn:'' }
 
 // Syrup/liquid notes options (bilingual)
 const LIQUID_NOTES_EN = ['5ml twice daily','5ml thrice daily','2.5ml twice daily','10ml twice daily','2 drops twice daily','2 drops thrice daily','1 teaspoon thrice daily','2 teaspoons twice daily','As directed','Apply thin layer twice daily']
@@ -332,6 +333,86 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex, r
         </div>
       )}
     </>
+  )
+}
+
+// ── Generic name inline editor (shown below medicine name) ────
+// Readable by everyone; editable only by Doctor + Admin.
+// PATCHes the Medicine master on save → updates all rows sharing that medicineId.
+function GenericInput({ medicineId, value, canEdit, onSaved }) {
+  const [editing, setEditing] = useState(false)
+  const [draft,   setDraft]   = useState(value || '')
+  const [saving,  setSaving]  = useState(false)
+  const inputRef = useRef(null)
+
+  // Sync from prop changes (e.g. another row updated the same medicine)
+  useEffect(() => { if (!editing) setDraft(value || '') }, [value, editing])
+
+  // Focus the input when entering edit mode
+  useEffect(() => { if (editing) setTimeout(() => inputRef.current?.focus(), 20) }, [editing])
+
+  const cancel = () => { setDraft(value || ''); setEditing(false) }
+
+  const save = async () => {
+    const trimmed = draft.trim()
+    if (trimmed === (value || '').trim()) { setEditing(false); return }
+    if (!medicineId) { toast.error('Select a medicine first'); setEditing(false); return }
+    setSaving(true)
+    try {
+      await api.patch(`/master/medicines/${medicineId}/generic`, { genericName: trimmed })
+      onSaved?.(medicineId, trimmed || null)
+      setEditing(false)
+      toast.success(trimmed ? 'Generic name saved' : 'Generic name cleared')
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to save generic')
+    } finally { setSaving(false) }
+  }
+
+  // Read-only state (has value, no edit permission)
+  if (!canEdit && value) {
+    return <p className="text-xs text-slate-500 italic mt-0.5 truncate">{value}</p>
+  }
+  // Read-only state (no value, no edit permission) — render nothing
+  if (!canEdit) return null
+
+  // Edit state
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1 mt-0.5">
+        <input ref={inputRef} type="text" value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') save(); else if (e.key === 'Escape') cancel() }}
+          onBlur={save}
+          placeholder="Generic / composition (e.g. Paracetamol 500mg)"
+          disabled={saving}
+          className="flex-1 text-xs italic text-slate-700 border-b border-primary/40 focus:border-primary bg-transparent py-0.5 px-1 outline-none"/>
+      </div>
+    )
+  }
+
+  // Has value, can edit → show + pencil
+  if (value) {
+    return (
+      <div className="flex items-center gap-1 mt-0.5">
+        <span className="text-xs text-slate-500 italic truncate">{value}</span>
+        <button type="button" onClick={() => setEditing(true)}
+          className="text-slate-400 hover:text-primary flex-shrink-0 p-0.5"
+          title="Edit generic name">
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+        </button>
+      </div>
+    )
+  }
+
+  // No value, can edit → show "+ Add generic name"
+  return (
+    <button type="button" onClick={() => setEditing(true)}
+      className="text-xs text-primary/70 hover:text-primary italic mt-0.5 flex items-center gap-0.5">
+      <Plus className="w-3 h-3"/> Add generic name
+    </button>
   )
 }
 
@@ -720,6 +801,8 @@ export default function NewPrescriptionPage() {
   const [params]   = useSearchParams()
   const { id: editId } = useParams()
   const isEdit     = !!editId
+  const user       = useAuthStore(s => s.user)
+  const canEditGeneric = user?.role === 'ADMIN' || user?.role === 'DOCTOR'
 
   const [medicines,   setMedicines]   = useState([])
   const [labTestList, setLabTestList] = useState([])
@@ -860,6 +943,7 @@ export default function NewPrescriptionPage() {
       setDiagnosisTags(rx.diagnosis ? rx.diagnosis.split('||').map(s=>s.trim()).filter(Boolean) : [])
       setRxMeds(rx.medicines.length > 0 ? rx.medicines.map(m=>({
         medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType,
+        genericName: m.genericName || null,
         dosage:m.dosage||'', days:m.days?String(m.days):'', timing:m.timing||'AF',
         frequency: m.frequency||'DAILY',
         qty:m.qty?String(m.qty):(NON_TABLET.includes(m.medicineType)?'1':''), notesEn:m.notesEn||''
@@ -904,6 +988,13 @@ export default function NewPrescriptionPage() {
     })
   }
 
+  // Called when GenericInput PATCHes the Medicine master.
+  // Updates both the in-memory master list AND any rx rows currently using that medicine.
+  const handleGenericSaved = (medicineId, genericName) => {
+    setMedicines(prev => prev.map(m => m.id === medicineId ? { ...m, genericName } : m))
+    setRxMeds(prev => prev.map(m => m.medicineId === medicineId ? { ...m, genericName } : m))
+  }
+
   const handleMedSelect = useCallback((med, rowIdx) => {
     setDirty()
     if (!med) return
@@ -923,7 +1014,7 @@ export default function NewPrescriptionPage() {
     const notesMr = pref.notesMr || ''
     setRxMeds(prev => {
       const u=[...prev]
-      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, dosage, days, timing, frequency, notesEn, notesHi, notesMr, qty: isNT?'1':calcQty(dosage,days,med.type,frequency) }
+      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, genericName: med.genericName || null, dosage, days, timing, frequency, notesEn, notesHi, notesMr, qty: isNT?'1':calcQty(dosage,days,med.type,frequency) }
       if (rowIdx===u.length-1) u.push({...emptyMed})
       return u
     })
@@ -1060,7 +1151,7 @@ export default function NewPrescriptionPage() {
 
   const carryForward = () => {
     if (!lastRx) return
-    setRxMeds(lastRx.medicines.map(m=>({medicineId:m.medicineId,medicineName:m.medicineName,medicineType:m.medicineType,dosage:m.dosage||'',days:m.days?String(m.days):'',timing:m.timing||'AF',frequency:m.frequency||'DAILY',qty:m.qty?String(m.qty):'',notesEn:''})))
+    setRxMeds(lastRx.medicines.map(m=>({medicineId:m.medicineId,medicineName:m.medicineName,medicineType:m.medicineType,genericName:m.genericName||null,dosage:m.dosage||'',days:m.days?String(m.days):'',timing:m.timing||'AF',frequency:m.frequency||'DAILY',qty:m.qty?String(m.qty):'',notesEn:''})))
     if (lastRx.complaint) setComplaintTags(lastRx.complaint.split('||').map(s=>s.trim()).filter(Boolean))
     if (lastRx.diagnosis) setDiagnosisTags(lastRx.diagnosis.split('||').map(s=>s.trim()).filter(Boolean))
     if (lastRx.advice)    setRxAdvice(lastRx.advice.split('\n').filter(Boolean).map((a,i)=>({id:'adv_'+i,name:a})))
@@ -1342,6 +1433,13 @@ export default function NewPrescriptionPage() {
                     </td>
                     <td className="py-1.5 px-1">
                       <MedInput value={med.medicineName} medicineId={med.medicineId} onSelect={handleMedSelect} onTyped={handleMedTyped} medicines={medicines} rowIndex={idx} recentIds={recentMedIds}/>
+                      {med.medicineId && (
+                        <GenericInput
+                          medicineId={med.medicineId}
+                          value={med.genericName}
+                          canEdit={canEditGeneric}
+                          onSaved={handleGenericSaved}/>
+                      )}
                     </td>
                     <td className="py-1.5 px-1">
                       {isNT ? <div className="h-8 px-2 flex items-center text-xs text-slate-300 bg-slate-50 rounded-lg border border-slate-100">N/A</div>
@@ -1397,6 +1495,13 @@ export default function NewPrescriptionPage() {
                   <MedInput value={med.medicineName} medicineId={med.medicineId}
                     onSelect={handleMedSelect} onTyped={handleMedTyped}
                     medicines={medicines} rowIndex={idx} recentIds={recentMedIds}/>
+                  {med.medicineId && (
+                    <GenericInput
+                      medicineId={med.medicineId}
+                      value={med.genericName}
+                      canEdit={canEditGeneric}
+                      onSaved={handleGenericSaved}/>
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-2">
                   <div>

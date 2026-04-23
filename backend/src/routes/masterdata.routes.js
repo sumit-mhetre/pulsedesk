@@ -10,6 +10,7 @@ const {
 router.get   ('/medicines',          authenticate, medicineCtrl.getAll);
 router.post  ('/medicines',          authenticate, medicineCtrl.create);
 router.put   ('/medicines/:id',      authenticate, authorize('ADMIN'), medicineCtrl.update);
+router.patch ('/medicines/:id/generic', authenticate, authorize('ADMIN','DOCTOR'), medicineCtrl.setGeneric);
 router.delete('/medicines/:id',      authenticate, authorize('ADMIN'), medicineCtrl.remove);
 
 // ── Lab Tests ─────────────────────────────────────────────

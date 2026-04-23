@@ -91,6 +91,7 @@ const DEFAULT_RX_PRINT = {
   showComplaint: true, showDiagnosis: true, showMedicines: true, showLabTests: true,
   showAdvice: true, showNextVisit: true, showVitals: false,
   showDosage: true, showWhen: true, showFrequency: true, showDays: true, showQty: true, showNotes: true,
+  showGeneric: false,  // Print generic/composition below medicine name — OFF by default
   compactPrint: true,  // Combine Timing-Freq-Duration into one column for denser layout
   fontFamily: 'default', baseFontSize: 'md', medicineNameBold: true,
   showSignature: true, showGeneratedBy: true, showRxSymbol: true,
@@ -448,6 +449,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
               <Toggle checked={cfg.showDays}         onChange={v => set('showDays', v)}         label="Duration"/>
               <Toggle checked={cfg.showQty}          onChange={v => set('showQty', v)}          label="Quantity"/>
               <Toggle checked={cfg.showNotes}        onChange={v => set('showNotes', v)}        label="Notes" sub="Instructions below medicine name"/>
+              <Toggle checked={cfg.showGeneric === true} onChange={v => set('showGeneric', v)} label="Generic Name" sub="Prints active ingredient below medicine name (e.g. Paracetamol 500mg)"/>
               <Toggle checked={cfg.showRxSymbol}     onChange={v => set('showRxSymbol', v)}     label="℞ Symbol"/>
               <Toggle checked={cfg.medicineNameBold} onChange={v => set('medicineNameBold', v)} label="Bold Medicine Names"/>
             </CollapsibleSection>
