@@ -8,11 +8,14 @@ const { successResponse, errorResponse } = require('../lib/response');
 async function login(req, res) {
   try {
     const { email, password } = req.body;
+    const emailNorm = typeof email === 'string' ? email.trim().toLowerCase() : email;
+    console.log(`[LOGIN] attempt for: "${emailNorm}"`);
 
     // Check super admin first
-    const superAdmin = await prisma.superAdmin.findUnique({ where: { email } });
+    const superAdmin = await prisma.superAdmin.findUnique({ where: { email: emailNorm } });
     if (superAdmin) {
       const valid = await bcrypt.compare(password, superAdmin.password);
+      console.log(`[LOGIN] super admin path — password valid: ${valid}`);
       if (!valid) return errorResponse(res, 'Invalid credentials', 401);
       const payload = { id: superAdmin.id, role: 'SUPER_ADMIN' };
       const accessToken = generateAccessToken(payload);
@@ -25,15 +28,20 @@ async function login(req, res) {
 
     // Clinic user — email globally unique
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: emailNorm },
       include: { clinic: { select: { id: true, name: true, logo: true, status: true, subscriptionPlan: true } } },
     });
 
-    if (!user) return errorResponse(res, 'Invalid credentials', 401);
+    if (!user) {
+      console.log(`[LOGIN] no user found for "${emailNorm}"`);
+      return errorResponse(res, 'Invalid credentials', 401);
+    }
+    console.log(`[LOGIN] user found: ${user.email}, active=${user.isActive}, role=${user.role}, clinicStatus=${user.clinic?.status}`);
     if (!user.isActive) return errorResponse(res, 'Account deactivated. Contact admin.', 403);
     if (user.clinic.status !== 'Active') return errorResponse(res, 'Clinic is not active', 403);
 
     const valid = await bcrypt.compare(password, user.password);
+    console.log(`[LOGIN] password valid: ${valid}`);
     if (!valid) return errorResponse(res, 'Invalid credentials', 401);
 
     const payload = { id: user.id, clinicId: user.clinicId, role: user.role };
