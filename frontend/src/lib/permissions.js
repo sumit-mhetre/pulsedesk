@@ -1,8 +1,6 @@
-// Single source of truth for RBAC permissions.
-// Roles set defaults; user.permissions holds overrides only (keeps DB clean).
+// Mirrors backend src/lib/permissions.js. Keys must stay in sync.
 
-// 12 granular permissions. Keep keys stable — they're stored in DB + sent to frontend.
-const PERMISSION_KEYS = [
+export const PERMISSION_KEYS = [
   'viewDashboard',
   'managePatients',
   'manageQueue',
@@ -15,10 +13,40 @@ const PERMISSION_KEYS = [
   'manageMasterData',
   'manageSettings',
   'manageUsers',
-];
+]
 
-// Role defaults. Pure data — resolvePermissions() merges these with per-user overrides.
-const ROLE_DEFAULTS = {
+export const PERMISSION_LABELS = {
+  viewDashboard:       'View Dashboard',
+  managePatients:      'Manage Patients',
+  manageQueue:         'Manage Queue',
+  viewPrescriptions:   'View Prescriptions',
+  createPrescriptions: 'Create / Edit Prescriptions',
+  viewBilling:         'View Billing',
+  createBilling:       'Create / Edit Bills',
+  viewReports:         'View Reports',
+  manageTemplates:     'Manage Templates',
+  manageMasterData:    'Manage Master Data',
+  manageSettings:      'Manage Settings',
+  manageUsers:         'Manage Users',
+}
+
+// Grouping for the admin UI checkboxes
+export const PERMISSION_GROUPS = [
+  {
+    label: 'Clinical',
+    keys: ['viewDashboard','managePatients','manageQueue','viewPrescriptions','createPrescriptions','viewReports','manageTemplates'],
+  },
+  {
+    label: 'Billing',
+    keys: ['viewBilling','createBilling'],
+  },
+  {
+    label: 'Administration',
+    keys: ['manageMasterData','manageSettings','manageUsers'],
+  },
+]
+
+export const ROLE_DEFAULTS = {
   ADMIN: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
     viewPrescriptions: true, createPrescriptions: true,
@@ -40,55 +68,49 @@ const ROLE_DEFAULTS = {
     viewReports: false,   manageTemplates: false,
     manageMasterData: false, manageSettings: false, manageUsers: false,
   },
-};
-
-// Guarantee every key is present for every role (fail-closed if new key added without updating defaults)
-function getDefaultsForRole(role) {
-  const defaults = ROLE_DEFAULTS[role] || {};
-  const filled = {};
-  for (const k of PERMISSION_KEYS) filled[k] = defaults[k] === true;
-  return filled;
 }
 
-// Merge: role defaults <- user overrides. Returns flat { key: bool } object.
-function resolvePermissions(user) {
-  if (!user) return {};
-  const defaults = getDefaultsForRole(user.role);
-  const overrides = (user.permissions && typeof user.permissions === 'object') ? user.permissions : {};
-  const result = { ...defaults };
+export function getDefaultsForRole(role) {
+  const defaults = ROLE_DEFAULTS[role] || {}
+  const filled = {}
+  for (const k of PERMISSION_KEYS) filled[k] = defaults[k] === true
+  return filled
+}
+
+// Resolves effective permissions for a user — role defaults + per-user overrides.
+// Always returns a full flat object with all 12 keys.
+export function resolvePermissions(user) {
+  if (!user) return {}
+  const defaults = getDefaultsForRole(user.role)
+  const overrides = user.permissions && typeof user.permissions === 'object' ? user.permissions : {}
+  const out = { ...defaults }
   for (const k of PERMISSION_KEYS) {
-    if (typeof overrides[k] === 'boolean') result[k] = overrides[k];
+    if (typeof overrides[k] === 'boolean') out[k] = overrides[k]
   }
-  return result;
+  return out
 }
 
-// Shortcut used by middleware + inside controllers.
-function userCan(user, permissionKey) {
-  if (!user) return false;
-  if (user.role === 'SUPER_ADMIN') return true;  // SuperAdmin bypasses all app-level permission checks
-  const resolved = resolvePermissions(user);
-  return resolved[permissionKey] === true;
+// Shortcut check. Accepts user object; SUPER_ADMIN always true.
+export function can(user, permissionKey) {
+  if (!user) return false
+  if (user.role === 'SUPER_ADMIN') return true
+  // Backend already resolves and sends `permissions` as a flat map on login/me response
+  if (user.permissions && typeof user.permissions[permissionKey] === 'boolean') {
+    return user.permissions[permissionKey]
+  }
+  // Fallback to role defaults if for some reason backend didn't send flat permissions
+  return resolvePermissions(user)[permissionKey] === true
 }
 
-// Sanitize input from PUT /users/:id — drop unknown keys, coerce to bool.
-// Only stores KEYS THAT DIFFER from role defaults → keeps permissions JSON minimal.
-function sanitizeOverrides(role, incoming) {
-  if (!incoming || typeof incoming !== 'object') return {};
-  const defaults = getDefaultsForRole(role);
-  const overrides = {};
+// For the edit-user form: returns the list of override keys (those differing from role defaults).
+// Sent back to backend on save — keeps DB clean.
+export function computeOverrides(role, fullPermissions) {
+  const defaults = getDefaultsForRole(role)
+  const overrides = {}
   for (const k of PERMISSION_KEYS) {
-    if (typeof incoming[k] === 'boolean' && incoming[k] !== defaults[k]) {
-      overrides[k] = incoming[k];
+    if (typeof fullPermissions[k] === 'boolean' && fullPermissions[k] !== defaults[k]) {
+      overrides[k] = fullPermissions[k]
     }
   }
-  return overrides;
+  return overrides
 }
-
-module.exports = {
-  PERMISSION_KEYS,
-  ROLE_DEFAULTS,
-  getDefaultsForRole,
-  resolvePermissions,
-  userCan,
-  sanitizeOverrides,
-};
