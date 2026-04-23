@@ -154,6 +154,7 @@ model User {
   prescriptions Prescription[]
   auditLogs    AuditLog[]
   refreshTokens RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
 
   @@unique([email])
   @@map("users")
@@ -169,6 +170,22 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+// Password reset tokens — one-time use, 1-hour expiry.
+// Scoped to clinic users only (SuperAdmin uses separate contact-based recovery).
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?  // null = still valid, set = consumed
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // ─────────────────────────────────────────────

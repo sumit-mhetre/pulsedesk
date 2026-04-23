@@ -7,6 +7,8 @@ import DashLayout          from './layouts/DashLayout'
 import SuperLayout         from './layouts/SuperLayout'
 
 import LoginPage           from './pages/auth/LoginPage'
+import ForgotPasswordPage  from './pages/auth/ForgotPasswordPage'
+import ResetPasswordPage   from './pages/auth/ResetPasswordPage'
 import DashboardPage       from './pages/dashboard/DashboardPage'
 import SettingsPage        from './pages/settings/SettingsPage'
 import UsersPage           from './pages/users/UsersPage'
@@ -41,7 +43,9 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AuthLayout />}>
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login"           element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password"  element={<ResetPasswordPage />} />
       </Route>
 
       <Route element={<SuperRoute />}>

@@ -1,12 +1,29 @@
 const rateLimit = require('express-rate-limit')
 
-// ── Login rate limiter — 10 attempts per 15 min per IP ────
+// ── Login rate limiter — 20 FAILED attempts per 15 min per IP ──
+// Successful logins do NOT count against this limit (skipSuccessfulRequests).
+// A "success" is any response with HTTP status < 400.
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,  // 15 minutes
-  max: 10,
+  max: 20,                   // raised from 10 → 20
+  skipSuccessfulRequests: true,
   message: {
     success: false,
-    message: 'Too many login attempts. Please wait 15 minutes and try again.'
+    message: 'Too many failed login attempts from this IP. Please wait 15 minutes or use "Forgot Password" to reset.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || 'unknown',
+})
+
+// ── Forgot-password limiter — 5 requests per hour per IP ──
+// Prevents email enumeration attacks & spam.
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,  // 1 hour
+  max: 5,
+  message: {
+    success: false,
+    message: 'Too many password reset requests. Please wait an hour and try again.'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -35,4 +52,4 @@ const createLimiter = rateLimit({
   legacyHeaders: false,
 })
 
-module.exports = { loginLimiter, apiLimiter, createLimiter }
+module.exports = { loginLimiter, forgotPasswordLimiter, apiLimiter, createLimiter }

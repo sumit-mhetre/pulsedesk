@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
 import { Button } from '../../components/ui'
@@ -45,9 +45,8 @@ export default function LoginPage() {
     <div className="animate-in">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800 mb-1">Welcome back</h1>
- <p className="text-slate-500 text-sm">Sign in to your SimpleRx EMR account</p>      
- 
- </div>
+        <p className="text-slate-500 text-sm">Sign in to your PulseDesk account</p>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-1">
         <div className="form-group">
@@ -82,6 +81,12 @@ export default function LoginPage() {
             </button>
           </div>
           {errors.password && <span className="form-error">{errors.password}</span>}
+        </div>
+
+        <div className="flex justify-end -mt-1 mb-1">
+          <Link to="/forgot-password" className="text-xs text-primary hover:text-primary-dark font-semibold">
+            Forgot password?
+          </Link>
         </div>
 
         <div className="pt-2">

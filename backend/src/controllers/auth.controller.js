@@ -1,5 +1,6 @@
 const { audit } = require('../middleware/audit.middleware');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { generateAccessToken, generateRefreshToken, verifyToken } = require('../lib/jwt');
 const { successResponse, errorResponse } = require('../lib/response');
@@ -112,4 +113,124 @@ async function changePassword(req, res) {
   }
 }
 
-module.exports = { login, refreshToken, logout, getMe, changePassword };
+// ── Forgot Password ──────────────────────────────────────────
+// Always returns success (even if email doesn't exist) to prevent email enumeration.
+// Generates a 1-hour token. Since we don't have email service yet, the reset URL
+// is logged to the server console — admin/dev can copy it from Render logs.
+// SuperAdmin accounts NOT supported here (separate recovery path via direct DB).
+async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return errorResponse(res, 'Email is required', 400);
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+
+    // Always wait briefly to prevent timing-based email enumeration
+    await new Promise(r => setTimeout(r, 300));
+
+    if (user && user.isActive) {
+      // Invalidate any previous unused tokens for this user
+      await prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data:  { usedAt: new Date() },
+      });
+
+      // Generate cryptographically-random token — 48 hex chars = 192 bits of entropy
+      const token = crypto.randomBytes(24).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await prisma.passwordResetToken.create({
+        data: { userId: user.id, token, expiresAt },
+      });
+
+      // Build reset URL — FRONTEND_URL falls back to request origin
+      const frontendUrl = process.env.FRONTEND_URL
+        || req.headers.origin
+        || req.headers.referer?.replace(/\/[^/]*$/, '')
+        || 'https://pulsedesk-1.onrender.com';
+      const resetUrl = `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${token}`;
+
+      // Log the reset link (until email service is integrated).
+      // Readable in Render logs: Dashboard → Service → Logs
+      console.log('');
+      console.log('════════════════════════════════════════════════════════════');
+      console.log('  PASSWORD RESET REQUESTED');
+      console.log(`  User:  ${user.email}  (${user.name})`);
+      console.log(`  Link:  ${resetUrl}`);
+      console.log(`  Token expires: ${expiresAt.toISOString()}  (1 hour)`);
+      console.log('════════════════════════════════════════════════════════════');
+      console.log('');
+    }
+
+    // Uniform response either way
+    return successResponse(res, null,
+      'If an account exists for that email, a reset link has been generated. Contact your administrator if you do not receive it.');
+  } catch (err) {
+    console.error('[forgotPassword]', err);
+    return errorResponse(res, 'Failed to process password reset', 500);
+  }
+}
+
+// ── Reset Password ──────────────────────────────────────────
+// Takes token + newPassword, sets the new password, invalidates all sessions.
+async function resetPassword(req, res) {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return errorResponse(res, 'Token and new password are required', 400);
+    }
+    if (newPassword.length < 6) {
+      return errorResponse(res, 'Password must be at least 6 characters', 400);
+    }
+
+    const record = await prisma.passwordResetToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!record) {
+      return errorResponse(res, 'Invalid or expired reset link', 400);
+    }
+    if (record.usedAt) {
+      return errorResponse(res, 'This reset link has already been used', 400);
+    }
+    if (record.expiresAt < new Date()) {
+      return errorResponse(res, 'This reset link has expired. Please request a new one.', 400);
+    }
+    if (!record.user.isActive) {
+      return errorResponse(res, 'Account deactivated. Contact admin.', 403);
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+
+    // Atomic: update password, mark token used, invalidate refresh tokens
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: record.userId },
+        data:  { password: hashed },
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: record.id },
+        data:  { usedAt: new Date() },
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { userId: record.userId },
+      }),
+    ]);
+
+    // Audit (best-effort, shouldn't block response)
+    try {
+      req.clinicId = record.user.clinicId; req.user = record.user;
+      audit(req, 'PASSWORD_RESET', 'user', record.userId, { email: record.user.email });
+    } catch {}
+
+    return successResponse(res, null, 'Password reset successful. You can now log in with your new password.');
+  } catch (err) {
+    console.error('[resetPassword]', err);
+    return errorResponse(res, 'Failed to reset password', 500);
+  }
+}
+
+module.exports = { login, refreshToken, logout, getMe, changePassword, forgotPassword, resetPassword };
