@@ -45,8 +45,9 @@ export default function LoginPage() {
     <div className="animate-in">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800 mb-1">Welcome back</h1>
-        <p className="text-slate-500 text-sm">Sign in to your SimpleRx EMR account</p>
-      </div>
+ <p className="text-slate-500 text-sm">Sign in to your SimpleRx EMR account</p>      
+ 
+ </div>
 
       <form onSubmit={handleSubmit} className="space-y-1">
         <div className="form-group">

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SimpleRx">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#1565C0"/>
+  <!-- Clean minimal pulse line -->
+  <path d="M10 32 h10 l4 -10 l6 20 l4 -14 l4 8 l4 -4 h12"
+        stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Accent dot where the pulse begins -->
+  <circle cx="10" cy="32" r="2.5" fill="#00BCD4"/>
+</svg>

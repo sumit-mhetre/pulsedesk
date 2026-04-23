@@ -1,5 +1,6 @@
 import { Outlet, Navigate } from 'react-router-dom'
 import useAuthStore from '../store/authStore'
+import Logo from '../components/ui/Logo'
 
 export default function AuthLayout() {
   const { isAuthenticated, user } = useAuthStore()
@@ -8,7 +9,7 @@ export default function AuthLayout() {
   }
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left panel */}
+      {/* Left panel — dark blue, uses white-variant logo */}
       <div className="hidden lg:flex w-[45%] bg-primary flex-col justify-between p-12 relative overflow-hidden">
         {/* Background decoration */}
         <div className="absolute inset-0">
@@ -17,16 +18,8 @@ export default function AuthLayout() {
           <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
         </div>
         <div className="relative">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <circle cx="11" cy="11" r="3.5" fill="white"/>
-                <path d="M11 2 L11 6 M11 16 L11 20 M2 11 L6 11 M16 11 L20 11" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <span className="text-white font-bold text-xl tracking-tight">SimpleRx EMR</span>
-          </div>
-          <p className="text-blue-200 text-sm">Smart Clinic Management</p>
+          <Logo variant="dark" size="md" />
+          <p className="text-blue-200 text-sm mt-2">Smart Clinic Management</p>
         </div>
         <div className="relative">
           <h2 className="text-white text-3xl font-bold leading-snug mb-4">
@@ -53,18 +46,11 @@ export default function AuthLayout() {
         <p className="relative text-blue-300 text-xs">© 2026 SimpleRx EMR. All rights reserved.</p>
       </div>
 
-      {/* Right panel */}
+      {/* Right panel — white, uses blue-variant logo on mobile */}
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-              <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-                <circle cx="11" cy="11" r="3.5" fill="white"/>
-                <path d="M11 2 L11 6 M11 16 L11 20 M2 11 L6 11 M16 11 L20 11" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <span className="font-bold text-primary text-xl">SimpleRx EMR</span>
+          <div className="lg:hidden flex justify-center mb-8">
+            <Logo variant="light" size="md" />
           </div>
           <Outlet />
         </div>
