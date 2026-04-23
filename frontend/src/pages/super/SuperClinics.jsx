@@ -40,7 +40,7 @@ export default function SuperClinics() {
     <div className="fade-in">
       <PageHeader
         title="All Clinics"
-        subtitle="Manage all registered clinics on PulseDesk"
+        subtitle="Manage all registered clinics on SimpleRx EMR"
         action={
           <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => navigate('/super/clinics/new')}>
             Add Clinic

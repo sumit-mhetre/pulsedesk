@@ -1,4 +1,4 @@
-# PulseDesk Backend — Database Operations Runbook
+# SimpleRx EMR Backend — Database Operations Runbook
 
 ## 🛑 Never do this
 

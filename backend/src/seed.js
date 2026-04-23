@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs')
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Seeding PulseDesk database...\n')
+  console.log('🌱 Seeding SimpleRx EMR database...\n')
 
   // ── 1. Super Admin ─────────────────────────────
  const superHashed = await bcrypt.hash('superadmin123', 12)

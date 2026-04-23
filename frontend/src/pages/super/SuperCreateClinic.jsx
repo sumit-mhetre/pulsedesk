@@ -71,7 +71,7 @@ export default function SuperCreateClinic() {
         <button onClick={() => navigate('/super/clinics')} className="btn-ghost btn-icon">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <PageHeader title="Create New Clinic" subtitle="Register a new clinic on PulseDesk" />
+        <PageHeader title="Create New Clinic" subtitle="Register a new clinic on SimpleRx EMR" />
       </div>
 
       <form onSubmit={handleSubmit}>

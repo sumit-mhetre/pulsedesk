@@ -81,7 +81,7 @@ app.get('/api/audit-logs', authenticate, authorize('ADMIN'), getAuditLogs)
 
 // ── Health check ───────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', app: 'PulseDesk API', version: '1.0.0' })
+  res.json({ status: 'ok', app: 'SimpleRx EMR API', version: '1.0.0' })
 })
 
 // ── 404 handler ────────────────────────────────────────────
@@ -100,7 +100,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
-  console.log(`\n🚀 PulseDesk API running on http://localhost:${PORT}`)
+  console.log(`\n🚀 SimpleRx EMR API running on http://localhost:${PORT}`)
   console.log(`   Environment: ${process.env.NODE_ENV}`)
   console.log(`   Security: Helmet ✅ | Rate Limiting ✅ | Audit Logs ✅`)
 })

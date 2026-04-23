@@ -22,7 +22,7 @@ export default function SuperLayout() {
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-white font-bold text-sm">PulseDesk</p>
+              <p className="text-white font-bold text-sm">SimpleRx EMR</p>
               <p className="text-slate-400 text-xs">Super Admin</p>
             </div>
           </div>

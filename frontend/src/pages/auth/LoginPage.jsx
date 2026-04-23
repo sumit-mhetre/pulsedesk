@@ -45,7 +45,7 @@ export default function LoginPage() {
     <div className="animate-in">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800 mb-1">Welcome back</h1>
-        <p className="text-slate-500 text-sm">Sign in to your PulseDesk account</p>
+        <p className="text-slate-500 text-sm">Sign in to your SimpleRx EMR account</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-1">
@@ -85,7 +85,7 @@ export default function LoginPage() {
 
         <div className="pt-2">
           <Button type="submit" variant="primary" loading={loading} className="w-full btn-lg">
-            Sign In to PulseDesk
+            Sign In to SimpleRx EMR
           </Button>
         </div>
       </form>

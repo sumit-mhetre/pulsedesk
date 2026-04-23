@@ -100,7 +100,7 @@ export default function DashLayout() {
             </svg>
           </div>
           <div>
-            <p className="text-white font-bold text-base leading-none">PulseDesk</p>
+            <p className="text-white font-bold text-base leading-none">SimpleRx EMR</p>
             <p className="text-blue-200 text-xs mt-0.5 truncate max-w-[120px]">{user?.clinic?.name || 'Clinic'}</p>
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function DashLayout() {
                 <LogOut className="w-7 h-7 text-warning"/>
               </div>
               <h3 className="font-bold text-slate-800 text-lg mb-2">Logout?</h3>
-              <p className="text-sm text-slate-500">Are you sure you want to logout from PulseDesk?</p>
+              <p className="text-sm text-slate-500">Are you sure you want to logout from SimpleRx EMR?</p>
             </div>
             <div className="flex border-t border-slate-100">
               <button onClick={()=>setConfirmLogout(false)} className="flex-1 py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors border-r border-slate-100">Cancel</button>

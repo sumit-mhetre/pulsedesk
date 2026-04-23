@@ -24,7 +24,7 @@ export default function AuthLayout() {
                 <path d="M11 2 L11 6 M11 16 L11 20 M2 11 L6 11 M16 11 L20 11" stroke="white" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
-            <span className="text-white font-bold text-xl tracking-tight">PulseDesk</span>
+            <span className="text-white font-bold text-xl tracking-tight">SimpleRx EMR</span>
           </div>
           <p className="text-blue-200 text-sm">Smart Clinic Management</p>
         </div>
@@ -50,7 +50,7 @@ export default function AuthLayout() {
             ))}
           </div>
         </div>
-        <p className="relative text-blue-300 text-xs">© 2026 PulseDesk. All rights reserved.</p>
+        <p className="relative text-blue-300 text-xs">© 2026 SimpleRx EMR. All rights reserved.</p>
       </div>
 
       {/* Right panel */}
@@ -64,7 +64,7 @@ export default function AuthLayout() {
                 <path d="M11 2 L11 6 M11 16 L11 20 M2 11 L6 11 M16 11 L20 11" stroke="white" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </div>
-            <span className="font-bold text-primary text-xl">PulseDesk</span>
+            <span className="font-bold text-primary text-xl">SimpleRx EMR</span>
           </div>
           <Outlet />
         </div>

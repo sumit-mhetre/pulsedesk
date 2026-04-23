@@ -10,7 +10,7 @@ export default function LoadingScreen() {
           </svg>
         </div>
         <div className="text-center">
-          <p className="font-bold text-primary text-lg">PulseDesk</p>
+          <p className="font-bold text-primary text-lg">SimpleRx EMR</p>
           <p className="text-slate-400 text-sm mt-0.5">Loading...</p>
         </div>
         <div className="spinner text-primary" />
