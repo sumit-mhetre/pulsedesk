@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const { body } = require('express-validator');
 const { validate } = require('../middleware/validate.middleware');
-const { authenticate, authorize } = require('../middleware/auth.middleware');
+const { authenticate, authorize, requirePermission } = require('../middleware/auth.middleware');
 const ctrl = require('../controllers/clinic.controller');
 
 // Super admin — get all clinics
@@ -27,10 +27,10 @@ router.patch('/:id/status', authenticate, authorize('SUPER_ADMIN'), ctrl.updateC
 // Super admin — update any clinic
 router.put('/:id', authenticate, authorize('SUPER_ADMIN'), ctrl.updateClinic);
 
-// Clinic admin — get my clinic
+// Clinic — read own clinic info (any authed user)
 router.get('/me', authenticate, ctrl.getMyClinic);
 
-// Clinic admin — update my clinic
-router.put('/me', authenticate, authorize('ADMIN'), ctrl.updateClinic);
+// Clinic — update own clinic (settings, name, etc) — requires manageSettings
+router.put('/me', authenticate, requirePermission('manageSettings'), ctrl.updateClinic);
 
 module.exports = router;

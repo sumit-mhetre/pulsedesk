@@ -5,22 +5,22 @@ import {
   Menu, X, User, ChevronDown, Building2, CalendarDays, BarChart3,
 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
-import Logo from '../components/ui/Logo'
+import { can } from '../lib/permissions'
 import { getGlobalDirty, onGlobalDirtyChange } from '../hooks/useUnsavedChanges'
 import { useSessionTimeout } from '../hooks/useSessionTimeout'
 import toast from 'react-hot-toast'
 
 const navItems = [
-  { label: 'Dashboard',    icon: LayoutDashboard, to: '/dashboard',     roles: ['ADMIN','DOCTOR','RECEPTIONIST'] },
-  { label: 'Patients',     icon: User,            to: '/patients',      roles: ['ADMIN','DOCTOR','RECEPTIONIST'] },
-  { label: 'Queue',        icon: CalendarDays,    to: '/queue',         roles: ['ADMIN','DOCTOR','RECEPTIONIST'] },
-  { label: 'Prescriptions',icon: FileText,        to: '/prescriptions', roles: ['ADMIN','DOCTOR','RECEPTIONIST'] },
-  { label: 'Billing',      icon: Receipt,         to: '/billing',       roles: ['ADMIN','DOCTOR','RECEPTIONIST'] },
-  { label: 'Reports',      icon: BarChart3,       to: '/reports',       roles: ['ADMIN','DOCTOR'] },
-  { label: 'Templates',    icon: BookOpen,        to: '/templates',     roles: ['ADMIN','DOCTOR'] },
-  { label: 'Master Data',  icon: Database,        to: '/master-data',   roles: ['ADMIN'] },
-  { label: 'Users',        icon: Users,           to: '/users',         roles: ['ADMIN'] },
-  { label: 'Settings',     icon: Settings,        to: '/settings',      roles: ['ADMIN'] },
+  { label: 'Dashboard',    icon: LayoutDashboard, to: '/dashboard',     requires: 'viewDashboard' },
+  { label: 'Patients',     icon: User,            to: '/patients',      requires: 'managePatients' },
+  { label: 'Queue',        icon: CalendarDays,    to: '/queue',         requires: 'manageQueue' },
+  { label: 'Prescriptions',icon: FileText,        to: '/prescriptions', requires: 'viewPrescriptions' },
+  { label: 'Billing',      icon: Receipt,         to: '/billing',       requires: 'viewBilling' },
+  { label: 'Reports',      icon: BarChart3,       to: '/reports',       requires: 'viewReports' },
+  { label: 'Templates',    icon: BookOpen,        to: '/templates',     requires: 'viewPrescriptions' },
+  { label: 'Master Data',  icon: Database,        to: '/master-data',   requires: 'manageMasterData' },
+  { label: 'Users',        icon: Users,           to: '/users',         requires: 'manageUsers' },
+  { label: 'Settings',     icon: Settings,        to: '/settings',      requires: 'manageSettings' },
 ]
 
 function DiscardDialog({ onConfirm, onCancel }) {
@@ -88,19 +88,21 @@ export default function DashLayout() {
     if (discardTarget) navigate(discardTarget)
   }
 
-  const visibleNav = navItems.filter(item => item.roles.includes(user?.role))
+  const visibleNav = navItems.filter(item => can(user, item.requires))
 
   const Sidebar = ({ mobile = false }) => (
     <aside className={`${mobile ? 'w-full h-full' : 'w-64 min-h-screen'} bg-primary flex flex-col`}>
       <div className="flex items-center justify-between p-5 border-b border-white/10">
-       <div className="flex items-center gap-3 min-w-0">
-          <Logo variant="dark" size="sm" showText={false}/>
-          <div className="min-w-0">
-            <div className="text-white font-extrabold text-base leading-none">
-              Simple<span className="text-accent">Rx</span>
-              <span className="ml-1.5">EMR</span>
-            </div>
-            <p className="text-blue-200 text-xs mt-1 truncate max-w-[120px]">{user?.clinic?.name || 'Clinic'}</p>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="11" r="3.5" fill="white"/>
+              <path d="M11 2L11 6M11 16L11 20M2 11L6 11M16 11L20 11" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <p className="text-white font-bold text-base leading-none">PulseDesk</p>
+            <p className="text-blue-200 text-xs mt-0.5 truncate max-w-[120px]">{user?.clinic?.name || 'Clinic'}</p>
           </div>
         </div>
         {mobile && <button onClick={() => setSidebarOpen(false)} className="text-white/60 hover:text-white"><X className="w-5 h-5"/></button>}
@@ -147,7 +149,7 @@ export default function DashLayout() {
                 <LogOut className="w-7 h-7 text-warning"/>
               </div>
               <h3 className="font-bold text-slate-800 text-lg mb-2">Logout?</h3>
-              <p className="text-sm text-slate-500">Are you sure you want to logout from SimpleRx EMR?</p>
+              <p className="text-sm text-slate-500">Are you sure you want to logout from PulseDesk?</p>
             </div>
             <div className="flex border-t border-slate-100">
               <button onClick={()=>setConfirmLogout(false)} className="flex-1 py-3.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors border-r border-slate-100">Cancel</button>

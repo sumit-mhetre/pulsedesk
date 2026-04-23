@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { generateAccessToken, generateRefreshToken, verifyToken } = require('../lib/jwt');
 const { successResponse, errorResponse } = require('../lib/response');
+const { resolvePermissions } = require('../lib/permissions');
 
 async function login(req, res) {
   try {
@@ -56,6 +57,7 @@ async function login(req, res) {
     }).catch(err => console.error('RefreshToken save error (non-fatal):', err.message));
 
     const { password: _, ...userSafe } = user;
+    userSafe.permissions = resolvePermissions(user);
     // Audit login
     req.clinicId = user.clinicId; req.user = user;
     audit(req, 'LOGIN', 'user', user.id, { email: user.email, role: user.role })
@@ -99,6 +101,7 @@ async function logout(req, res) {
 async function getMe(req, res) {
   try {
     const { password: _, ...userSafe } = req.user;
+    userSafe.permissions = resolvePermissions(req.user);
     return successResponse(res, userSafe);
   } catch {
     return errorResponse(res, 'Failed to get profile', 500);

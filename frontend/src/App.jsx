@@ -63,23 +63,52 @@ export default function App() {
           <Route path="/patients"               element={<PatientsPage />} />
           <Route path="/patients/:id"           element={<PatientDetailPage />} />
           <Route path="/queue"                  element={<QueuePage />} />
-          <Route path="/prescriptions"          element={<PrescriptionsPage />} />
-          <Route path="/prescriptions/new"      element={<NewPrescriptionPage />} />
-          <Route path="/prescriptions/:id"      element={<ViewPrescriptionPage />} />
-          <Route path="/prescriptions/:id/edit"  element={<NewPrescriptionPage />} />
-          <Route path="/billing"       element={<BillsPage />} />
-          <Route path="/reports"         element={<ReportsPage />} />
-          <Route path="/templates"        element={<TemplatesPage />} />
-          <Route path="/templates/new"    element={<TemplateEditorPage />} />
-          <Route path="/templates/:id/edit"  element={<TemplateEditorPage />} />
+
+          {/* Prescriptions — viewPrescriptions to list/view; createPrescriptions to add/edit */}
+          <Route element={<RoleRoute requires={['viewPrescriptions']} />}>
+            <Route path="/prescriptions"       element={<PrescriptionsPage />} />
+            <Route path="/prescriptions/:id"   element={<ViewPrescriptionPage />} />
+          </Route>
+          <Route element={<RoleRoute requires={['createPrescriptions']} />}>
+            <Route path="/prescriptions/new"       element={<NewPrescriptionPage />} />
+            <Route path="/prescriptions/:id/edit"  element={<NewPrescriptionPage />} />
+          </Route>
+
+          {/* Billing */}
+          <Route element={<RoleRoute requires={['viewBilling']} />}>
+            <Route path="/billing"       element={<BillsPage />} />
+            <Route path="/billing/:id"   element={<ViewBillPage />} />
+          </Route>
+          <Route element={<RoleRoute requires={['createBilling']} />}>
+            <Route path="/billing/new"   element={<NewBillPage />} />
+          </Route>
+
+          {/* Reports */}
+          <Route element={<RoleRoute requires={['viewReports']} />}>
+            <Route path="/reports"         element={<ReportsPage />} />
+          </Route>
+
+          {/* Templates */}
+          <Route element={<RoleRoute requires={['viewPrescriptions']} />}>
+            <Route path="/templates"        element={<TemplatesPage />} />
+          </Route>
+          <Route element={<RoleRoute requires={['manageTemplates']} />}>
+            <Route path="/templates/new"       element={<TemplateEditorPage />} />
+            <Route path="/templates/:id/edit"  element={<TemplateEditorPage />} />
+          </Route>
+
           {/* Old URLs redirected to /settings for backwards compatibility */}
           <Route path="/page-designer" element={<Navigate to="/settings" replace />} />
           <Route path="/clinic/setup"  element={<Navigate to="/settings" replace />} />
-          <Route path="/billing/new"   element={<NewBillPage />} />
-          <Route path="/billing/:id"   element={<ViewBillPage />} />
-          <Route element={<RoleRoute roles={['ADMIN']} />}>
+
+          {/* Admin area — permission-gated */}
+          <Route element={<RoleRoute requires={['manageSettings']} />}>
             <Route path="/settings"             element={<SettingsPage />} />
+          </Route>
+          <Route element={<RoleRoute requires={['manageUsers']} />}>
             <Route path="/users"                element={<UsersPage />} />
+          </Route>
+          <Route element={<RoleRoute requires={['manageMasterData']} />}>
             <Route path="/master-data"          element={<MasterDataPage />} />
           </Route>
         </Route>

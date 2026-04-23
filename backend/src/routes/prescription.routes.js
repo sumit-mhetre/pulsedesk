@@ -1,14 +1,17 @@
 const router = require('express').Router();
-const { authenticate, authorize } = require('../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../middleware/auth.middleware');
 const ctrl = require('../controllers/prescription.controller');
 
-router.get ('/',                                    authenticate, ctrl.getPrescriptions);
-router.post('/',                                    authenticate, authorize('DOCTOR','ADMIN'), ctrl.createPrescription);
-router.get ('/doctor-preferences', authenticate, ctrl.getDoctorPreferences);
-router.get ('/calc-qty',                            authenticate, ctrl.calculateQty);
-router.get ('/patient/:patientId',                  authenticate, ctrl.getPatientPrescriptions);
-router.get ('/patient/:patientId/last',             authenticate, ctrl.getLastPrescription);
-router.get ('/:id',                                 authenticate, ctrl.getPrescription);
-router.put ('/:id',                                 authenticate, authorize('DOCTOR','ADMIN'), ctrl.updatePrescription);
+// Reads — viewPrescriptions
+router.get ('/',                        authenticate, requirePermission('viewPrescriptions'), ctrl.getPrescriptions);
+router.get ('/doctor-preferences',      authenticate, requirePermission('viewPrescriptions'), ctrl.getDoctorPreferences);
+router.get ('/calc-qty',                authenticate, requirePermission('viewPrescriptions'), ctrl.calculateQty);
+router.get ('/patient/:patientId',      authenticate, requirePermission('viewPrescriptions'), ctrl.getPatientPrescriptions);
+router.get ('/patient/:patientId/last', authenticate, requirePermission('viewPrescriptions'), ctrl.getLastPrescription);
+router.get ('/:id',                     authenticate, requirePermission('viewPrescriptions'), ctrl.getPrescription);
+
+// Writes — createPrescriptions
+router.post('/',                        authenticate, requirePermission('createPrescriptions'), ctrl.createPrescription);
+router.put ('/:id',                     authenticate, requirePermission('createPrescriptions'), ctrl.updatePrescription);
 
 module.exports = router;

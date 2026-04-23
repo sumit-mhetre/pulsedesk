@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ConfirmDialog } from '../../components/ui'
 import { Plus, Search, Eye, Edit2, User, X, FileText, Receipt, AlertTriangle, CheckCircle, AlertCircle, Info } from 'lucide-react'
 import { Card, Button, Badge, PageHeader } from '../../components/ui'
+import { useCan } from '../../hooks/usePermission'
 import api from '../../lib/api'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
@@ -465,6 +466,7 @@ function PatientModal({ mode, initialForm, onClose, onSaved, navigate }) {
 // ── Main Page ─────────────────────────────────────────────
 export default function PatientsPage() {
   const navigate  = useNavigate()
+  const can       = useCan()
   const [patients,  setPatients]  = useState([])
   const [total,     setTotal]     = useState(0)
   const [page,      setPage]      = useState(1)
@@ -522,9 +524,11 @@ export default function PatientsPage() {
     <div className="fade-in">
       <PageHeader title="Patients" subtitle={`${total} registered patients`}
         action={
-          <Button variant="primary" icon={<Plus className="w-4 h-4"/>} onClick={()=>setModal('add')}>
-            New Patient
-          </Button>
+          can('managePatients') ? (
+            <Button variant="primary" icon={<Plus className="w-4 h-4"/>} onClick={()=>setModal('add')}>
+              New Patient
+            </Button>
+          ) : null
         }
       />
 
@@ -550,7 +554,7 @@ export default function PatientsPage() {
           <p className="text-sm text-slate-400 mb-4">
             {search ? 'Try a different name, phone, or patient code.' : 'Register your first patient to get started.'}
           </p>
-          {!search && (
+          {!search && can('managePatients') && (
             <Button variant="primary" icon={<Plus className="w-4 h-4"/>} onClick={()=>setModal('add')}>
               Register First Patient
             </Button>
@@ -579,19 +583,25 @@ export default function PatientsPage() {
                   </p>
                 </div>
                 <div className="flex gap-1 flex-shrink-0 ml-auto" onClick={e=>e.stopPropagation()}>
-                  <button onClick={()=>openEdit(p.id)} title="Edit Patient"
-                    disabled={loadingEdit}
-                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors">
-                    <Edit2 className="w-4 h-4"/>
-                  </button>
-                  <button onClick={()=>navigate(`/prescriptions/new?patientId=${p.id}`)} title="New Prescription"
-                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-accent hover:bg-cyan-50 rounded-lg transition-colors">
-                    <FileText className="w-4 h-4"/>
-                  </button>
-                  <button onClick={()=>navigate(`/billing/new?patientId=${p.id}`)} title="New Bill"
-                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-success hover:bg-green-50 rounded-lg transition-colors">
-                    <Receipt className="w-4 h-4"/>
-                  </button>
+                  {can('managePatients') && (
+                    <button onClick={()=>openEdit(p.id)} title="Edit Patient"
+                      disabled={loadingEdit}
+                      className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors">
+                      <Edit2 className="w-4 h-4"/>
+                    </button>
+                  )}
+                  {can('createPrescriptions') && (
+                    <button onClick={()=>navigate(`/prescriptions/new?patientId=${p.id}`)} title="New Prescription"
+                      className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-accent hover:bg-cyan-50 rounded-lg transition-colors">
+                      <FileText className="w-4 h-4"/>
+                    </button>
+                  )}
+                  {can('createBilling') && (
+                    <button onClick={()=>navigate(`/billing/new?patientId=${p.id}`)} title="New Bill"
+                      className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-success hover:bg-green-50 rounded-lg transition-colors">
+                      <Receipt className="w-4 h-4"/>
+                    </button>
+                  )}
                   <button onClick={()=>navigate(`/patients/${p.id}`)} title="View Details"
                     className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors">
                     <Eye className="w-4 h-4"/>

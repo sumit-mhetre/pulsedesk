@@ -51,18 +51,22 @@ function authorize(...roles) {
   };
 }
 
-// Check specific permission (flexible permissions system)
-function hasPermission(permission) {
+// Check specific permission — respects role defaults + per-user overrides.
+// SuperAdmin always passes. ADMIN/DOCTOR/RECEPTIONIST are resolved via permissions lib.
+const { userCan } = require('../lib/permissions');
+
+function requirePermission(permission) {
   return (req, res, next) => {
     const user = req.user;
-    // Super admin and admin always pass
-    if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') return next();
-    // Check user's custom permissions JSON
-    const perms = user.permissions || {};
-    if (perms[permission] === true) return next();
-    return errorResponse(res, `Permission denied: ${permission}`, 403);
+    if (!user) return errorResponse(res, 'Authentication required', 401);
+    if (userCan(user, permission)) return next();
+    // Include the missing permission so frontend can show a specific message
+    return errorResponse(res, `You do not have permission: ${permission}`, 403, { missingPermission: permission });
   };
 }
+
+// Backward-compatible alias — older code uses hasPermission(...)
+const hasPermission = requirePermission;
 
 // Ensure user belongs to the clinic they're accessing
 function sameClinic(req, res, next) {
@@ -74,4 +78,4 @@ function sameClinic(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, authorize, hasPermission, sameClinic };
+module.exports = { authenticate, authorize, hasPermission, requirePermission, sameClinic };

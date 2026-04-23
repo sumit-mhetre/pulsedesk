@@ -1,13 +1,16 @@
 const router = require('express').Router();
-const { authenticate, authorize } = require('../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../middleware/auth.middleware');
 const ctrl = require('../controllers/billing.controller');
 
-router.get ('/summary',                        authenticate, ctrl.getDailySummary);
-router.get ('/patient/:patientId',             authenticate, ctrl.getPatientBills);
-router.get ('/suggest/:prescriptionId',        authenticate, ctrl.suggestFromPrescription);
-router.get ('/',                               authenticate, ctrl.getBills);
-router.post('/',                               authenticate, ctrl.createBill);
-router.get ('/:id',                            authenticate, ctrl.getBill);
-router.put ('/:id',                            authenticate, ctrl.updateBill);
+// Reads — viewBilling
+router.get ('/summary',                 authenticate, requirePermission('viewBilling'), ctrl.getDailySummary);
+router.get ('/patient/:patientId',      authenticate, requirePermission('viewBilling'), ctrl.getPatientBills);
+router.get ('/suggest/:prescriptionId', authenticate, requirePermission('viewBilling'), ctrl.suggestFromPrescription);
+router.get ('/',                        authenticate, requirePermission('viewBilling'), ctrl.getBills);
+router.get ('/:id',                     authenticate, requirePermission('viewBilling'), ctrl.getBill);
+
+// Writes — createBilling
+router.post('/',                        authenticate, requirePermission('createBilling'), ctrl.createBill);
+router.put ('/:id',                     authenticate, requirePermission('createBilling'), ctrl.updateBill);
 
 module.exports = router;

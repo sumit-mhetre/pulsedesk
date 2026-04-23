@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse, paginatedResponse } = require('../lib/response');
+const { sanitizeOverrides, resolvePermissions, PERMISSION_KEYS } = require('../lib/permissions');
 
 // ── Get all users in clinic ───────────────────────────────
 async function getUsers(req, res) {
@@ -68,13 +69,16 @@ async function createUser(req, res) {
 
     const hashed = await bcrypt.hash(password, 12);
 
+    const userRole = role || 'DOCTOR';
+    const overrides = sanitizeOverrides(userRole, permissions);
+
     const user = await prisma.user.create({
       data: {
         clinicId: req.clinicId,
         name, email, password: hashed,
-        role: role || 'DOCTOR',
+        role: userRole,
         phone, qualification, specialization, regNo,
-        permissions: permissions || {},
+        permissions: overrides,
       },
       select: {
         id: true, name: true, email: true, role: true,
@@ -104,6 +108,31 @@ async function updateUser(req, res) {
     });
     if (!existing) return errorResponse(res, 'User not found', 404);
 
+    // Determine the role after update (role can be changed in the same request)
+    const newRole = role || existing.role;
+
+    // Sanitize incoming permission overrides against the target role's defaults.
+    // Only set when permissions key is explicitly present in the request body.
+    let permsOverride;
+    if (permissions !== undefined) {
+      permsOverride = sanitizeOverrides(newRole, permissions);
+
+      // Safety rail: prevent admin from removing their own Manage Users permission
+      // (would lock themselves out).
+      if (req.user && req.user.id === req.params.id) {
+        const resolvedNext = resolvePermissions({ role: newRole, permissions: permsOverride });
+        if (!resolvedNext.manageUsers) {
+          return errorResponse(res,
+            'You cannot remove your own "Manage Users" permission — it would lock you out.', 400);
+        }
+      }
+    }
+
+    // Safety rail: prevent deactivating yourself
+    if (isActive === false && req.user && req.user.id === req.params.id) {
+      return errorResponse(res, 'You cannot deactivate your own account.', 400);
+    }
+
     const user = await prisma.user.update({
       where: { id: req.params.id },
       data: {
@@ -112,7 +141,7 @@ async function updateUser(req, res) {
         ...(qualification !== undefined && { qualification }),
         ...(specialization !== undefined && { specialization }),
         ...(regNo !== undefined && { regNo }),
-        ...(permissions !== undefined && { permissions }),
+        ...(permsOverride !== undefined && { permissions: permsOverride }),
         ...(isActive !== undefined && { isActive }),
         ...(role && { role }),
       },
@@ -199,7 +228,47 @@ async function getDoctors(req, res) {
   }
 }
 
+// ── Permissions metadata — for the admin UI to render the checkboxes ──
+async function getPermissionsMeta(req, res) {
+  try {
+    const { ROLE_DEFAULTS } = require('../lib/permissions');
+    // Pretty labels + grouping for the admin UI. Keep in sync with frontend.
+    const groups = [
+      {
+        label: 'Clinical',
+        keys: ['viewDashboard','managePatients','manageQueue','viewPrescriptions','createPrescriptions','viewReports','manageTemplates'],
+      },
+      {
+        label: 'Billing',
+        keys: ['viewBilling','createBilling'],
+      },
+      {
+        label: 'Administration',
+        keys: ['manageMasterData','manageSettings','manageUsers'],
+      },
+    ];
+    const labels = {
+      viewDashboard: 'View Dashboard',
+      managePatients: 'Manage Patients',
+      manageQueue: 'Manage Queue',
+      viewPrescriptions: 'View Prescriptions',
+      createPrescriptions: 'Create / Edit Prescriptions',
+      viewBilling: 'View Billing',
+      createBilling: 'Create / Edit Bills',
+      viewReports: 'View Reports',
+      manageTemplates: 'Manage Templates',
+      manageMasterData: 'Manage Master Data',
+      manageSettings: 'Manage Settings',
+      manageUsers: 'Manage Users',
+    };
+    return successResponse(res, { keys: PERMISSION_KEYS, labels, groups, roleDefaults: ROLE_DEFAULTS });
+  } catch (err) {
+    return errorResponse(res, 'Failed to fetch permissions metadata', 500);
+  }
+}
+
 module.exports = {
   getUsers, getUser, createUser, updateUser,
   resetUserPassword, updateMyProfile, getDoctors,
+  getPermissionsMeta,
 };
