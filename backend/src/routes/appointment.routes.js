@@ -2,13 +2,20 @@ const router = require('express').Router();
 const { authenticate, requirePermission } = require('../middleware/auth.middleware');
 const ctrl = require('../controllers/appointment.controller');
 
-// Reads — any authenticated user can see the queue
-router.get  ('/queue/today', authenticate, ctrl.getTodayQueue);
-router.get  ('/queue/:date', authenticate, ctrl.getQueueByDate);
+// NOTE: specific paths MUST come before the `:date` wildcard, otherwise
+// Express matches `/queue/next` as `/queue/:date` with date="next".
 
-// Writes — manageQueue
+// Reads — any authenticated user can see the queue
+router.get  ('/queue/today',  authenticate, ctrl.getTodayQueue);
+
+// Writes — manageQueue  (must come before /queue/:date)
 router.get  ('/queue/next',   authenticate, requirePermission('manageQueue'), ctrl.callNext);
 router.post ('/queue',        authenticate, requirePermission('manageQueue'), ctrl.addToQueue);
+
+// Date-parameterised read — must come LAST among /queue/* routes
+router.get  ('/queue/:date',  authenticate, ctrl.getQueueByDate);
+
+// Token operations
 router.patch('/:id/status',   authenticate, requirePermission('manageQueue'), ctrl.updateTokenStatus);
 router.patch('/:id/reorder',  authenticate, requirePermission('manageQueue'), ctrl.reorderToken);
 

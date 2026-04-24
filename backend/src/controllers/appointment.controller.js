@@ -228,9 +228,19 @@ async function reorderToken(req, res) {
 async function getQueueByDate(req, res) {
   try {
     const { date } = req.params;
+
+    // Reject reserved words (defensive — shouldn't happen with correct route order)
+    if (['today', 'next', 'tomorrow'].includes(date)) {
+      return errorResponse(res, `Invalid date: "${date}" is a reserved word`, 400);
+    }
+
+    // Validate date string
     const startOfDay = new Date(date);
+    if (isNaN(startOfDay.getTime())) {
+      return errorResponse(res, 'Invalid date format. Use YYYY-MM-DD.', 400);
+    }
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
+    const endOfDay = new Date(startOfDay);
     endOfDay.setHours(23, 59, 59, 999);
 
     const appointments = await prisma.appointment.findMany({
@@ -251,6 +261,7 @@ async function getQueueByDate(req, res) {
 
     return successResponse(res, appointments);
   } catch (err) {
+    console.error('[getQueueByDate]', err);
     return errorResponse(res, 'Failed to fetch queue', 500);
   }
 }
