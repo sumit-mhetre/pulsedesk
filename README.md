@@ -1,4 +1,4 @@
-# SimpleRx EMR — Phase 1 Setup Guide
+# SimpleRx EMR Phase 1 Setup Guide
 
 ## Prerequisites
 - Node.js (v18+)
