@@ -109,8 +109,16 @@ async function getTopDiagnoses(req, res) {
       where: { clinicId: req.clinicId, isActive: true },
       orderBy: { usageCount: 'desc' },
       take: parseInt(limit),
+      select: { id: true, nameEn: true, nameHi: true, nameMr: true, usageCount: true },
     });
-    return successResponse(res, diagnoses);
+    // Map to unified `name` for frontend
+    const mapped = diagnoses.map(d => ({
+      id: d.id,
+      name: d.nameEn || d.nameHi || d.nameMr || '—',
+      nameEn: d.nameEn, nameHi: d.nameHi, nameMr: d.nameMr,
+      usageCount: d.usageCount,
+    }));
+    return successResponse(res, mapped);
   } catch { return errorResponse(res, 'Failed', 500); }
 }
 
@@ -221,7 +229,7 @@ async function getDashboard(req, res) {
       prisma.diagnosis.findMany({
         where: { clinicId: cid, isActive: true },
         orderBy: { usageCount: 'desc' }, take: 10,
-        select: { name: true, usageCount: true },
+        select: { nameEn: true, nameHi: true, nameMr: true, usageCount: true },
       }),
       prisma.patient.groupBy({ by: ['gender'], where: { clinicId: cid, isActive: true }, _count: true }),
       prisma.prescription.groupBy({
@@ -330,7 +338,9 @@ async function getDashboard(req, res) {
       genderSplit: genderSplit.reduce((a, g) => ({ ...a, [g.gender]: g._count }), {}),
       peakHours,
       topMedicines: topMeds,
-      topDiagnoses: topDiagnosesInRange.length ? topDiagnosesInRange : topDiag.map(d => ({ name: d.name, count: d.usageCount })),
+      topDiagnoses: topDiagnosesInRange.length
+        ? topDiagnosesInRange
+        : topDiag.map(d => ({ name: d.nameEn || d.nameHi || d.nameMr || '—', count: d.usageCount })),
       doctorStats,
     });
   } catch (err) {
