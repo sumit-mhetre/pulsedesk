@@ -4,10 +4,19 @@ const { validate } = require('../middleware/validate.middleware');
 const { authenticate, authorize, requirePermission } = require('../middleware/auth.middleware');
 const ctrl = require('../controllers/clinic.controller');
 
-// Super admin — get all clinics
+// NOTE: specific paths (`/me`) MUST come before `:id` wildcard routes.
+// Otherwise `GET /me` and `PUT /me` match the `/:id` handler with id="me"
+// and demand SUPER_ADMIN rights.
+
+// ── Clinic (self) routes — any authenticated user ─────────
+router.get('/me', authenticate, ctrl.getMyClinic);
+router.put('/me', authenticate, requirePermission('manageSettings'), ctrl.updateClinic);
+
+// ── Super admin routes ────────────────────────────────────
+// Get all clinics
 router.get('/', authenticate, authorize('SUPER_ADMIN'), ctrl.getAllClinics);
 
-// Super admin — create clinic
+// Create clinic
 router.post('/',
   authenticate,
   authorize('SUPER_ADMIN'),
@@ -21,16 +30,10 @@ router.post('/',
   ctrl.createClinic
 );
 
-// Super admin — update clinic status/plan
+// Update clinic status/plan
 router.patch('/:id/status', authenticate, authorize('SUPER_ADMIN'), ctrl.updateClinicStatus);
 
-// Super admin — update any clinic
+// Update any clinic by id
 router.put('/:id', authenticate, authorize('SUPER_ADMIN'), ctrl.updateClinic);
-
-// Clinic — read own clinic info (any authed user)
-router.get('/me', authenticate, ctrl.getMyClinic);
-
-// Clinic — update own clinic (settings, name, etc) — requires manageSettings
-router.put('/me', authenticate, requirePermission('manageSettings'), ctrl.updateClinic);
 
 module.exports = router;

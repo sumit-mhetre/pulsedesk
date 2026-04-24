@@ -95,6 +95,7 @@ async function getMyClinic(req, res) {
     if (!clinic) return errorResponse(res, 'Clinic not found', 404);
     return successResponse(res, clinic);
   } catch (err) {
+    console.error('[getMyClinic]', err);
     return errorResponse(res, 'Failed to fetch clinic', 500);
   }
 }
@@ -102,16 +103,42 @@ async function getMyClinic(req, res) {
 // ── Update Clinic ─────────────────────────────────────────
 async function updateClinic(req, res) {
   try {
-    const clinicId = req.user.isSuperAdmin ? req.params.id : req.clinicId;
+    // SuperAdmin uses req.params.id; regular users update their own clinic via /me
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN';
+    const clinicId = (isSuperAdmin && req.params.id) ? req.params.id : req.clinicId;
+
+    if (!clinicId) {
+      return errorResponse(res, 'Clinic not found', 404);
+    }
+
     const { name, address, phone, mobile, email, tagline, gst, opdSeriesPrefix } = req.body;
+
+    // Only include fields that were actually sent (avoid overwriting with undefined)
+    const data = {};
+    if (name             !== undefined) data.name = name;
+    if (address          !== undefined) data.address = address;
+    if (phone            !== undefined) data.phone = phone;
+    if (mobile           !== undefined) data.mobile = mobile;
+    if (email            !== undefined) data.email = email;
+    if (tagline          !== undefined) data.tagline = tagline;
+    if (gst              !== undefined) data.gst = gst;
+    if (opdSeriesPrefix  !== undefined) {
+      // Normalize: uppercase, trim, strip non-alphanumeric, max 10 chars
+      const cleaned = String(opdSeriesPrefix).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+      if (!cleaned) {
+        return errorResponse(res, 'OPD Series Prefix must contain at least 1 letter/number', 400);
+      }
+      data.opdSeriesPrefix = cleaned;
+    }
 
     const clinic = await prisma.clinic.update({
       where: { id: clinicId },
-      data: { name, address, phone, mobile, email, tagline, gst },
+      data,
     });
 
     return successResponse(res, clinic, 'Clinic updated successfully');
   } catch (err) {
+    console.error('[updateClinic]', err);
     return errorResponse(res, 'Failed to update clinic', 500);
   }
 }
