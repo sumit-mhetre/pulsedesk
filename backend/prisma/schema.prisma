@@ -635,3 +635,26 @@ model DoctorMedicinePreference {
   @@index([clinicId, doctorId, updatedAt])
   @@map("doctor_medicine_preferences")
 }
+
+// ─────────────────────────────────────────────
+// SAVED REPORTS — custom report configs admins can save + rerun
+// ─────────────────────────────────────────────
+
+model SavedReport {
+  id          String   @id @default(uuid())
+  clinicId    String
+  userId      String   // creator
+  name        String
+  description String?
+  reportType  String   // 'patients' | 'prescriptions' | 'bills' | 'appointments'
+  config      Json     // full filter / columns / sort / groupBy config
+  isShared    Boolean  @default(true)  // false = private to creator
+  lastRunAt   DateTime?
+  runCount    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clinicId, userId])
+  @@index([clinicId, reportType])
+  @@map("saved_reports")
+}

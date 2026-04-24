@@ -96,13 +96,13 @@ export default function LoginPage() {
         </div>
       </form>
 
-      <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+    {/*  <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
         <p className="text-xs font-semibold text-primary mb-2">Demo Credentials</p>
         <div className="space-y-1 text-xs text-slate-600 font-mono">
           <p>Admin: <span className="text-primary">admin@sharmaclinic.com</span> / <span className="text-primary">password123</span></p>
           <p>Super: <span className="text-primary">super@pulsedesk.com</span> / <span className="text-primary">SuperAdmin@123</span></p>
         </div>
-      </div>
+      </div>*/}
     </div>
   )
 }
