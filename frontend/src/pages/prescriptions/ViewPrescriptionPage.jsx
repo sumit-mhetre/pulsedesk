@@ -400,6 +400,7 @@ export default function ViewPrescriptionPage() {
             </div>
           </div>
         </div>
+        </div>{/* end relative z-1 layer */}
       </div>
 
       <style>{`
