@@ -100,7 +100,9 @@ const DEFAULT_RX_PRINT = {
   paperSize: 'A4', showClinicName: true, showClinicAddress: true, showClinicPhone: true,
   showClinicTagline: true, showDoctorName: true, showDoctorQual: true, showDoctorSpec: true,
   showDoctorRegNo: true, headerBorder: true, headerColor: '#1565C0',
-  showPatient: true, showAge: true, showGender: true, showAllergy: true,
+  showOPD: true, showPatient: true, showAge: true, showGender: true,
+  showPhone: true, showEmail: false, showAddress: false, showBloodGroup: false,
+  showAllergy: true, showChronicConditions: false,
   showComplaint: true, showDiagnosis: true, showMedicines: true, showLabTests: true,
   showAdvice: true, showNextVisit: true, showVitals: false,
   showDosage: true, showWhen: true, showFrequency: true, showDays: true, showQty: true, showNotes: true,
@@ -113,7 +115,8 @@ const DEFAULT_RX_PRINT = {
 
 const DEFAULT_BILL_PRINT = {
   paperSize: 'A4', showClinicName: true, showClinicAddress: true, showClinicPhone: true,
-  showDoctorName: true, showPatient: true, showAge: true, showGender: true,
+  showDoctorName: true, showOPD: true, showPatient: true, showAge: true, showGender: true,
+  showPhone: true, showEmail: false, showAddress: false,
   showBillNo: true, showDate: true, showItemName: true, showQty: true,
   showRate: true, showAmount: true, showSubtotal: true, showDiscount: true,
   showTotal: true, showPaymentMode: true, showBalance: true, showNotes: true,
@@ -429,11 +432,17 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
 
         {/* Patient section */}
         <CollapsibleSection title="Patient Details">
-          <Toggle checked={cfg.showPatient} onChange={v => set('showPatient', v)} label="Patient Name"/>
-          <Toggle checked={cfg.showAge}     onChange={v => set('showAge', v)}     label="Age"/>
-          <Toggle checked={cfg.showGender}  onChange={v => set('showGender', v)}  label="Gender"/>
+          <Toggle checked={cfg.showOPD ?? true}    onChange={v => set('showOPD', v)}    label="OPD / Patient Code"  sub="e.g. MH0001 — printed in bold"/>
+          <Toggle checked={cfg.showPatient}        onChange={v => set('showPatient', v)} label="Patient Name"/>
+          <Toggle checked={cfg.showAge}            onChange={v => set('showAge', v)}     label="Age"/>
+          <Toggle checked={cfg.showGender}         onChange={v => set('showGender', v)}  label="Gender"/>
+          <Toggle checked={cfg.showPhone ?? true}  onChange={v => set('showPhone', v)}   label="Mobile Number"       sub="Printed after dash on patient line"/>
+          <Toggle checked={!!cfg.showEmail}        onChange={v => set('showEmail', v)}   label="Email Address"/>
+          <Toggle checked={!!cfg.showAddress}      onChange={v => set('showAddress', v)} label="Address"/>
+          <Toggle checked={!!cfg.showBloodGroup}   onChange={v => set('showBloodGroup', v)} label="Blood Group"/>
           {isRx && <>
             <Toggle checked={cfg.showAllergy} onChange={v => set('showAllergy', v)} label="Allergy Warning"/>
+            <Toggle checked={!!cfg.showChronicConditions} onChange={v => set('showChronicConditions', v)} label="Chronic Conditions"/>
             <Toggle checked={cfg.showRxNo}    onChange={v => set('showRxNo', v)}    label="Rx Number"/>
           </>}
         </CollapsibleSection>
@@ -543,15 +552,37 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
             </div>
 
             <div className="p-3 space-y-2">
-              {/* Patient */}
-              {cfg.showPatient && (
-                <div className="bg-blue-50/50 rounded-lg p-2 text-xs">
-                  <div className="grid grid-cols-2 gap-0.5">
-                    <span className="text-slate-400">Patient:</span><span className="font-semibold">Suraj Dingane</span>
-                    {cfg.showAge    && <><span className="text-slate-400">Age:</span><span>33 yrs</span></>}
-                    {cfg.showGender && <><span className="text-slate-400">Gender:</span><span>Male</span></>}
-                  </div>
-                </div>
+              {/* Patient — preview uses the same layout as actual print page */}
+              <div className="border-b border-slate-200 pb-2 text-xs flex flex-wrap items-baseline gap-x-2">
+                {(cfg.showOPD ?? true) && <span className="font-bold tracking-wide">MH0001</span>}
+                {cfg.showPatient && (
+                  <span className="font-semibold">
+                    Suraj Dingane
+                    {(cfg.showAge || cfg.showGender) && (
+                      <span className="font-normal text-slate-700">
+                        {' '}({[
+                          cfg.showAge    && '33 yrs',
+                          cfg.showGender && 'Male',
+                        ].filter(Boolean).join(', ')})
+                      </span>
+                    )}
+                    {(cfg.showPhone ?? true) && <span className="text-slate-700"> - 9876543210</span>}
+                  </span>
+                )}
+                <span className="ml-auto text-slate-500" style={{fontSize:'9px'}}>Date: 25-Apr-2026</span>
+              </div>
+              {/* Optional contact row */}
+              {(cfg.showEmail || cfg.showAddress || cfg.showBloodGroup) && (
+                <p className="text-[10px] text-slate-500 -mt-1">
+                  {[
+                    cfg.showEmail       && 'patient@email.com',
+                    cfg.showAddress     && '123 Main St, Pune',
+                    cfg.showBloodGroup  && 'B+',
+                  ].filter(Boolean).join(' • ')}
+                </p>
+              )}
+              {isRx && cfg.showChronicConditions && (
+                <p className="text-[10px]"><span className="font-semibold">Chronic:</span> Hypertension, Diabetes</p>
               )}
 
               {/* Rx-specific preview */}

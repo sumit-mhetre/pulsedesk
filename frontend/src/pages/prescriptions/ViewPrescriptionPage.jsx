@@ -185,12 +185,11 @@ export default function ViewPrescriptionPage() {
         {/*
             Layout (per client's prescription pad):
               [BOLD OPD code]   Name (age, gender) - phone                        Date: 25-Apr-2026
-            Honors PageDesigner toggles — if showPatient/showAge/showGender/showRxNo are off,
-            those parts are silently dropped from the line.
+            All parts honor toggles in Settings → Layout Designer → Patient Details.
         */}
         <div className="mb-3 border-b border-slate-300 pb-3 text-sm flex flex-wrap items-baseline gap-x-4 gap-y-1">
           {/* OPD / patient code — bold, leads the line */}
-          {patient?.patientCode && (
+          {show('showOPD') && patient?.patientCode && (
             <span className="font-bold text-slate-900 print:text-black tracking-wide">
               {patient.patientCode}
             </span>
@@ -207,7 +206,7 @@ export default function ViewPrescriptionPage() {
                   ].filter(Boolean).join(', ')})
                 </span>
               )}
-              {patient?.phone && (
+              {show('showPhone') && patient?.phone && (
                 <span className="text-slate-700"> - {patient.phone}</span>
               )}
             </span>
@@ -218,6 +217,28 @@ export default function ViewPrescriptionPage() {
             <span className="font-semibold text-slate-900">{format(new Date(rx.date),'dd-MMM-yyyy')}</span>
           </span>
         </div>
+
+        {/* Optional contact / medical info row — only renders if any toggle is ON and field has data */}
+        {(() => {
+          const bits = []
+          if (cfg?.showEmail       && patient?.email)      bits.push(<><span className="text-slate-500">Email:</span> {patient.email}</>)
+          if (cfg?.showAddress     && patient?.address)    bits.push(<><span className="text-slate-500">Address:</span> {patient.address}</>)
+          if (cfg?.showBloodGroup  && patient?.bloodGroup) bits.push(<><span className="text-slate-500">Blood Group:</span> <span className="font-semibold">{patient.bloodGroup}</span></>)
+          if (!bits.length) return null
+          return (
+            <div className="mb-3 -mt-1 text-xs text-slate-700 flex flex-wrap gap-x-4 gap-y-0.5">
+              {bits.map((b, i) => <span key={i}>{b}</span>)}
+            </div>
+          )
+        })()}
+
+        {/* Chronic conditions */}
+        {cfg?.showChronicConditions && patient?.chronicConditions?.length > 0 && (
+          <p className="mb-3 text-sm">
+            <span className="font-bold">Chronic Conditions:</span>{' '}
+            <span className="text-slate-800">{patient.chronicConditions.join(', ')}</span>
+          </p>
+        )}
 
         {show('showAllergy') && patient?.allergies?.length>0 && (
           <p className="mb-3 text-sm"><span className="font-bold">⚠ Allergy:</span> {patient.allergies.join(', ')}</p>

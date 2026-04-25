@@ -23,6 +23,10 @@ export default function ViewBillPage() {
   const [paid,     setPaid]     = useState(0)
   const [mode,     setMode]     = useState('Cash')
   const [saving,   setSaving]   = useState(false)
+  const [cfg,      setCfg]      = useState(null)
+
+  // show(key) returns true unless cfg explicitly disables it. Backward-compat for old configs.
+  const show = (key) => cfg ? (cfg[key] !== false) : true
 
   useEffect(() => {
     api.get('/page-design?type=bill').then(r=>{ if(r.data.data?.config) setCfg(r.data.data.config) }).catch(()=>{})
@@ -120,8 +124,25 @@ export default function ViewBillPage() {
         <div className="flex justify-between items-start mb-5">
           <div className="bg-background rounded-xl p-3 flex-1 mr-4">
             <p className="text-xs text-slate-400 mb-1">Billed To</p>
-            <p className="font-bold text-slate-800">{bill.patient?.name}</p>
-            <p className="text-sm text-slate-500">{bill.patient?.patientCode} • {bill.patient?.age}y {bill.patient?.gender}</p>
+            <p className="font-bold text-slate-800">
+              {show('showOPD') && bill.patient?.patientCode && (
+                <span className="font-bold tracking-wide mr-2">{bill.patient.patientCode}</span>
+              )}
+              {show('showPatient') && bill.patient?.name}
+            </p>
+            <p className="text-sm text-slate-500">
+              {[
+                show('showAge')    && bill.patient?.age    != null ? `${bill.patient.age}y` : null,
+                show('showGender') && bill.patient?.gender,
+                show('showPhone')  && bill.patient?.phone,
+              ].filter(Boolean).join(' • ')}
+            </p>
+            {(show('showEmail') && bill.patient?.email) && (
+              <p className="text-xs text-slate-500 mt-0.5">{bill.patient.email}</p>
+            )}
+            {(show('showAddress') && bill.patient?.address) && (
+              <p className="text-xs text-slate-500 mt-0.5">{bill.patient.address}</p>
+            )}
             {bill.prescription && (
               <p className="text-xs text-primary mt-1">Rx: {bill.prescription.rxNo}</p>
             )}
