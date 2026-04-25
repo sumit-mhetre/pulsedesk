@@ -882,9 +882,8 @@ export default function NewPrescriptionPage() {
   // When patient changes (or first loads), check for an existing draft
   useEffect(() => {
     if (isEdit) return
-    if (!patient?.id) { setDraftChecked(false); return }
-    // Reset flag when patient switches
-    setDraftChecked(false)
+    if (!patient?.id) { setResumeDraft(null); return }
+    // Reset modal state when patient switches
     setResumeDraft(null)
     api.get(`/prescriptions/drafts/for-patient/${patient.id}`, { silent: true })
       .then(res => {
@@ -892,7 +891,6 @@ export default function NewPrescriptionPage() {
         if (d && d.formState) setResumeDraft(d)
       })
       .catch(() => {})
-      .finally(() => setDraftChecked(true))
   }, [patient?.id, isEdit])
 
   const applyDraft = (draft) => {
