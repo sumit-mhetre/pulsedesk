@@ -890,6 +890,19 @@ export default function NewPrescriptionPage() {
     setTimeout(() => scrollToNext(sectionId), 150)
   }
 
+  // ── Medicines section: one-shot "scroll-to-top" when doctor starts adding meds ─────
+  // Fires only once per page-visit. After that, doctor controls scroll themselves.
+  const medicinesFocusedRef = useRef(false)
+  const handleMedicinesFirstFocus = () => {
+    if (medicinesFocusedRef.current) return
+    medicinesFocusedRef.current = true
+    const el = document.getElementById('sec-medicines')
+    if (el) {
+      // Small delay so the focused input has finished its own focus side-effects
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
+    }
+  }
+
   useEffect(() => {
     // Load sequentially in small groups to avoid overwhelming Render free tier
     const loadMaster = async () => {
@@ -1370,7 +1383,7 @@ export default function NewPrescriptionPage() {
 
         {/* Medicines */}
         <div id="sec-medicines" className="scroll-mt-20"
-             onBlur={handleSectionBlur('sec-medicines', rxMeds.some(m => m.medicineName))}><Card>
+             onFocusCapture={handleMedicinesFirstFocus}><Card>
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">
               Medicines <Badge variant="primary">{rxMeds.filter(m=>m.medicineName).length}</Badge>
