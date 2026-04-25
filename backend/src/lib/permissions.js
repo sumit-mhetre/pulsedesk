@@ -1,7 +1,7 @@
 // Single source of truth for RBAC permissions.
 // Roles set defaults; user.permissions holds overrides only (keeps DB clean).
 
-// 12 granular permissions. Keep keys stable — they're stored in DB + sent to frontend.
+// 14 granular permissions. Keep keys stable — they're stored in DB + sent to frontend.
 const PERMISSION_KEYS = [
   'viewDashboard',
   'managePatients',
@@ -15,6 +15,8 @@ const PERMISSION_KEYS = [
   'manageMasterData',
   'manageSettings',
   'manageUsers',
+  'viewDocuments',     // see fitness/medical certs + referrals
+  'createDocuments',   // issue new certs/referrals
 ];
 
 // Role defaults. Pure data — resolvePermissions() merges these with per-user overrides.
@@ -25,6 +27,7 @@ const ROLE_DEFAULTS = {
     viewBilling: true,    createBilling: true,
     viewReports: true,    manageTemplates: true,
     manageMasterData: true, manageSettings: true, manageUsers: true,
+    viewDocuments: true,  createDocuments: true,
   },
   DOCTOR: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
@@ -32,6 +35,7 @@ const ROLE_DEFAULTS = {
     viewBilling: false,   createBilling: false,
     viewReports: true,    manageTemplates: true,
     manageMasterData: false, manageSettings: false, manageUsers: false,
+    viewDocuments: true,  createDocuments: true,
   },
   RECEPTIONIST: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
@@ -39,6 +43,7 @@ const ROLE_DEFAULTS = {
     viewBilling: true,    createBilling: true,
     viewReports: false,   manageTemplates: false,
     manageMasterData: false, manageSettings: false, manageUsers: false,
+    viewDocuments: false, createDocuments: false,
   },
 };
 

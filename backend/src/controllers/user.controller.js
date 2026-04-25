@@ -59,26 +59,63 @@ async function createUser(req, res) {
     const {
       name, email, password, role, phone,
       qualification, specialization, regNo, permissions,
-    } = req.body;
+    } = req.body || {};
+
+    // ── Validation ─────────────────────────────────────────
+    const cleanName  = String(name  || '').trim();
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanPass  = String(password || '');
+    const cleanRole  = String(role || 'DOCTOR').trim().toUpperCase();
+
+    if (!cleanName)  return errorResponse(res, 'Name is required', 400);
+    if (cleanName.length < 2) return errorResponse(res, 'Name must be at least 2 characters', 400);
+
+    if (!cleanEmail) return errorResponse(res, 'Email is required', 400);
+    // Basic email format check
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return errorResponse(res, 'Please enter a valid email address', 400);
+    }
+
+    if (!cleanPass)  return errorResponse(res, 'Password is required', 400);
+    if (cleanPass.length < 6) {
+      return errorResponse(res, 'Password must be at least 6 characters', 400);
+    }
+
+    const VALID_ROLES = ['ADMIN', 'DOCTOR', 'RECEPTIONIST'];
+    if (!VALID_ROLES.includes(cleanRole)) {
+      return errorResponse(res, `Role must be one of: ${VALID_ROLES.join(', ')}`, 400);
+    }
+
+    // Optional field cleanup — turn empty strings into nulls
+    const cleanPhone   = String(phone          || '').trim() || null;
+    const cleanQual    = String(qualification  || '').trim() || null;
+    const cleanSpec    = String(specialization || '').trim() || null;
+    const cleanRegNo   = String(regNo          || '').trim() || null;
+
+    // For doctors, regNo and qualification are typically expected — warn (don't block) admin
+    // (not fatal — clinics may onboard doctors before they have reg cert in hand)
 
     // Check email unique within clinic
     const existing = await prisma.user.findUnique({
-      where: { email },
+      where: { email: cleanEmail },
     });
-    if (existing) return errorResponse(res, 'Email already registered in this clinic', 409);
+    if (existing) return errorResponse(res, 'This email is already registered', 409);
 
-    const hashed = await bcrypt.hash(password, 12);
-
-    const userRole = role || 'DOCTOR';
-    const overrides = sanitizeOverrides(userRole, permissions);
+    const hashed = await bcrypt.hash(cleanPass, 12);
+    const overrides = sanitizeOverrides(cleanRole, permissions);
 
     const user = await prisma.user.create({
       data: {
         clinicId: req.clinicId,
-        name, email, password: hashed,
-        role: userRole,
-        phone, qualification, specialization, regNo,
-        permissions: overrides,
+        name:  cleanName,
+        email: cleanEmail,
+        password: hashed,
+        role:  cleanRole,
+        phone:         cleanPhone,
+        qualification: cleanQual,
+        specialization: cleanSpec,
+        regNo:         cleanRegNo,
+        permissions:   overrides,
       },
       select: {
         id: true, name: true, email: true, role: true,
@@ -133,17 +170,40 @@ async function updateUser(req, res) {
       return errorResponse(res, 'You cannot deactivate your own account.', 400);
     }
 
+    // Trim + validate name if being updated
+    let cleanName;
+    if (name !== undefined) {
+      cleanName = String(name || '').trim();
+      if (!cleanName)              return errorResponse(res, 'Name cannot be empty', 400);
+      if (cleanName.length < 2)    return errorResponse(res, 'Name must be at least 2 characters', 400);
+    }
+
+    // Validate role enum if being changed
+    if (role !== undefined) {
+      const VALID_ROLES = ['ADMIN', 'DOCTOR', 'RECEPTIONIST'];
+      if (!VALID_ROLES.includes(String(role).toUpperCase())) {
+        return errorResponse(res, `Role must be one of: ${VALID_ROLES.join(', ')}`, 400);
+      }
+    }
+
+    // Optional fields — empty strings become null (cleaner DB state)
+    const cleanOptional = (val) => {
+      if (val === undefined) return undefined;
+      const trimmed = String(val || '').trim();
+      return trimmed === '' ? null : trimmed;
+    };
+
     const user = await prisma.user.update({
       where: { id: req.params.id },
       data: {
-        ...(name && { name }),
-        ...(phone !== undefined && { phone }),
-        ...(qualification !== undefined && { qualification }),
-        ...(specialization !== undefined && { specialization }),
-        ...(regNo !== undefined && { regNo }),
+        ...(cleanName !== undefined && { name: cleanName }),
+        ...(phone !== undefined && { phone: cleanOptional(phone) }),
+        ...(qualification !== undefined && { qualification: cleanOptional(qualification) }),
+        ...(specialization !== undefined && { specialization: cleanOptional(specialization) }),
+        ...(regNo !== undefined && { regNo: cleanOptional(regNo) }),
         ...(permsOverride !== undefined && { permissions: permsOverride }),
         ...(isActive !== undefined && { isActive }),
-        ...(role && { role }),
+        ...(role && { role: String(role).toUpperCase() }),
       },
       select: {
         id: true, name: true, email: true, role: true,

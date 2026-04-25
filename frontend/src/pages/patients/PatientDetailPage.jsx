@@ -125,7 +125,7 @@ export default function PatientDetailPage() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-5 flex-wrap">
-        {['timeline','prescriptions','vitals','bills'].map(t => (
+        {['timeline','prescriptions','documents','vitals','bills'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all
               ${tab === t ? 'bg-primary text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-primary hover:text-primary'}`}>
@@ -225,6 +225,11 @@ export default function PatientDetailPage() {
         </div>
       )}
 
+      {/* ── Documents (fitness, medical leave, referrals) ── */}
+      {tab === 'documents' && (
+        <PatientDocumentsTab patientId={id}/>
+      )}
+
       {/* ── Vitals ── */}
       {tab === 'vitals' && (
         <div className="space-y-4">
@@ -306,6 +311,67 @@ export default function PatientDetailPage() {
               </div>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── Documents tab content ─────────────────────────────────
+const DOC_TYPE_BADGE = {
+  FITNESS_CERT: { label: 'Fitness',  variant: 'success' },
+  MEDICAL_CERT: { label: 'Medical',  variant: 'warning' },
+  REFERRAL:     { label: 'Referral', variant: 'primary' },
+}
+
+function PatientDocumentsTab({ patientId }) {
+  const navigate = useNavigate()
+  const [docs, setDocs]     = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    api.get(`/documents/patient/${patientId}`, { silent: true })
+      .then(r => setDocs(Array.isArray(r?.data?.data) ? r.data.data : []))
+      .catch(() => setDocs([]))
+      .finally(() => setLoading(false))
+  }, [patientId])
+
+  if (loading) return <Card><p className="text-center text-slate-400 text-sm py-6">Loading…</p></Card>
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Button
+          variant="primary" size="sm" icon={<Plus className="w-4 h-4"/>}
+          onClick={() => navigate(`/documents/new?patient=${patientId}`)}
+        >
+          New Document
+        </Button>
+      </div>
+
+      {docs.length === 0 ? (
+        <Card><p className="text-center text-slate-400 text-sm py-6">No certificates or referrals issued yet.</p></Card>
+      ) : (
+        docs.map(d => {
+          const badge = DOC_TYPE_BADGE[d.type] || { label: d.type, variant: 'primary' }
+          return (
+            <div key={d.id} onClick={() => navigate(`/documents/${d.id}/view`)}
+              className="card cursor-pointer hover:shadow-modal transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant={badge.variant}>{badge.label}</Badge>
+                    <span className="font-mono text-xs font-bold text-slate-700">{d.docNo}</span>
+                    <span className="text-xs text-slate-400">{format(new Date(d.createdAt), 'dd MMM yyyy')}</span>
+                  </div>
+                  {d.diagnosis && <p className="text-xs text-slate-500">{d.diagnosis}</p>}
+                  {d.doctor?.name && <p className="text-xs text-slate-400 mt-0.5">Issued by {d.doctor.name}</p>}
+                </div>
+                <span className="text-primary font-bold">→</span>
+              </div>
+            </div>
+          )
+        })
       )}
     </div>
   )

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
   Save, RotateCcw, Eye, Check, ChevronDown, ChevronUp,
-  Building2, FileText, Printer, Receipt, Palette, ImageIcon,
+  Building2, FileText, Printer, Receipt, Palette, ImageIcon, FileCheck,
+  Plus, Trash2, Star, X, Edit3,
 } from 'lucide-react'
 import { Card, Button, PageHeader } from '../../components/ui'
 import ImageUploader from '../../components/branding/ImageUploader'
@@ -134,11 +135,12 @@ const DEFAULT_BILL_PRINT = {
 }
 
 const TABS = [
-  { key: 'clinic',    label: 'Clinic Info',        icon: Building2 },
-  { key: 'branding',  label: 'Branding',           icon: Palette   },
-  { key: 'rxform',    label: 'Prescription Form',  icon: FileText  },
-  { key: 'rxprint',   label: 'Prescription Print', icon: Printer   },
-  { key: 'billprint', label: 'Bill / Receipt',     icon: Receipt   },
+  { key: 'clinic',     label: 'Clinic Info',        icon: Building2 },
+  { key: 'branding',   label: 'Branding',           icon: Palette   },
+  { key: 'rxform',     label: 'Prescription Form',  icon: FileText  },
+  { key: 'rxprint',    label: 'Prescription Print', icon: Printer   },
+  { key: 'billprint',  label: 'Bill / Receipt',     icon: Receipt   },
+  { key: 'doctemplates', label: 'Doc Templates',    icon: FileCheck },
 ]
 
 // ═══════════════════════════════════════════════════════════
@@ -496,6 +498,11 @@ export default function SettingsPage() {
           saving={saving} saved={saved}
         />
       )}
+
+      {/* ─────────────────────────────────────────────────────── */}
+      {/*  Tab 5 — Document Templates (fitness, medical, referral) */}
+      {/* ─────────────────────────────────────────────────────── */}
+      {activeTab === 'doctemplates' && <DocTemplatesPanel/>}
     </div>
   )
 }
@@ -874,5 +881,238 @@ function DoctorBrandingSection() {
         aspectHint="square"
       />
     </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Document Templates panel — manages reusable templates for
+//  fitness certs, medical certs, and referrals.
+// ═══════════════════════════════════════════════════════════
+
+const DOC_TYPES = [
+  { key: 'FITNESS_CERT', label: 'Fitness Certificate' },
+  { key: 'MEDICAL_CERT', label: 'Medical Certificate (Sick Leave)' },
+  { key: 'REFERRAL',     label: 'Referral Letter' },
+]
+
+function DocTemplatesPanel() {
+  const [tab, setTab] = useState('FITNESS_CERT')
+  const [templates, setTemplates] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(null)  // template object | null | 'new'
+
+  const load = () => {
+    setLoading(true)
+    api.get(`/document-templates?type=${tab}`, { silent: true })
+      .then(r => setTemplates(Array.isArray(r?.data?.data) ? r.data.data : []))
+      .catch(() => setTemplates([]))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(load, [tab])
+
+  const handleDelete = async (tpl) => {
+    if (!confirm(`Delete template "${tpl.name}"? This cannot be undone.`)) return
+    try {
+      await api.delete(`/document-templates/${tpl.id}`)
+      toast.success('Template deleted')
+      load()
+    } catch {}
+  }
+
+  return (
+    <div className="max-w-3xl space-y-4">
+      <Card title="Document Templates" subtitle="Pre-fill common patterns to save typing — doctors can edit anything before saving">
+        {/* Type tabs */}
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {DOC_TYPES.map(t => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => { setTab(t.key); setEditing(null) }}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition
+                ${tab === t.key ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* List */}
+        {loading ? (
+          <p className="text-sm text-slate-400 italic py-4">Loading…</p>
+        ) : (
+          <>
+            {templates.length === 0 ? (
+              <p className="text-sm text-slate-400 italic py-4">No templates for this type yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {templates.map(tpl => (
+                  <div key={tpl.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:border-primary/30">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-800 flex items-center gap-2">
+                        {tpl.isDefault && <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500"/>}
+                        {tpl.name}
+                      </p>
+                      {tpl.diagnosis && <p className="text-xs text-slate-500 mt-0.5 truncate">Dx: {tpl.diagnosis}</p>}
+                    </div>
+                    <div className="flex gap-1">
+                      <button type="button" onClick={() => setEditing(tpl)}
+                        className="p-1.5 rounded text-slate-500 hover:text-primary hover:bg-blue-50" title="Edit">
+                        <Edit3 className="w-4 h-4"/>
+                      </button>
+                      <button type="button" onClick={() => handleDelete(tpl)}
+                        className="p-1.5 rounded text-slate-500 hover:text-danger hover:bg-rose-50" title="Delete">
+                        <Trash2 className="w-4 h-4"/>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Button variant="outline" size="sm" icon={<Plus className="w-4 h-4"/>}
+              onClick={() => setEditing('new')} className="mt-3">
+              New Template
+            </Button>
+          </>
+        )}
+      </Card>
+
+      {/* Editor */}
+      {editing && (
+        <TemplateEditor
+          type={tab}
+          template={editing === 'new' ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load() }}
+        />
+      )}
+    </div>
+  )
+}
+
+function TemplateEditor({ type, template, onClose, onSaved }) {
+  const isNew = !template
+  const [name, setName]           = useState(template?.name || '')
+  const [isDefault, setIsDefault] = useState(!!template?.isDefault)
+  const [diagnosis, setDiagnosis] = useState(template?.diagnosis || '')
+  const [remarks,   setRemarks]   = useState(template?.remarks || '')
+  const [data, setData]           = useState(template?.data || {})
+  const [saving, setSaving]       = useState(false)
+
+  const save = async () => {
+    if (!name.trim()) { toast.error('Template name is required'); return }
+    setSaving(true)
+    try {
+      const body = { type, name: name.trim(), isDefault, diagnosis, remarks, data }
+      if (isNew) {
+        await api.post('/document-templates', body)
+        toast.success('Template created')
+      } else {
+        await api.put(`/document-templates/${template.id}`, body)
+        toast.success('Template updated')
+      }
+      onSaved?.()
+    } catch {} finally { setSaving(false) }
+  }
+
+  const setDataField = (k, v) => setData(prev => ({ ...prev, [k]: v }))
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-base font-bold text-slate-800">{isNew ? 'New Template' : `Edit: ${template.name}`}</h3>
+        <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+          <X className="w-5 h-5"/>
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="form-label">Template Name *</label>
+          <input type="text" className="form-input" placeholder="e.g. Sports fitness — adult"
+            value={name} onChange={e => setName(e.target.value)}/>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)}/>
+          <span>Mark as default (★ shown first in picker)</span>
+        </label>
+
+        {/* Type-specific quick fields */}
+        {type === 'FITNESS_CERT' && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="form-label">Default verdict</label>
+              <select className="form-select" value={data.verdict || 'FIT'}
+                onChange={e => setDataField('verdict', e.target.value)}>
+                <option value="FIT">Fit</option>
+                <option value="FIT_WITH_RESTRICTIONS">Fit with restrictions</option>
+                <option value="UNFIT">Not fit</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Default fitness for</label>
+              <input type="text" className="form-input" placeholder="e.g. Employment"
+                value={data.fitnessFor || ''} onChange={e => setDataField('fitnessFor', e.target.value)}/>
+            </div>
+            <div>
+              <label className="form-label">Validity (months)</label>
+              <input type="number" min="0" className="form-input"
+                value={data.validityMonths ?? ''} onChange={e => setDataField('validityMonths', e.target.value === '' ? null : parseInt(e.target.value) || 0)}/>
+            </div>
+            <div>
+              <label className="form-label">Restrictions (if any)</label>
+              <input type="text" className="form-input"
+                value={data.restrictions || ''} onChange={e => setDataField('restrictions', e.target.value)}/>
+            </div>
+          </div>
+        )}
+
+        {type === 'MEDICAL_CERT' && (
+          <div>
+            <label className="form-label">Default rest duration (days)</label>
+            <input type="number" min="1" max="90" className="form-input md:w-1/3"
+              value={data.defaultRestDays || ''} onChange={e => setDataField('defaultRestDays', e.target.value === '' ? null : parseInt(e.target.value) || 0)}/>
+            <p className="text-xs text-slate-400 mt-1">Doctor can edit at issue time. Leave blank to require manual entry.</p>
+          </div>
+        )}
+
+        {type === 'REFERRAL' && (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="form-label">Default specialty</label>
+              <input type="text" className="form-input" placeholder="e.g. Cardiologist"
+                value={data.referredToSpecialty || ''} onChange={e => setDataField('referredToSpecialty', e.target.value)}/>
+            </div>
+            <div className="col-span-2">
+              <label className="form-label">Default reason for referral</label>
+              <textarea className="form-input" rows={2}
+                value={data.reasonForReferral || ''} onChange={e => setDataField('reasonForReferral', e.target.value)}/>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="form-label">Default diagnosis (optional)</label>
+          <textarea className="form-input" rows={2}
+            value={diagnosis} onChange={e => setDiagnosis(e.target.value)}/>
+        </div>
+
+        <div>
+          <label className="form-label">Default remarks (optional)</label>
+          <textarea className="form-input" rows={2}
+            value={remarks} onChange={e => setRemarks(e.target.value)}/>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" loading={saving} onClick={save}>
+            {isNew ? 'Create Template' : 'Save Changes'}
+          </Button>
+        </div>
+      </div>
+    </Card>
   )
 }

@@ -209,6 +209,71 @@ async function seedDefaultData(tx, clinicId) {
 
   await tx.dosageOption.createMany({ data: dosages.map(d => ({ ...d, clinicId })) });
   await tx.timingOption.createMany({ data: timings.map(t => ({ ...t, clinicId })) });
+
+  // Default Document Templates — 3 fitness, 3 medical, 2 referral
+  const docTemplates = [
+    // ── FITNESS ──
+    {
+      type: 'FITNESS_CERT', name: 'General fitness — Employment', isDefault: true,
+      diagnosis: 'No abnormality detected on physical examination.',
+      remarks: '',
+      data: { verdict: 'FIT', fitnessFor: 'Employment', validityMonths: 6, vitals: {} },
+    },
+    {
+      type: 'FITNESS_CERT', name: 'Pre-employment fitness', isDefault: false,
+      diagnosis: 'Patient is in good general health. Vital signs within normal limits.',
+      remarks: 'Recommended for office / desk-based roles.',
+      data: { verdict: 'FIT', fitnessFor: 'Pre-employment', validityMonths: 12, vitals: {} },
+    },
+    {
+      type: 'FITNESS_CERT', name: 'Sports fitness — adult', isDefault: false,
+      diagnosis: 'Cardiovascular and musculoskeletal exam normal.',
+      remarks: '',
+      data: { verdict: 'FIT', fitnessFor: 'Sports', validityMonths: 6, vitals: {} },
+    },
+
+    // ── MEDICAL CERT (sick leave) ──
+    {
+      type: 'MEDICAL_CERT', name: 'Viral fever — 3 days rest', isDefault: true,
+      diagnosis: 'Viral fever with body ache and headache',
+      remarks: 'Patient advised bed rest, plenty of fluids, and prescribed medication.',
+      data: { defaultRestDays: 3 },
+    },
+    {
+      type: 'MEDICAL_CERT', name: 'Acute gastroenteritis — 2 days', isDefault: false,
+      diagnosis: 'Acute gastroenteritis',
+      remarks: 'Patient advised oral rehydration, light diet, and prescribed medication.',
+      data: { defaultRestDays: 2 },
+    },
+    {
+      type: 'MEDICAL_CERT', name: 'Migraine / severe headache — 1 day', isDefault: false,
+      diagnosis: 'Acute migraine',
+      remarks: 'Patient advised rest in a quiet, darkened environment.',
+      data: { defaultRestDays: 1 },
+    },
+
+    // ── REFERRAL ──
+    {
+      type: 'REFERRAL', name: 'Cardiology referral', isDefault: true,
+      diagnosis: '',
+      remarks: 'Thanking you for your assistance.',
+      data: {
+        referredToSpecialty: 'Cardiologist',
+        reasonForReferral: 'Patient presents with chest pain / palpitations requiring specialist evaluation. Kindly advise further management.',
+      },
+    },
+    {
+      type: 'REFERRAL', name: 'Orthopedic referral', isDefault: false,
+      diagnosis: '',
+      remarks: 'Thanking you.',
+      data: {
+        referredToSpecialty: 'Orthopedic Surgeon',
+        reasonForReferral: 'Patient with persistent musculoskeletal complaints. Kindly advise further management.',
+      },
+    },
+  ];
+
+  await tx.medicalDocumentTemplate.createMany({ data: docTemplates.map(t => ({ ...t, clinicId })) });
 }
 
 module.exports = {

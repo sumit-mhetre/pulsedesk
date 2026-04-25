@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, Settings, LogOut, Database, FileText, Receipt, BookOpen,
-  Menu, X, User, ChevronDown, Building2, CalendarDays, BarChart3,
+  Menu, X, User, ChevronDown, Building2, CalendarDays, BarChart3, FileCheck,
 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import { can } from '../lib/permissions'
@@ -15,6 +15,7 @@ const navItems = [
   { label: 'Patients',     icon: User,            to: '/patients',      requires: 'managePatients' },
   { label: 'Queue',        icon: CalendarDays,    to: '/queue',         requires: 'manageQueue' },
   { label: 'Prescriptions',icon: FileText,        to: '/prescriptions', requires: 'viewPrescriptions' },
+  { label: 'Documents',    icon: FileCheck,       to: '/documents',     requires: 'viewDocuments' },
   { label: 'Billing',      icon: Receipt,         to: '/billing',       requires: 'viewBilling' },
   { label: 'Reports',      icon: BarChart3,       to: '/reports',       requires: 'viewReports' },
   { label: 'Templates',    icon: BookOpen,        to: '/templates',     requires: 'viewPrescriptions' },

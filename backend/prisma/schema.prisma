@@ -127,6 +127,8 @@ model Clinic {
   timingOptions    TimingOption[]
   pageDesigns      PageDesign[]
   auditLogs        AuditLog[]
+  medicalDocuments         MedicalDocument[]
+  medicalDocumentTemplates MedicalDocumentTemplate[]
 
   @@map("clinics")
 }
@@ -158,6 +160,7 @@ model User {
   // Relations
   clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   prescriptions Prescription[]
+  medicalDocuments MedicalDocument[]
   auditLogs    AuditLog[]
   refreshTokens RefreshToken[]
   passwordResetTokens PasswordResetToken[]
@@ -224,6 +227,7 @@ model Patient {
   prescriptions     Prescription[]
   bills             Bill[]
   vitalRecords      VitalRecord[]
+  medicalDocuments  MedicalDocument[]
 
   @@unique([clinicId, patientCode])
   @@map("patients")
@@ -685,4 +689,84 @@ model PrescriptionDraft {
   @@unique([doctorId, patientId])
   @@index([clinicId, updatedAt])
   @@map("prescription_drafts")
+}
+
+// ─────────────────────────────────────────────
+// MEDICAL DOCUMENTS — fitness certs, medical certs (sick leave), referrals
+// ─────────────────────────────────────────────
+// Single table, type-discriminated. The `data` JSON holds type-specific fields
+// (verdict for fitness, restFrom/restTo for medical leave, referredTo for referral).
+
+enum DocType {
+  FITNESS_CERT     // "Patient is medically fit for X"
+  MEDICAL_CERT     // "Patient was sick from A to B, advised rest"
+  REFERRAL         // "Please see this patient — clinical context attached"
+}
+
+model MedicalDocument {
+  id              String   @id @default(uuid())
+  clinicId        String
+  docNo           String   // e.g. MH-FC-0001, MH-MC-0001, MH-REF-0001
+  type            DocType
+  doctorId        String
+  patientId       String   // required for all 3 types
+
+  // Patient snapshot at time of issue (so doc stays correct if patient is later edited)
+  patientName     String
+  patientAge      Int?
+  patientGender   Gender?
+  patientGuardian String?  // S/o D/o W/o (relation + name)
+  patientEmpId    String?  // employee/student ID (for medical certs)
+  patientAddress  String?
+  patientPhone    String?
+
+  // Common medical fields
+  examDate        DateTime  // when patient was examined
+  diagnosis       String?
+  remarks         String?
+
+  // Type-specific fields stored as JSON
+  // FITNESS_CERT  → { verdict, fitnessFor, restrictions, vitals: {bp,pulse,weight,...}, validityMonths }
+  // MEDICAL_CERT  → { restFromDate, restToDate, totalDays, resumeFromDate, advisedRest }
+  // REFERRAL      → { referredToName, referredToSpecialty, referredToClinic, referredToAddress,
+  //                    referredToPhone, chiefComplaint, clinicalHistory, currentMeds,
+  //                    investigations, provisionalDx, reasonForReferral, sourceRxId }
+  data            Json     @default("{}")
+
+  templateUsed    String?  // refs MedicalDocumentTemplate.id (for analytics)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  doctor          User     @relation(fields: [doctorId], references: [id])
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, docNo])
+  @@index([clinicId, type, createdAt])
+  @@index([patientId, createdAt])
+  @@map("medical_documents")
+}
+
+// Reusable templates that pre-fill the doc form. Admin manages.
+model MedicalDocumentTemplate {
+  id          String   @id @default(uuid())
+  clinicId    String
+  type        DocType
+  name        String   // e.g. "Sports fitness — adult", "Flu / viral fever (3-day rest)"
+  isDefault   Boolean  @default(false)  // shown highlighted in picker
+
+  // Pre-fill defaults — same shape as MedicalDocument.data, plus optional diagnosis/remarks
+  diagnosis   String?
+  remarks     String?
+  data        Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, type, name])
+  @@index([clinicId, type])
+  @@map("medical_document_templates")
 }

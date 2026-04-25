@@ -26,6 +26,9 @@ import TemplatesPage    from './pages/templates/TemplatesPage'
 import TemplateEditorPage  from './pages/templates/TemplateEditorPage'
 import NewBillPage    from './pages/billing/NewBillPage'
 import ViewBillPage   from './pages/billing/ViewBillPage'
+import DocumentsListPage  from './pages/documents/DocumentsListPage'
+import NewDocumentPage    from './pages/documents/NewDocumentPage'
+import ViewDocumentPage   from './pages/documents/ViewDocumentPage'
 import SuperDashboard      from './pages/super/SuperDashboard'
 import SuperClinics        from './pages/super/SuperClinics'
 import SuperCreateClinic   from './pages/super/SuperCreateClinic'
@@ -86,6 +89,16 @@ export default function App() {
           {/* Reports */}
           <Route element={<RoleRoute requires={['viewReports']} />}>
             <Route path="/reports"         element={<ReportsPage />} />
+          </Route>
+
+          {/* Documents — fitness certs, medical leave certs, referrals */}
+          <Route element={<RoleRoute requires={['viewDocuments']} />}>
+            <Route path="/documents"          element={<DocumentsListPage />} />
+            <Route path="/documents/:id/view" element={<ViewDocumentPage />} />
+          </Route>
+          <Route element={<RoleRoute requires={['createDocuments']} />}>
+            <Route path="/documents/new"       element={<NewDocumentPage />} />
+            <Route path="/documents/:id/edit"  element={<NewDocumentPage />} />
           </Route>
 
           {/* Templates */}
