@@ -2,7 +2,6 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Building2, LogOut, ShieldCheck } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import toast from 'react-hot-toast'
-import Logo from '../components/ui/Logo'
 
 export default function SuperLayout() {
   const { user, logout } = useAuthStore()
@@ -18,14 +17,13 @@ export default function SuperLayout() {
     <div className="flex min-h-screen bg-background">
       <aside className="w-64 bg-slate-900 min-h-screen flex flex-col sticky top-0 h-screen">
         <div className="p-5 border-b border-white/10">
-          <div className="flex items-center gap-3 min-w-0">
-            <Logo variant="dark" size="sm" showText={false}/>
-            <div className="min-w-0">
-              <div className="text-white font-extrabold text-sm leading-none">
-                Simple<span className="text-accent">Rx</span>
-                <span className="ml-1.5">EMR</span>
-              </div>
-              <p className="text-slate-400 text-xs mt-1">Super Admin</p>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-white font-bold text-sm">SimpleRx EMR</p>
+              <p className="text-slate-400 text-xs">Super Admin</p>
             </div>
           </div>
         </div>
