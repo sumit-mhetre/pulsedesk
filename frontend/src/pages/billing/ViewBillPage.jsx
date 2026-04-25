@@ -104,7 +104,7 @@ export default function ViewBillPage() {
         <div className="border-b-2 border-primary pb-4 mb-5">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-2xl font-bold text-primary">{clinic?.name || 'SimpleRx EMR Clinic'}</h1>
+              <h1 className="text-2xl font-bold text-primary">{clinic?.name || 'SimpleRx EMR'}</h1>
               {clinic?.address && <p className="text-xs text-slate-400 mt-0.5">{clinic.address}</p>}
               {clinic?.mobile  && <p className="text-xs text-slate-400">📞 {clinic.mobile}</p>}
             </div>
