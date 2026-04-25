@@ -2,12 +2,13 @@ const prisma = require('../lib/prisma');
 const { successResponse, errorResponse } = require('../lib/response');
 const { uploadBuffer, deleteByPublicId, publicIdFromUrl } = require('../lib/cloudinary');
 
-const VALID_KINDS = ['logo', 'footer', 'letterhead', 'signature', 'stamp'];
+const VALID_KINDS = ['logo', 'header', 'footer', 'letterhead', 'signature', 'stamp'];
 const VALID_PROCESSING = ['original', 'auto-clean', 'high-contrast'];
 
 // Map kind → which model + which column gets updated
 const KIND_TO_FIELD = {
   logo:       { model: 'clinic', field: 'logo' },
+  header:     { model: 'clinic', field: 'headerImageUrl' },
   footer:     { model: 'clinic', field: 'footerImageUrl' },
   letterhead: { model: 'clinic', field: 'letterheadUrl' },
   signature:  { model: 'user',   field: 'signature' },

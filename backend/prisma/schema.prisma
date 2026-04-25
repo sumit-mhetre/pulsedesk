@@ -94,7 +94,9 @@ model Clinic {
   phone            String?
   mobile           String?
   email            String?
-  logo             String?  // clinic logo image URL (Cloudinary)
+  logo             String?  // clinic logo image URL (Cloudinary) — small, in header corner
+  headerImageUrl   String?  // full-width banner that replaces logo+name+address+phone
+  hideTextOnHeader Boolean  @default(true)  // when header image uploaded, hide clinic name/address/phone text
   footerImageUrl   String?  // optional footer image URL
   letterheadUrl    String?  // pre-printed letterhead background image URL
   letterheadMode   Boolean  @default(false)  // when true, hides clinic header on print

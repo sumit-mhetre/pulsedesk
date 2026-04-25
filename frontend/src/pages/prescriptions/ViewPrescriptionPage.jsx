@@ -55,6 +55,17 @@ function translateDays(days, lang) {
   return `${m[1]} ${map[m[2].toLowerCase()] || m[2]}`
 }
 
+// Line-spacing dropdown → numeric line-height multiplier
+function lineHeightFor(mode) {
+  switch (mode) {
+    case 'tight':       return 1.2
+    case 'comfortable': return 1.75
+    case 'airy':        return 2.0
+    case 'normal':
+    default:            return 1.5
+  }
+}
+
 export default function ViewPrescriptionPage() {
   const { id }    = useParams()
   const navigate  = useNavigate()
@@ -161,7 +172,10 @@ export default function ViewPrescriptionPage() {
       </div>
 
       {/* ── Print area ── */}
-      <div className={`relative bg-white rounded-2xl shadow-card border border-blue-50 p-6 max-w-3xl mx-auto print-area ${cfg?.baseFontSize==='sm'?'text-sm':cfg?.baseFontSize==='lg'?'text-lg':''}`} style={{fontFamily:cfg?.fontFamily==='serif'?'Georgia,serif':cfg?.fontFamily==='mono'?'monospace':'inherit'}}>
+      <div className={`relative bg-white rounded-2xl shadow-card border border-blue-50 p-6 max-w-3xl mx-auto print-area ${cfg?.baseFontSize==='sm'?'text-sm':cfg?.baseFontSize==='lg'?'text-lg':''}`} style={{
+        fontFamily: cfg?.fontFamily==='serif'?'Georgia,serif':cfg?.fontFamily==='mono'?'monospace':'inherit',
+        lineHeight: lineHeightFor(cfg?.lineSpacing),
+      }}>
 
         {/* Letterhead background — covers the entire print area */}
         {clinic?.letterheadMode && clinic?.letterheadUrl && (
@@ -175,13 +189,29 @@ export default function ViewPrescriptionPage() {
 
         <div className="relative" style={{ zIndex: 1 }}>
 
-        {/* Clinic header — hidden when letterhead mode is ON (letterhead image has its own header) */}
-        {!clinic?.letterheadMode && (
+        {/* Header banner — full-width image. Replaces the text header below if uploaded.
+            When letterhead mode is ON, the entire letterhead image already serves as the page bg,
+            so we skip BOTH the banner and the text header. */}
+        {!clinic?.letterheadMode && clinic?.headerImageUrl && (
+          <div className={`mb-3 ${show('headerBorder')?'border-b-2 border-slate-400 pb-2':''}`}>
+            <img
+              src={clinic.headerImageUrl}
+              alt="header"
+              className="w-full object-contain"
+              style={{ maxHeight: 140 }}
+            />
+          </div>
+        )}
+
+        {/* Text-based clinic header — shown when:
+            - letterhead mode is OFF, AND
+            - header banner is missing OR hideTextOnHeader is OFF (user wants both image + text) */}
+        {!clinic?.letterheadMode && (!clinic?.headerImageUrl || !clinic?.hideTextOnHeader) && (
         <div className={`pb-2 mb-3 ${show('headerBorder')?'border-b-2 border-slate-400':''}`}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 flex-1 min-w-0">
-              {/* Clinic logo */}
-              {show('showLogo') && clinic?.logo && (
+              {/* Clinic logo (only when no header banner is taking its place) */}
+              {show('showLogo') && clinic?.logo && !clinic?.headerImageUrl && (
                 <img src={clinic.logo} alt="logo" className="w-16 h-16 object-contain flex-shrink-0"/>
               )}
               <div className="min-w-0">
@@ -200,6 +230,9 @@ export default function ViewPrescriptionPage() {
           </div>
         </div>
         )}
+
+        {/* Spacer — paddingTop after header (custom mm-to-px conversion: 1mm ≈ 3.78px) */}
+        <div style={{ height: `${(cfg?.paddingTop ?? 8) * 3.78}px` }} aria-hidden/>
 
         {/* Patient info + date — inline, no background */}
         {/*
@@ -363,6 +396,9 @@ export default function ViewPrescriptionPage() {
         {show('showNextVisit') && rx.nextVisit && (
           <p className="mb-3 text-sm"><span className="font-bold text-slate-900">Next Visit:</span> <span className="text-slate-800">{format(new Date(rx.nextVisit),'dd MMMM yyyy')}</span></p>
         )}
+
+        {/* Spacer — paddingBottom before footer area */}
+        <div style={{ height: `${(cfg?.paddingBottom ?? 8) * 3.78}px` }} aria-hidden/>
 
         {/* Optional clinic footer image — appears above the signature/watermark row */}
         {show('showFooterImage') && clinic?.footerImageUrl && (

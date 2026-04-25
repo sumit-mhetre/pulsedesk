@@ -35,7 +35,7 @@ function permissionForKind(req, res, next) {
   // Actually we already have it via multipart parse. Body kind is just the form field.
   if (!kind) return next();  // controller will reject
 
-  const clinicLevel  = ['logo', 'footer', 'letterhead'].includes(kind);
+  const clinicLevel  = ['logo', 'header', 'footer', 'letterhead'].includes(kind);
   const doctorLevel  = ['signature', 'stamp'].includes(kind);
 
   if (clinicLevel)  return requirePermission('manageSettings')(req, res, next);

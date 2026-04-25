@@ -13,6 +13,17 @@ const STATUS = {
   Pending: { color: 'text-danger',  bg: 'bg-red-50',   border: 'border-danger' },
 }
 
+// Line-spacing dropdown → numeric line-height multiplier
+function lineHeightFor(mode) {
+  switch (mode) {
+    case 'tight':       return 1.2
+    case 'comfortable': return 1.75
+    case 'airy':        return 2.0
+    case 'normal':
+    default:            return 1.5
+  }
+}
+
 export default function ViewBillPage() {
   const { id }     = useParams()
   const navigate   = useNavigate()
@@ -102,7 +113,7 @@ export default function ViewBillPage() {
       )}
 
       {/* ── Receipt Print Layout ── */}
-      <div className="relative bg-white rounded-2xl shadow-card border border-blue-50 p-8 max-w-2xl mx-auto print-area">
+      <div className="relative bg-white rounded-2xl shadow-card border border-blue-50 p-8 max-w-2xl mx-auto print-area" style={{ lineHeight: lineHeightFor(cfg?.lineSpacing) }}>
 
         {/* Letterhead background — covers full receipt */}
         {clinic?.letterheadMode && clinic?.letterheadUrl && (
@@ -116,12 +127,30 @@ export default function ViewBillPage() {
 
         <div className="relative" style={{ zIndex: 1 }}>
 
-        {/* Header — hidden when letterhead mode is ON */}
-        {!clinic?.letterheadMode && (
+        {/* Header banner — full-width image. Replaces text header below if uploaded.
+            Skipped when letterhead mode is on. */}
+        {!clinic?.letterheadMode && clinic?.headerImageUrl && (
+          <div className="mb-3 border-b-2 border-primary pb-2">
+            <img
+              src={clinic.headerImageUrl}
+              alt="header"
+              className="w-full object-contain"
+              style={{ maxHeight: 120 }}
+            />
+            <p className="text-right mt-2">
+              <span className="text-xl font-black text-primary">RECEIPT</span>{' '}
+              <span className="font-mono font-bold text-slate-600 ml-2">{bill.billNo}</span>{' '}
+              <span className="text-sm text-slate-400 ml-2">{format(new Date(bill.date), 'dd/MM/yyyy')}</span>
+            </p>
+          </div>
+        )}
+
+        {/* Text-based header — shown when no banner OR hideTextOnHeader is OFF */}
+        {!clinic?.letterheadMode && (!clinic?.headerImageUrl || !clinic?.hideTextOnHeader) && (
         <div className="border-b-2 border-primary pb-4 mb-5">
           <div className="flex justify-between items-start">
             <div className="flex items-start gap-3 flex-1 min-w-0">
-              {show('showLogo') && clinic?.logo && (
+              {show('showLogo') && clinic?.logo && !clinic?.headerImageUrl && (
                 <img src={clinic.logo} alt="logo" className="w-14 h-14 object-contain flex-shrink-0"/>
               )}
               <div className="min-w-0">
@@ -138,6 +167,9 @@ export default function ViewBillPage() {
           </div>
         </div>
         )}
+
+        {/* Spacer — paddingTop after header */}
+        <div style={{ height: `${(cfg?.paddingTop ?? 8) * 3.78}px` }} aria-hidden/>
 
         {/* Patient + status */}
         <div className="flex justify-between items-start mb-5">
@@ -230,6 +262,9 @@ export default function ViewBillPage() {
         {bill.notes && (
           <p className="text-xs text-slate-400 mb-4 italic">{bill.notes}</p>
         )}
+
+        {/* Spacer — paddingBottom before footer area */}
+        <div style={{ height: `${(cfg?.paddingBottom ?? 8) * 3.78}px` }} aria-hidden/>
 
         {/* Optional clinic footer image */}
         {show('showFooterImage') && clinic?.footerImageUrl && (

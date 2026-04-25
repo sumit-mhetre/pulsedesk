@@ -114,6 +114,7 @@ async function updateClinic(req, res) {
     const {
       name, address, phone, mobile, email, tagline, gst, opdSeriesPrefix,
       letterheadMode, logo, footerImageUrl, letterheadUrl,
+      headerImageUrl, hideTextOnHeader,
     } = req.body;
 
     // Only include fields that were actually sent (avoid overwriting with undefined)
@@ -126,9 +127,11 @@ async function updateClinic(req, res) {
     if (tagline          !== undefined) data.tagline = tagline;
     if (gst              !== undefined) data.gst = gst;
     if (letterheadMode   !== undefined) data.letterheadMode = !!letterheadMode;
+    if (hideTextOnHeader !== undefined) data.hideTextOnHeader = !!hideTextOnHeader;
     // Image URL fields — accept null (clear) or string (set). Upload endpoint sets these
     // directly, but this allows admins to clear them via the clinic update form too.
     if (logo             !== undefined) data.logo = logo || null;
+    if (headerImageUrl   !== undefined) data.headerImageUrl = headerImageUrl || null;
     if (footerImageUrl   !== undefined) data.footerImageUrl = footerImageUrl || null;
     if (letterheadUrl    !== undefined) data.letterheadUrl  = letterheadUrl  || null;
     if (opdSeriesPrefix  !== undefined) {

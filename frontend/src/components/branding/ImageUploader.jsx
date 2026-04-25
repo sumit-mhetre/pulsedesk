@@ -19,6 +19,7 @@ import toast from 'react-hot-toast'
  */
 const PROCESSING_DEFAULTS = {
   logo:       false,   // logos are usually clean already
+  header:     false,   // pre-designed banners are clean
   footer:     false,
   letterhead: false,
   signature:  true,    // ask: doctors usually upload scanned/photo signatures
@@ -199,6 +200,7 @@ function ProcessingModal({ open, file, kind, onCancel, onChoose }) {
     signature: 'How should we process this signature?',
     stamp:     'How should we process this stamp?',
     logo:      'How should we process this logo?',
+    header:    'How should we process this header banner?',
     footer:    'How should we process this image?',
     letterhead:'How should we process this letterhead?',
   }

@@ -114,6 +114,9 @@ const DEFAULT_RX_PRINT = {
   showSignature: true, showSignatureImage: true, showStampImage: true, showLogo: true,
   showFooterImage: true, showGeneratedBy: true, showRxSymbol: true,
   primaryColor: '#1565C0', showRxNo: true,
+  // Spacing controls (mm for padding, dropdown for line spacing)
+  paddingTop: 8, paddingBottom: 8,
+  lineSpacing: 'normal',  // 'tight' | 'normal' | 'comfortable' | 'airy'
 }
 
 const DEFAULT_BILL_PRINT = {
@@ -126,6 +129,8 @@ const DEFAULT_BILL_PRINT = {
   showSignature: false, showSignatureImage: false, showLogo: true, showFooterImage: false,
   headerColor: '#1565C0', primaryColor: '#1565C0',
   baseFontSize: 'md', fontFamily: 'default', thankYouMessage: 'Thank you for visiting!',
+  paddingTop: 8, paddingBottom: 8,
+  lineSpacing: 'normal',
 }
 
 const TABS = [
@@ -149,8 +154,8 @@ export default function SettingsPage() {
   const [clinic, setClinic] = useState({
     name: '', address: '', phone: '', mobile: '',
     email: '', tagline: '', gst: '', opdSeriesPrefix: '',
-    logo: null, footerImageUrl: null, letterheadUrl: null,
-    letterheadMode: false,
+    logo: null, headerImageUrl: null, footerImageUrl: null, letterheadUrl: null,
+    hideTextOnHeader: true, letterheadMode: false,
   })
 
   // Three separate page-design configs (by `type` param)
@@ -168,18 +173,20 @@ export default function SettingsPage() {
     ]).then(([clinicRes, rxFormRes, rxPrintRes, billRes]) => {
       const c = clinicRes.data.data
       setClinic({
-        name:            c.name || '',
-        address:         c.address || '',
-        phone:           c.phone || '',
-        mobile:          c.mobile || '',
-        email:           c.email || '',
-        tagline:         c.tagline || '',
-        gst:             c.gst || '',
-        opdSeriesPrefix: c.opdSeriesPrefix || '',
-        logo:            c.logo || null,
-        footerImageUrl:  c.footerImageUrl || null,
-        letterheadUrl:   c.letterheadUrl || null,
-        letterheadMode:  !!c.letterheadMode,
+        name:             c.name || '',
+        address:          c.address || '',
+        phone:            c.phone || '',
+        mobile:           c.mobile || '',
+        email:            c.email || '',
+        tagline:          c.tagline || '',
+        gst:              c.gst || '',
+        opdSeriesPrefix:  c.opdSeriesPrefix || '',
+        logo:             c.logo || null,
+        headerImageUrl:   c.headerImageUrl || null,
+        footerImageUrl:   c.footerImageUrl || null,
+        letterheadUrl:    c.letterheadUrl || null,
+        hideTextOnHeader: c.hideTextOnHeader !== false,  // default true
+        letterheadMode:   !!c.letterheadMode,
       })
       if (rxFormRes.data.data?.config)  setRxForm(f   => ({ ...f,                ...rxFormRes.data.data.config }))
       if (rxPrintRes.data.data?.config) setRxPrint(c  => ({ ...DEFAULT_RX_PRINT,  ...rxPrintRes.data.data.config }))
@@ -335,14 +342,44 @@ export default function SettingsPage() {
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'branding' && (
         <div className="max-w-3xl space-y-5">
-          <Card title="Clinic Branding" subtitle="These images appear on printed prescriptions and bills">
+          {/* NEW — full-width header banner (recommended for most clinics) */}
+          <Card
+            title="Header Banner (recommended)"
+            subtitle="Full-width image with your logo + clinic name + address — replaces the text header on print"
+          >
+            <div className="space-y-4">
+              <ImageUploader
+                kind="header"
+                value={clinic.headerImageUrl}
+                onChange={(url) => setClinic(c => ({ ...c, headerImageUrl: url }))}
+                label="Header Image"
+                description="Recommended: 2400×500 px PNG, designed in Canva/Photoshop. Includes your logo, clinic name, address, phone, etc."
+                aspectHint="wide"
+              />
+              {clinic.headerImageUrl && (
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Hide text header</p>
+                    <p className="text-xs text-slate-500 mt-0.5">When ON, clinic name/address/phone text is NOT printed (since it's already in your banner). Turn OFF if you want both image AND text.</p>
+                  </div>
+                  <Toggle
+                    checked={clinic.hideTextOnHeader}
+                    onChange={(v) => { setClinic(c => ({ ...c, hideTextOnHeader: v })); setGlobalDirty(true) }}
+                    label=""
+                  />
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card title="Clinic Branding" subtitle="Used when no header banner is uploaded — shows logo + text in header">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <ImageUploader
                 kind="logo"
                 value={clinic.logo}
                 onChange={(url) => setClinic(c => ({ ...c, logo: url }))}
                 label="Clinic Logo"
-                description="Square or wide logo. Appears in print header next to clinic name."
+                description="Small square logo, appears next to clinic name. Skip this if you've uploaded a header banner above."
                 aspectHint="square"
               />
               <ImageUploader
@@ -577,6 +614,50 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
             </div>
           </CollapsibleSection>
         )}
+
+        {/* Spacing — paddings and line height */}
+        <CollapsibleSection title="Spacing & Layout">
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">Top padding (mm)</label>
+                <input
+                  type="number"
+                  min="0" max="50" step="1"
+                  className="form-input w-full"
+                  value={cfg.paddingTop ?? 8}
+                  onChange={e => set('paddingTop', Math.max(0, Math.min(50, parseInt(e.target.value) || 0)))}
+                />
+                <p className="text-xs text-slate-400 mt-1">Space after header / before content. 0–50 mm.</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">Bottom padding (mm)</label>
+                <input
+                  type="number"
+                  min="0" max="50" step="1"
+                  className="form-input w-full"
+                  value={cfg.paddingBottom ?? 8}
+                  onChange={e => set('paddingBottom', Math.max(0, Math.min(50, parseInt(e.target.value) || 0)))}
+                />
+                <p className="text-xs text-slate-400 mt-1">Space after content / before footer. 0–50 mm.</p>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-1 block">Line spacing</label>
+              <select
+                className="form-select w-full"
+                value={cfg.lineSpacing || 'normal'}
+                onChange={e => set('lineSpacing', e.target.value)}
+              >
+                <option value="tight">Tight (1.2× — most compact)</option>
+                <option value="normal">Normal (1.5× — default)</option>
+                <option value="comfortable">Comfortable (1.75× — more breathing room)</option>
+                <option value="airy">Airy (2.0× — most spacious)</option>
+              </select>
+              <p className="text-xs text-slate-400 mt-1">Affects spacing between lines and sections in the body.</p>
+            </div>
+          </div>
+        </CollapsibleSection>
 
         {/* Footer */}
         <CollapsibleSection title="Footer">
