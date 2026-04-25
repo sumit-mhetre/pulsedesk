@@ -102,23 +102,42 @@ export default function ViewBillPage() {
       )}
 
       {/* ── Receipt Print Layout ── */}
-      <div className="bg-white rounded-2xl shadow-card border border-blue-50 p-8 max-w-2xl mx-auto print-area">
+      <div className="relative bg-white rounded-2xl shadow-card border border-blue-50 p-8 max-w-2xl mx-auto print-area">
 
-        {/* Header */}
+        {/* Letterhead background — covers full receipt */}
+        {clinic?.letterheadMode && clinic?.letterheadUrl && (
+          <img
+            src={clinic.letterheadUrl}
+            alt="letterhead"
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-2xl"
+            style={{ zIndex: 0 }}
+          />
+        )}
+
+        <div className="relative" style={{ zIndex: 1 }}>
+
+        {/* Header — hidden when letterhead mode is ON */}
+        {!clinic?.letterheadMode && (
         <div className="border-b-2 border-primary pb-4 mb-5">
           <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-2xl font-bold text-primary">{clinic?.name || 'SimpleRx EMR'}</h1>
-              {clinic?.address && <p className="text-xs text-slate-400 mt-0.5">{clinic.address}</p>}
-              {clinic?.mobile  && <p className="text-xs text-slate-400">📞 {clinic.mobile}</p>}
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              {show('showLogo') && clinic?.logo && (
+                <img src={clinic.logo} alt="logo" className="w-14 h-14 object-contain flex-shrink-0"/>
+              )}
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold text-primary">{clinic?.name || 'SimpleRx EMR'}</h1>
+                {clinic?.address && <p className="text-xs text-slate-400 mt-0.5">{clinic.address}</p>}
+                {clinic?.mobile  && <p className="text-xs text-slate-400">📞 {clinic.mobile}</p>}
+              </div>
             </div>
-            <div className="text-right">
+            <div className="text-right flex-shrink-0">
               <p className="text-2xl font-black text-primary">RECEIPT</p>
               <p className="font-mono font-bold text-slate-600">{bill.billNo}</p>
               <p className="text-sm text-slate-400">{format(new Date(bill.date), 'dd/MM/yyyy')}</p>
             </div>
           </div>
         </div>
+        )}
 
         {/* Patient + status */}
         <div className="flex justify-between items-start mb-5">
@@ -212,6 +231,13 @@ export default function ViewBillPage() {
           <p className="text-xs text-slate-400 mb-4 italic">{bill.notes}</p>
         )}
 
+        {/* Optional clinic footer image */}
+        {show('showFooterImage') && clinic?.footerImageUrl && (
+          <div className="border-t border-slate-100 pt-3 mt-4 flex justify-center">
+            <img src={clinic.footerImageUrl} alt="footer" className="max-h-14 object-contain" style={{ maxWidth: '90%' }}/>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="border-t border-slate-100 pt-4 flex justify-between items-end text-xs text-slate-400">
           <div>
@@ -222,6 +248,7 @@ export default function ViewBillPage() {
             <p className="font-semibold text-slate-600">Thank you!</p>
           </div>
         </div>
+        </div>{/* end relative wrapper */}
       </div>
 
       <style>{`

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import {
   Save, RotateCcw, Eye, Check, ChevronDown, ChevronUp,
-  Building2, FileText, Printer, Receipt,
+  Building2, FileText, Printer, Receipt, Palette, ImageIcon,
 } from 'lucide-react'
 import { Card, Button, PageHeader } from '../../components/ui'
+import ImageUploader from '../../components/branding/ImageUploader'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { setGlobalDirty } from '../../hooks/useUnsavedChanges'
+import useAuthStore from '../../store/authStore'
 
 // ─── Shared UI Primitives ─────────────────────────────────
 function Toggle({ checked, onChange, label, sub, locked = false }) {
@@ -109,7 +111,8 @@ const DEFAULT_RX_PRINT = {
   showGeneric: false,  // Print generic/composition below medicine name — OFF by default
   compactPrint: true,  // Combine Timing-Freq-Duration into one column for denser layout
   fontFamily: 'default', baseFontSize: 'md', medicineNameBold: true,
-  showSignature: true, showGeneratedBy: true, showRxSymbol: true,
+  showSignature: true, showSignatureImage: true, showStampImage: true, showLogo: true,
+  showFooterImage: true, showGeneratedBy: true, showRxSymbol: true,
   primaryColor: '#1565C0', showRxNo: true,
 }
 
@@ -120,12 +123,14 @@ const DEFAULT_BILL_PRINT = {
   showBillNo: true, showDate: true, showItemName: true, showQty: true,
   showRate: true, showAmount: true, showSubtotal: true, showDiscount: true,
   showTotal: true, showPaymentMode: true, showBalance: true, showNotes: true,
-  showSignature: false, headerColor: '#1565C0', primaryColor: '#1565C0',
+  showSignature: false, showSignatureImage: false, showLogo: true, showFooterImage: false,
+  headerColor: '#1565C0', primaryColor: '#1565C0',
   baseFontSize: 'md', fontFamily: 'default', thankYouMessage: 'Thank you for visiting!',
 }
 
 const TABS = [
   { key: 'clinic',    label: 'Clinic Info',        icon: Building2 },
+  { key: 'branding',  label: 'Branding',           icon: Palette   },
   { key: 'rxform',    label: 'Prescription Form',  icon: FileText  },
   { key: 'rxprint',   label: 'Prescription Print', icon: Printer   },
   { key: 'billprint', label: 'Bill / Receipt',     icon: Receipt   },
@@ -144,6 +149,8 @@ export default function SettingsPage() {
   const [clinic, setClinic] = useState({
     name: '', address: '', phone: '', mobile: '',
     email: '', tagline: '', gst: '', opdSeriesPrefix: '',
+    logo: null, footerImageUrl: null, letterheadUrl: null,
+    letterheadMode: false,
   })
 
   // Three separate page-design configs (by `type` param)
@@ -169,6 +176,10 @@ export default function SettingsPage() {
         tagline:         c.tagline || '',
         gst:             c.gst || '',
         opdSeriesPrefix: c.opdSeriesPrefix || '',
+        logo:            c.logo || null,
+        footerImageUrl:  c.footerImageUrl || null,
+        letterheadUrl:   c.letterheadUrl || null,
+        letterheadMode:  !!c.letterheadMode,
       })
       if (rxFormRes.data.data?.config)  setRxForm(f   => ({ ...f,                ...rxFormRes.data.data.config }))
       if (rxPrintRes.data.data?.config) setRxPrint(c  => ({ ...DEFAULT_RX_PRINT,  ...rxPrintRes.data.data.config }))
@@ -320,7 +331,72 @@ export default function SettingsPage() {
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/*  Tab 2 — Prescription Form                             */}
+      {/*  Tab 2 — Branding (centralized image management)        */}
+      {/* ─────────────────────────────────────────────────────── */}
+      {activeTab === 'branding' && (
+        <div className="max-w-3xl space-y-5">
+          <Card title="Clinic Branding" subtitle="These images appear on printed prescriptions and bills">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <ImageUploader
+                kind="logo"
+                value={clinic.logo}
+                onChange={(url) => setClinic(c => ({ ...c, logo: url }))}
+                label="Clinic Logo"
+                description="Square or wide logo. Appears in print header next to clinic name."
+                aspectHint="square"
+              />
+              <ImageUploader
+                kind="footer"
+                value={clinic.footerImageUrl}
+                onChange={(url) => setClinic(c => ({ ...c, footerImageUrl: url }))}
+                label="Footer Image (optional)"
+                description="Disclaimer banner, partner logos, etc. Shown above SimpleRx watermark."
+                aspectHint="wide"
+              />
+            </div>
+          </Card>
+
+          <Card title="Letterhead" subtitle="For clinics with pre-printed prescription pads">
+            <div className="space-y-4">
+              <ImageUploader
+                kind="letterhead"
+                value={clinic.letterheadUrl}
+                onChange={(url) => setClinic(c => ({ ...c, letterheadUrl: url }))}
+                label="Letterhead Background"
+                description="Upload a scan of your pre-printed letterhead. When letterhead mode is on, the print page hides the clinic header (logo, name, address, doctor info) so it doesn't overlap."
+                aspectHint="16:9"
+              />
+
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">Letterhead Mode</p>
+                  <p className="text-xs text-slate-500 mt-0.5">When ON, hides clinic header + logo on print so your pre-printed letterhead shows through cleanly.</p>
+                </div>
+                <Toggle
+                  checked={clinic.letterheadMode}
+                  onChange={(v) => { setClinic(c => ({ ...c, letterheadMode: v })); setGlobalDirty(true) }}
+                  label=""
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card title="Doctor Signature & Stamp" subtitle="Your personal signature and stamp — appear on YOUR prescriptions only">
+            <DoctorBrandingSection/>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button variant="primary" loading={saving}
+              onClick={saveClinicInfo}
+              icon={saved ? <Check className="w-4 h-4"/> : <Save className="w-4 h-4"/>}>
+              {saved ? 'Saved!' : 'Save Branding'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────── */}
+      {/*  Tab — Prescription Form                                */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'rxform' && (
         <div className="max-w-2xl space-y-5">
@@ -413,6 +489,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
 
         {/* Clinic header */}
         <CollapsibleSection title="Clinic Header">
+          <Toggle checked={cfg.showLogo ?? true}  onChange={v => set('showLogo', v)}     label="Clinic Logo"        sub="Upload via Branding tab"/>
           <Toggle checked={cfg.showClinicName}    onChange={v => set('showClinicName', v)}    label="Clinic Name"/>
           <Toggle checked={cfg.showClinicTagline} onChange={v => set('showClinicTagline', v)} label="Tagline / Motto"/>
           <Toggle checked={cfg.showClinicAddress} onChange={v => set('showClinicAddress', v)} label="Address"/>
@@ -503,7 +580,10 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
 
         {/* Footer */}
         <CollapsibleSection title="Footer">
-          <Toggle checked={cfg.showSignature}   onChange={v => set('showSignature', v)}   label="Doctor Signature Line"/>
+          {isRx && <Toggle checked={cfg.showSignatureImage ?? true}  onChange={v => set('showSignatureImage', v)} label="Doctor Signature Image"  sub="Use uploaded signature instead of blank line"/>}
+          {isRx && <Toggle checked={cfg.showStampImage ?? true}      onChange={v => set('showStampImage', v)}     label="Doctor Stamp / Seal"     sub="Uploaded via Branding tab"/>}
+          <Toggle checked={cfg.showFooterImage ?? false} onChange={v => set('showFooterImage', v)} label="Footer Image"           sub="Banner uploaded via Branding tab"/>
+          <Toggle checked={cfg.showSignature}   onChange={v => set('showSignature', v)}   label="Doctor Signature Line"  sub="Blank line for handwritten signature"/>
           <Toggle checked={true} onChange={()=>{}} locked label="Generated by SimpleRx EMR" sub="Footer timestamp — always shown"/>
         </CollapsibleSection>
 
@@ -669,6 +749,49 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── DoctorBrandingSection ─────────────────────────────────
+// Doctor's own signature + stamp. Each doctor manages their own.
+// Uses authStore so other parts of the app immediately see the new URLs.
+function DoctorBrandingSection() {
+  const { user, setUser } = useAuthStore()
+  const isDoctor = user?.role === 'DOCTOR' || user?.role === 'ADMIN'
+
+  if (!user) return null
+
+  const updateUserField = (key, url) => {
+    setUser({ ...user, [key]: url })
+  }
+
+  if (!isDoctor) {
+    return (
+      <p className="text-xs text-slate-500 italic py-3">
+        Signatures and stamps are per-doctor. Sign in as a doctor account to manage these.
+      </p>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <ImageUploader
+        kind="signature"
+        value={user.signature}
+        onChange={(url) => updateUserField('signature', url)}
+        label="My Signature"
+        description="Will replace the 'Signature' line on YOUR prescriptions only."
+        aspectHint="wide"
+      />
+      <ImageUploader
+        kind="stamp"
+        value={user.stamp}
+        onChange={(url) => updateUserField('stamp', url)}
+        label="My Stamp / Seal (optional)"
+        description="Doctor's seal — printed next to the signature."
+        aspectHint="square"
+      />
     </div>
   )
 }

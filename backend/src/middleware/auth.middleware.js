@@ -24,7 +24,7 @@ async function authenticate(req, res, next) {
     } else {
       user = await prisma.user.findUnique({
         where: { id: decoded.id },
-        include: { clinic: { select: { id: true, name: true, status: true, subscriptionPlan: true } } },
+        include: { clinic: { select: { id: true, name: true, logo: true, footerImageUrl: true, letterheadUrl: true, letterheadMode: true, status: true, subscriptionPlan: true } } },
       });
 
       if (!user || !user.isActive) return errorResponse(res, 'User not found or inactive', 401);

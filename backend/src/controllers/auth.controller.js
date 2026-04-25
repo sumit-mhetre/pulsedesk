@@ -30,7 +30,7 @@ async function login(req, res) {
     // Clinic user — email globally unique
     const user = await prisma.user.findUnique({
       where: { email: emailNorm },
-      include: { clinic: { select: { id: true, name: true, logo: true, status: true, subscriptionPlan: true } } },
+      include: { clinic: { select: { id: true, name: true, logo: true, footerImageUrl: true, letterheadUrl: true, letterheadMode: true, status: true, subscriptionPlan: true } } },
     });
 
     if (!user) {

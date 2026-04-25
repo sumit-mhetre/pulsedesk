@@ -111,7 +111,10 @@ async function updateClinic(req, res) {
       return errorResponse(res, 'Clinic not found', 404);
     }
 
-    const { name, address, phone, mobile, email, tagline, gst, opdSeriesPrefix } = req.body;
+    const {
+      name, address, phone, mobile, email, tagline, gst, opdSeriesPrefix,
+      letterheadMode, logo, footerImageUrl, letterheadUrl,
+    } = req.body;
 
     // Only include fields that were actually sent (avoid overwriting with undefined)
     const data = {};
@@ -122,6 +125,12 @@ async function updateClinic(req, res) {
     if (email            !== undefined) data.email = email;
     if (tagline          !== undefined) data.tagline = tagline;
     if (gst              !== undefined) data.gst = gst;
+    if (letterheadMode   !== undefined) data.letterheadMode = !!letterheadMode;
+    // Image URL fields — accept null (clear) or string (set). Upload endpoint sets these
+    // directly, but this allows admins to clear them via the clinic update form too.
+    if (logo             !== undefined) data.logo = logo || null;
+    if (footerImageUrl   !== undefined) data.footerImageUrl = footerImageUrl || null;
+    if (letterheadUrl    !== undefined) data.letterheadUrl  = letterheadUrl  || null;
     if (opdSeriesPrefix  !== undefined) {
       // Normalize: uppercase, trim, strip non-alphanumeric, max 10 chars
       const cleaned = String(opdSeriesPrefix).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);

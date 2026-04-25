@@ -94,7 +94,10 @@ model Clinic {
   phone            String?
   mobile           String?
   email            String?
-  logo             String?
+  logo             String?  // clinic logo image URL (Cloudinary)
+  footerImageUrl   String?  // optional footer image URL
+  letterheadUrl    String?  // pre-printed letterhead background image URL
+  letterheadMode   Boolean  @default(false)  // when true, hides clinic header on print
   tagline          String?
   gst              String?
   opdSeriesPrefix  String?  // custom OPD number prefix e.g. MH, JK
@@ -141,7 +144,8 @@ model User {
   qualification String?
   specialization String?
   regNo        String?
-  signature    String?
+  signature    String?  // doctor signature image URL (Cloudinary)
+  stamp        String?  // optional doctor stamp/seal image URL
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

@@ -79,7 +79,7 @@ async function getPrescription(req, res) {
       where: { id: req.params.id, clinicId: req.clinicId },
       include: {
         patient: true,
-        doctor:  { select: { id: true, name: true, qualification: true, specialization: true, regNo: true, signature: true } },
+        doctor:  { select: { id: true, name: true, qualification: true, specialization: true, regNo: true, signature: true, stamp: true } },
         medicines: { orderBy: { sortOrder: 'asc' } },
         labTests:  true,
       },
@@ -241,7 +241,7 @@ async function createPrescription(req, res) {
         where: { id: rx.id },
         include: {
           patient:  true,
-          doctor:   { select: { id: true, name: true, qualification: true, specialization: true, regNo: true } },
+          doctor:   { select: { id: true, name: true, qualification: true, specialization: true, regNo: true, signature: true, stamp: true } },
           medicines: { orderBy: { sortOrder: 'asc' } },
           labTests:  true,
         },
@@ -365,7 +365,7 @@ async function updatePrescription(req, res) {
         where: { id: req.params.id },
         include: {
           patient:  true,
-          doctor:   { select: { id: true, name: true, qualification: true, specialization: true, regNo: true } },
+          doctor:   { select: { id: true, name: true, qualification: true, specialization: true, regNo: true, signature: true, stamp: true } },
           medicines: { orderBy: { sortOrder: 'asc' } },
           labTests:  true,
         },

@@ -73,6 +73,7 @@ app.use('/api/appointments', require('./routes/appointment.routes'))
 app.use('/api/clinics',      require('./routes/clinic.routes'))
 app.use('/api/users',        require('./routes/user.routes'))
 app.use('/api/super',        require('./routes/super.routes'))
+app.use('/api/upload',       require('./routes/upload.routes'))
 
 // ── Audit log route ────────────────────────────────────────
 const { authenticate, authorize } = require('./middleware/auth.middleware')
