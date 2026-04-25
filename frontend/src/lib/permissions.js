@@ -13,6 +13,8 @@ export const PERMISSION_KEYS = [
   'manageMasterData',
   'manageSettings',
   'manageUsers',
+  'viewDocuments',
+  'createDocuments',
 ]
 
 export const PERMISSION_LABELS = {
@@ -28,13 +30,15 @@ export const PERMISSION_LABELS = {
   manageMasterData:    'Manage Master Data',
   manageSettings:      'Manage Settings',
   manageUsers:         'Manage Users',
+  viewDocuments:       'View Documents',
+  createDocuments:     'Create / Edit Documents',
 }
 
 // Grouping for the admin UI checkboxes
 export const PERMISSION_GROUPS = [
   {
     label: 'Clinical',
-    keys: ['viewDashboard','managePatients','manageQueue','viewPrescriptions','createPrescriptions','viewReports','manageTemplates'],
+    keys: ['viewDashboard','managePatients','manageQueue','viewPrescriptions','createPrescriptions','viewDocuments','createDocuments','viewReports','manageTemplates'],
   },
   {
     label: 'Billing',
@@ -53,6 +57,7 @@ export const ROLE_DEFAULTS = {
     viewBilling: true,    createBilling: true,
     viewReports: true,    manageTemplates: true,
     manageMasterData: true, manageSettings: true, manageUsers: true,
+    viewDocuments: true,  createDocuments: true,
   },
   DOCTOR: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
@@ -60,6 +65,7 @@ export const ROLE_DEFAULTS = {
     viewBilling: false,   createBilling: false,
     viewReports: true,    manageTemplates: true,
     manageMasterData: false, manageSettings: false, manageUsers: false,
+    viewDocuments: true,  createDocuments: true,
   },
   RECEPTIONIST: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
@@ -67,6 +73,7 @@ export const ROLE_DEFAULTS = {
     viewBilling: true,    createBilling: true,
     viewReports: false,   manageTemplates: false,
     manageMasterData: false, manageSettings: false, manageUsers: false,
+    viewDocuments: false, createDocuments: false,
   },
 }
 
@@ -78,7 +85,7 @@ export function getDefaultsForRole(role) {
 }
 
 // Resolves effective permissions for a user — role defaults + per-user overrides.
-// Always returns a full flat object with all 12 keys.
+// Always returns a full flat object with all 14 keys.
 export function resolvePermissions(user) {
   if (!user) return {}
   const defaults = getDefaultsForRole(user.role)

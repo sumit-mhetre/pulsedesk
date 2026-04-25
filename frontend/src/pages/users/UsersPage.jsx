@@ -89,8 +89,9 @@ export default function UsersPage() {
   const [modal, setModal] = useState(null)        // 'create' | 'edit' | 'reset'
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState({})
-  const [permissions, setPermissions] = useState({})  // flat { key: bool } — always 12 keys
+  const [permissions, setPermissions] = useState({})  // flat { key: bool } — always 14 keys
   const [saving, setSaving] = useState(false)
+  const [errors, setErrors] = useState({})  // field-level inline errors
 
   useEffect(() => { fetchUsers() }, [])
 
@@ -116,6 +117,7 @@ export default function UsersPage() {
     const initialRole = 'DOCTOR'
     setForm({ name: '', email: '', password: '', role: initialRole, phone: '', qualification: '', specialization: '', regNo: '' })
     setPermissions(getDefaultsForRole(initialRole))
+    setErrors({})
     setModal('create')
   }
 
@@ -126,12 +128,51 @@ export default function UsersPage() {
       qualification: user.qualification || '', specialization: user.specialization || '',
       regNo: user.regNo || '', role: user.role, isActive: user.isActive,
     })
-    // Resolve current permissions (defaults merged with overrides) for display
     setPermissions(resolvePermissions(user))
+    setErrors({})
     setModal('edit')
   }
 
-  const openReset = (user) => { setSelected(user); setForm({ newPassword: '' }); setModal('reset') }
+  const openReset = (user) => { setSelected(user); setForm({ newPassword: '' }); setErrors({}); setModal('reset') }
+
+  // ── Validation ──────────────────────────────────────────
+  // Returns an errors map { fieldName: message }. Empty map = valid.
+  const validateCreate = (f) => {
+    const e = {}
+    const name = (f.name || '').trim()
+    if (!name)               e.name = 'Full name is required'
+    else if (name.length < 2) e.name = 'Name must be at least 2 characters'
+
+    const email = (f.email || '').trim()
+    if (!email)                                          e.email = 'Email is required'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))  e.email = 'Please enter a valid email address'
+
+    const password = f.password || ''
+    if (!password)                  e.password = 'Password is required'
+    else if (password.length < 6)   e.password = 'Password must be at least 6 characters'
+
+    const role = f.role
+    if (!role || !['ADMIN','DOCTOR','RECEPTIONIST'].includes(role))
+      e.role = 'Please select a role'
+
+    return e
+  }
+
+  const validateEdit = (f) => {
+    const e = {}
+    const name = (f.name || '').trim()
+    if (!name)               e.name = 'Full name is required'
+    else if (name.length < 2) e.name = 'Name must be at least 2 characters'
+    return e
+  }
+
+  const validateReset = (f) => {
+    const e = {}
+    const pw = f.newPassword || ''
+    if (!pw)                e.newPassword = 'New password is required'
+    else if (pw.length < 6) e.newPassword = 'Password must be at least 6 characters'
+    return e
+  }
 
   // When role changes mid-form, re-seed permissions with new role's defaults
   const changeRole = (newRole) => {
@@ -141,38 +182,74 @@ export default function UsersPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
+    const errs = validateCreate(form)
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      toast.error('Please fix the errors below')
+      // Scroll to first error if not visible
+      const firstKey = Object.keys(errs)[0]
+      setTimeout(() => {
+        const el = document.querySelector(`[data-field="${firstKey}"]`)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
+      return
+    }
     setSaving(true)
     try {
       const overrides = computeOverrides(form.role, permissions)
-      await api.post('/users', { ...form, permissions: overrides })
+      await api.post('/users', { ...form, permissions: overrides }, { silent: true })
       toast.success('User created successfully!')
       setModal(null)
       fetchUsers()
-    } catch {
+    } catch (err) {
+      // Show backend's specific message (or first validation error from express-validator)
+      const data = err?.response?.data
+      const detailedMsg = data?.errors?.[0]?.msg || data?.message || 'Failed to create user'
+      toast.error(detailedMsg)
+      // If backend says email exists, mark email field
+      if (typeof detailedMsg === 'string' && detailedMsg.toLowerCase().includes('email')) {
+        setErrors(prev => ({ ...prev, email: detailedMsg }))
+      }
     } finally { setSaving(false) }
   }
 
   const handleEdit = async (e) => {
     e.preventDefault()
+    const errs = validateEdit(form)
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      toast.error('Please fix the errors below')
+      return
+    }
     setSaving(true)
     try {
       const overrides = computeOverrides(form.role, permissions)
-      await api.put(`/users/${selected.id}`, { ...form, permissions: overrides })
+      await api.put(`/users/${selected.id}`, { ...form, permissions: overrides }, { silent: true })
       toast.success('User updated!')
       setModal(null)
       fetchUsers()
-    } catch {
+    } catch (err) {
+      const data = err?.response?.data
+      toast.error(data?.errors?.[0]?.msg || data?.message || 'Failed to update user')
     } finally { setSaving(false) }
   }
 
   const handleReset = async (e) => {
     e.preventDefault()
+    const errs = validateReset(form)
+    setErrors(errs)
+    if (Object.keys(errs).length > 0) {
+      toast.error('Please fix the error below')
+      return
+    }
     setSaving(true)
     try {
-      await api.post(`/users/${selected.id}/reset-password`, form)
+      await api.post(`/users/${selected.id}/reset-password`, form, { silent: true })
       toast.success('Password reset!')
       setModal(null)
-    } catch {
+    } catch (err) {
+      const data = err?.response?.data
+      toast.error(data?.errors?.[0]?.msg || data?.message || 'Failed to reset password')
     } finally { setSaving(false) }
   }
 
@@ -273,10 +350,45 @@ export default function UsersPage() {
           <Button variant="primary" onClick={handleCreate} loading={saving}>Create User</Button>
         </>}>
         <form onSubmit={handleCreate} className="grid grid-cols-2 gap-x-4">
-          <div className="col-span-2"><div className="form-group"><label className="form-label">Full Name *</label><input type="text" className="form-input" placeholder="Dr. John Smith" value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}/></div></div>
-          <div className="form-group"><label className="form-label">Email *</label><input type="email" className="form-input" placeholder="doctor@clinic.com" value={form.email || ''} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}/></div>
-          <div className="form-group"><label className="form-label">Password *</label><input type="password" className="form-input" placeholder="Min 6 characters" value={form.password || ''} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}/></div>
-          <div className="form-group"><label className="form-label">Role *</label><select className="form-select" value={form.role || ''} onChange={e => changeRole(e.target.value)}>{ROLES.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
+          <div className="col-span-2">
+            <div className="form-group">
+              <label className="form-label">Full Name *</label>
+              <input type="text" data-field="name"
+                className={`form-input ${errors.name ? 'border-danger ring-1 ring-danger' : ''}`}
+                placeholder="Dr. John Smith"
+                value={form.name || ''}
+                onChange={e => { setForm(f => ({ ...f, name: e.target.value })); if (errors.name) setErrors(p => ({ ...p, name: undefined })) }}/>
+              {errors.name && <p className="text-xs text-danger mt-1">{errors.name}</p>}
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email *</label>
+            <input type="email" data-field="email"
+              className={`form-input ${errors.email ? 'border-danger ring-1 ring-danger' : ''}`}
+              placeholder="doctor@clinic.com"
+              value={form.email || ''}
+              onChange={e => { setForm(f => ({ ...f, email: e.target.value })); if (errors.email) setErrors(p => ({ ...p, email: undefined })) }}/>
+            {errors.email && <p className="text-xs text-danger mt-1">{errors.email}</p>}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password *</label>
+            <input type="password" data-field="password"
+              className={`form-input ${errors.password ? 'border-danger ring-1 ring-danger' : ''}`}
+              placeholder="Min 6 characters"
+              value={form.password || ''}
+              onChange={e => { setForm(f => ({ ...f, password: e.target.value })); if (errors.password) setErrors(p => ({ ...p, password: undefined })) }}/>
+            {errors.password && <p className="text-xs text-danger mt-1">{errors.password}</p>}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Role *</label>
+            <select data-field="role"
+              className={`form-select ${errors.role ? 'border-danger ring-1 ring-danger' : ''}`}
+              value={form.role || ''}
+              onChange={e => { changeRole(e.target.value); if (errors.role) setErrors(p => ({ ...p, role: undefined })) }}>
+              {ROLES.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+            {errors.role && <p className="text-xs text-danger mt-1">{errors.role}</p>}
+          </div>
           <div className="form-group"><label className="form-label">Phone</label><input type="text" className="form-input" placeholder="9876543210" value={form.phone || ''} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}/></div>
           <div className="form-group"><label className="form-label">Qualification</label><input type="text" className="form-input" placeholder="MBBS, MD" value={form.qualification || ''} onChange={e => setForm(f => ({ ...f, qualification: e.target.value }))}/></div>
           <div className="form-group"><label className="form-label">Specialization</label><input type="text" className="form-input" placeholder="General Physician" value={form.specialization || ''} onChange={e => setForm(f => ({ ...f, specialization: e.target.value }))}/></div>
@@ -292,7 +404,16 @@ export default function UsersPage() {
           <Button variant="primary" onClick={handleEdit} loading={saving}>Save Changes</Button>
         </>}>
         <form onSubmit={handleEdit} className="grid grid-cols-2 gap-x-4">
-          <div className="col-span-2"><div className="form-group"><label className="form-label">Full Name</label><input type="text" className="form-input" value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}/></div></div>
+          <div className="col-span-2">
+            <div className="form-group">
+              <label className="form-label">Full Name *</label>
+              <input type="text" data-field="name"
+                className={`form-input ${errors.name ? 'border-danger ring-1 ring-danger' : ''}`}
+                value={form.name || ''}
+                onChange={e => { setForm(f => ({ ...f, name: e.target.value })); if (errors.name) setErrors(p => ({ ...p, name: undefined })) }}/>
+              {errors.name && <p className="text-xs text-danger mt-1">{errors.name}</p>}
+            </div>
+          </div>
           <div className="form-group"><label className="form-label">Role</label><select className="form-select" value={form.role || ''} onChange={e => changeRole(e.target.value)}>{ROLES.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
           <div className="form-group"><label className="form-label">Phone</label><input type="text" className="form-input" value={form.phone || ''} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}/></div>
           <div className="form-group"><label className="form-label">Qualification</label><input type="text" className="form-input" value={form.qualification || ''} onChange={e => setForm(f => ({ ...f, qualification: e.target.value }))}/></div>
@@ -311,9 +432,12 @@ export default function UsersPage() {
         <form onSubmit={handleReset}>
           <div className="form-group">
             <label className="form-label">New Password *</label>
-            <input type="password" className="form-input" placeholder="Min 6 characters"
+            <input type="password" data-field="newPassword"
+              className={`form-input ${errors.newPassword ? 'border-danger ring-1 ring-danger' : ''}`}
+              placeholder="Min 6 characters"
               value={form.newPassword || ''}
-              onChange={e => setForm(f => ({ ...f, newPassword: e.target.value }))}/>
+              onChange={e => { setForm(f => ({ ...f, newPassword: e.target.value })); if (errors.newPassword) setErrors(p => ({ ...p, newPassword: undefined })) }}/>
+            {errors.newPassword && <p className="text-xs text-danger mt-1">{errors.newPassword}</p>}
           </div>
           <p className="text-xs text-slate-500 mt-2">
             The user's existing sessions will remain active. They'll need to use the new password next time they log in.
