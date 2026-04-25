@@ -658,3 +658,25 @@ model SavedReport {
   @@index([clinicId, reportType])
   @@map("saved_reports")
 }
+
+// ─────────────────────────────────────────────
+// PRESCRIPTION DRAFTS — in-flight autosave snapshots
+// ─────────────────────────────────────────────
+// Upserted every ~10s while doctor is editing an unsaved prescription.
+// One active draft per (doctor, patient) pair — newer writes overwrite older.
+// Auto-deleted when prescription is saved, or by cleanup cron after 7 days.
+
+model PrescriptionDraft {
+  id         String   @id @default(uuid())
+  clinicId   String
+  doctorId   String
+  patientId  String
+  formState  Json     // full form snapshot { complaint, diagnosis, medicines, labTests, advice, vitals, nextVisit, ... }
+  version    Int      @default(1)  // increments on each save (for optimistic concurrency in future)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([doctorId, patientId])
+  @@index([clinicId, updatedAt])
+  @@map("prescription_drafts")
+}

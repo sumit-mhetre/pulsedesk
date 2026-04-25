@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
+import useAutosave from '../../hooks/useAutosave'
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom'
 import { Plus, Trash2, ArrowLeft, Save, Printer, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap } from 'lucide-react'
-import { Button, Badge, Card, PageHeader, ConfirmDialog } from '../../components/ui'
+import { Button, Badge, Card, PageHeader, ConfirmDialog, Modal } from '../../components/ui'
+import AutosaveIndicator from '../../components/ui/AutosaveIndicator'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { format, addDays } from 'date-fns'
@@ -856,6 +858,67 @@ export default function NewPrescriptionPage() {
   // Before config loads: show all. After load: hide if explicitly set to false
   const showSection = (key) => !pdLoaded ? true : (pageDesign === null ? true : pageDesign[key] !== false)
 
+  // ── Autosave (drafts) ─────────────────────────────────────────
+  // Enabled ONLY for NEW prescriptions (not while editing existing) and after a patient is picked.
+  const [resumeDraft, setResumeDraft]       = useState(null)   // draft row when found
+
+  const getFormSnapshot = useCallback(() => ({
+    complaint: complaintTags.join(' || '),
+    diagnosis: diagnosisTags.join(' || '),
+    advice:    rxAdvice.join('\n'),
+    nextVisit, printLang, customRxNo,
+    vitals,
+    medicines: rxMeds,
+    labTests:  rxTests,
+  }), [complaintTags, diagnosisTags, rxAdvice, nextVisit, printLang, customRxNo, vitals, rxMeds, rxTests])
+
+  const autosave = useAutosave({
+    enabled:      !isEdit && !!patient?.id,
+    patientId:    patient?.id,
+    getFormState: getFormSnapshot,
+    intervalMs:   10000,
+  })
+
+  // When patient changes (or first loads), check for an existing draft
+  useEffect(() => {
+    if (isEdit) return
+    if (!patient?.id) { setDraftChecked(false); return }
+    // Reset flag when patient switches
+    setDraftChecked(false)
+    setResumeDraft(null)
+    api.get(`/prescriptions/drafts/for-patient/${patient.id}`, { silent: true })
+      .then(res => {
+        const d = res?.data?.data
+        if (d && d.formState) setResumeDraft(d)
+      })
+      .catch(() => {})
+      .finally(() => setDraftChecked(true))
+  }, [patient?.id, isEdit])
+
+  const applyDraft = (draft) => {
+    const s = draft?.formState || {}
+    if (s.complaint)  setComplaintTags(String(s.complaint).split('||').map(x => x.trim()).filter(Boolean))
+    if (s.diagnosis)  setDiagnosisTags(String(s.diagnosis).split('||').map(x => x.trim()).filter(Boolean))
+    if (s.advice)     setRxAdvice(String(s.advice).split('\n').filter(Boolean))
+    if (s.nextVisit != null) setNextVisit(s.nextVisit)
+    if (s.printLang)  setPrintLang(s.printLang)
+    if (s.customRxNo != null) setCustomRxNo(s.customRxNo)
+    if (s.vitals && typeof s.vitals === 'object') setVitals(v => ({ ...v, ...s.vitals }))
+    if (Array.isArray(s.medicines) && s.medicines.length) setRxMeds(s.medicines)
+    if (Array.isArray(s.labTests)) setRxTests(s.labTests)
+    setResumeDraft(null)
+    toast.success('Draft restored')
+  }
+
+  const discardDraft = async () => {
+    await autosave.discard()
+    // Also try to delete via the explicit endpoint if we have it
+    if (resumeDraft?.id) {
+      try { await api.delete(`/prescriptions/drafts/${resumeDraft.id}`, { silent: true }) } catch {}
+    }
+    setResumeDraft(null)
+  }
+
   // ── Section auto-scroll (next-section navigation) ───────────────
   const SECTION_ORDER = [
     { id: 'sec-patient',   key: null },                // always visible
@@ -1232,6 +1295,7 @@ export default function NewPrescriptionPage() {
             <p className="page-subtitle text-xs hidden sm:block">{format(new Date(),'EEEE, dd MMMM yyyy')}</p>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {!isEdit && <AutosaveIndicator status={autosave.status} lastSavedAt={autosave.lastSavedAt}/>}
             <select className="form-select w-24 sm:w-32 text-xs sm:text-sm" value={printLang} onChange={e=>setPrintLang(e.target.value)}>
               <option value="en">🇬🇧 EN</option>
               <option value="hi">🇮🇳 HI</option>
@@ -1636,6 +1700,35 @@ export default function NewPrescriptionPage() {
       </div>
     </div>
     <ConfirmDialog {...confirmProps} confirmLabel="Yes, Discard" cancelLabel="Keep Editing"/>
+
+    {/* Resume-draft modal */}
+    <Modal
+      open={!!resumeDraft}
+      onClose={() => setResumeDraft(null)}
+      title="Unsaved draft found"
+      footer={<>
+        <Button variant="outline" onClick={discardDraft}>Discard Draft</Button>
+        <Button variant="primary" onClick={() => applyDraft(resumeDraft)}>Continue Editing</Button>
+      </>}
+    >
+      <div className="space-y-2 text-sm text-slate-700">
+        <p>
+          You were filling a prescription for <strong>{patient?.name}</strong>
+          {resumeDraft?.updatedAt && <> {' — '}last saved {timeSince(resumeDraft.updatedAt)}.</>}
+        </p>
+        <p className="text-slate-500 text-xs">
+          Click <strong>Continue Editing</strong> to restore it, or <strong>Discard Draft</strong> to start fresh.
+        </p>
+      </div>
+    </Modal>
     </>
   )
+}
+
+function timeSince(iso) {
+  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (secs < 60)   return `${secs}s ago`
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
+  return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }

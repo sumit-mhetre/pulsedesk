@@ -248,6 +248,11 @@ async function createPrescription(req, res) {
       });
     });
 
+    // Successful save → clean up any matching draft so it doesn't reappear
+    prisma.prescriptionDraft.deleteMany({
+      where: { doctorId: req.user.id, patientId },
+    }).catch(() => {});
+
     return successResponse(res, prescription, 'Prescription created successfully', 201);
   } catch (err) {
     console.error(err);
@@ -447,8 +452,137 @@ async function getDoctorPreferences(req, res) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+//  DRAFTS — autosave snapshots
+// ═══════════════════════════════════════════════════════════
+
+// Upsert draft for (doctor, patient).
+// Body: { patientId, formState }
+async function upsertDraft(req, res) {
+  try {
+    const { patientId, formState } = req.body || {}
+    if (!patientId) return errorResponse(res, 'patientId is required', 400)
+    if (!formState || typeof formState !== 'object') {
+      return errorResponse(res, 'formState must be an object', 400)
+    }
+
+    // Safety: cap JSON payload to ~500KB
+    const approxSize = JSON.stringify(formState).length
+    if (approxSize > 512000) {
+      return errorResponse(res, 'Draft too large to save', 413)
+    }
+
+    // Verify patient belongs to this clinic
+    const patient = await prisma.patient.findFirst({
+      where: { id: patientId, clinicId: req.clinicId },
+      select: { id: true },
+    })
+    if (!patient) return errorResponse(res, 'Patient not found', 404)
+
+    const doctorId = req.user.id
+
+    const draft = await prisma.prescriptionDraft.upsert({
+      where: { doctorId_patientId: { doctorId, patientId } },
+      create: {
+        clinicId: req.clinicId,
+        doctorId, patientId,
+        formState,
+        version: 1,
+      },
+      update: {
+        formState,
+        version: { increment: 1 },
+      },
+      select: { id: true, updatedAt: true, version: true },
+    })
+
+    return successResponse(res, draft)
+  } catch (err) {
+    console.error('[upsertDraft]', err)
+    return errorResponse(res, 'Failed to save draft', 500)
+  }
+}
+
+// Return draft for this doctor + patient, IF exists & updated within last 24h
+async function getDraftForPatient(req, res) {
+  try {
+    const { patientId } = req.params
+    if (!patientId) return errorResponse(res, 'patientId required', 400)
+
+    const draft = await prisma.prescriptionDraft.findUnique({
+      where: { doctorId_patientId: { doctorId: req.user.id, patientId } },
+    })
+
+    if (!draft) return successResponse(res, null)
+
+    // Expire if older than 24h (don't resurrect stale drafts)
+    const ageMs = Date.now() - new Date(draft.updatedAt).getTime()
+    if (ageMs > 24 * 60 * 60 * 1000) {
+      // Delete stale; best-effort
+      prisma.prescriptionDraft.delete({ where: { id: draft.id } }).catch(() => {})
+      return successResponse(res, null)
+    }
+
+    return successResponse(res, draft)
+  } catch (err) {
+    console.error('[getDraftForPatient]', err)
+    return errorResponse(res, 'Failed to fetch draft', 500)
+  }
+}
+
+// Discard a draft
+async function deleteDraft(req, res) {
+  try {
+    const { id } = req.params
+    const draft = await prisma.prescriptionDraft.findUnique({ where: { id } })
+    if (!draft) return successResponse(res, null, 'Already deleted')
+    if (draft.doctorId !== req.user.id) {
+      return errorResponse(res, 'Not allowed to delete this draft', 403)
+    }
+    await prisma.prescriptionDraft.delete({ where: { id } })
+    return successResponse(res, null, 'Draft discarded')
+  } catch (err) {
+    console.error('[deleteDraft]', err)
+    return errorResponse(res, 'Failed to discard draft', 500)
+  }
+}
+
+// List current doctor's drafts (for UI indicator / resume menu)
+async function listMyDrafts(req, res) {
+  try {
+    const drafts = await prisma.prescriptionDraft.findMany({
+      where: { doctorId: req.user.id },
+      orderBy: { updatedAt: 'desc' },
+      take: 20,
+      select: {
+        id: true, patientId: true, updatedAt: true, createdAt: true, version: true,
+      },
+    })
+
+    if (!drafts.length) return successResponse(res, [])
+
+    // Enrich with patient names
+    const patientIds = drafts.map(d => d.patientId)
+    const patients = await prisma.patient.findMany({
+      where: { id: { in: patientIds } },
+      select: { id: true, name: true, patientCode: true },
+    })
+    const patientMap = Object.fromEntries(patients.map(p => [p.id, p]))
+
+    return successResponse(res, drafts.map(d => ({
+      ...d,
+      patient: patientMap[d.patientId] || null,
+    })))
+  } catch (err) {
+    console.error('[listMyDrafts]', err)
+    return errorResponse(res, 'Failed to list drafts', 500)
+  }
+}
+
 module.exports = {
   getPrescriptions, getPrescription, createPrescription,
   updatePrescription, getPatientPrescriptions,
   getLastPrescription, calculateQty, getDoctorPreferences,
+  // drafts
+  upsertDraft, getDraftForPatient, deleteDraft, listMyDrafts,
 };
