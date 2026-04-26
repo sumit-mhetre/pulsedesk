@@ -806,6 +806,20 @@ export default function NewPrescriptionPage() {
   const user       = useAuthStore(s => s.user)
   const canEditGeneric = user?.role === 'ADMIN' || user?.role === 'DOCTOR'
 
+  // FAB auto-hide: track whether the in-flow bottom save bar is visible
+  const bottomBarRef = useRef(null)
+  const [bottomBarVisible, setBottomBarVisible] = useState(false)
+  useEffect(() => {
+    const el = bottomBarRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setBottomBarVisible(entry.isIntersecting),
+      { rootMargin: '0px 0px -80px 0px', threshold: 0 }   // hide FAB slightly before bar fully enters viewport
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const [medicines,   setMedicines]   = useState([])
   const [labTestList, setLabTestList] = useState([])
   const [complaints,  setComplaints]  = useState([])
@@ -1673,7 +1687,7 @@ export default function NewPrescriptionPage() {
           </div>
         </Card>
 
-        <div className="flex flex-col sm:flex-row justify-between gap-3 pb-32 sm:pb-40">
+        <div ref={bottomBarRef} className="flex flex-col sm:flex-row justify-between gap-3 pb-12">
           <Button variant="outline" icon={<BookOpen className="w-4 h-4"/>} onClick={handleSaveAsTemplate}>
             Save as Template
           </Button>
@@ -1691,33 +1705,35 @@ export default function NewPrescriptionPage() {
     </div>
     <ConfirmDialog {...confirmProps} confirmLabel="Yes, Discard" cancelLabel="Keep Editing"/>
 
-    {/* Floating action buttons — always visible while scrolling. Hidden on print. */}
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3 items-end no-print print:hidden">
-      <button
-        type="button"
-        onClick={() => handleSave('stay')}
-        disabled={saving}
-        title={isEdit ? 'Update' : 'Save'}
-        className="group flex items-center gap-2 pl-4 pr-5 py-3 rounded-full bg-white border-2 border-primary text-primary font-semibold shadow-lg hover:shadow-xl hover:bg-blue-50 active:scale-95 transition disabled:opacity-60 disabled:cursor-wait"
-      >
-        {saving
-          ? <span className="spinner w-4 h-4 border-primary"/>
-          : <Save className="w-5 h-5"/>}
-        <span className="text-sm">{isEdit ? 'Update' : 'Save'}</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => handleSave('print')}
-        disabled={saving}
-        title="Save & Print"
-        className="group flex items-center gap-2 pl-4 pr-5 py-3 rounded-full bg-primary text-white font-semibold shadow-xl hover:bg-primary/90 hover:shadow-2xl active:scale-95 transition disabled:opacity-60 disabled:cursor-wait"
-      >
-        {saving
-          ? <span className="spinner w-4 h-4 border-white"/>
-          : <Printer className="w-5 h-5"/>}
-        <span className="text-sm">Save &amp; Print</span>
-      </button>
-    </div>
+    {/* Floating action buttons — icon-only, auto-hide when bottom save bar is visible */}
+    {!bottomBarVisible && (
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-2.5 items-end no-print print:hidden animate-in fade-in">
+        <button
+          type="button"
+          onClick={() => handleSave('stay')}
+          disabled={saving}
+          title={isEdit ? 'Update' : 'Save'}
+          aria-label={isEdit ? 'Update' : 'Save'}
+          className="w-12 h-12 rounded-full bg-white border-2 border-primary text-primary shadow-lg hover:shadow-xl hover:bg-blue-50 active:scale-95 transition disabled:opacity-60 disabled:cursor-wait flex items-center justify-center"
+        >
+          {saving
+            ? <span className="spinner w-4 h-4 border-primary"/>
+            : <Save className="w-5 h-5"/>}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSave('print')}
+          disabled={saving}
+          title="Save & Print"
+          aria-label="Save & Print"
+          className="w-14 h-14 rounded-full bg-primary text-white shadow-xl hover:bg-primary/90 hover:shadow-2xl active:scale-95 transition disabled:opacity-60 disabled:cursor-wait flex items-center justify-center"
+        >
+          {saving
+            ? <span className="spinner w-5 h-5 border-white"/>
+            : <Printer className="w-6 h-6"/>}
+        </button>
+      </div>
+    )}
 
     {/* Resume-draft modal */}
     <Modal
