@@ -95,9 +95,7 @@ export default function DashLayout() {
     <aside className={`${mobile ? 'w-full h-full' : 'w-64 min-h-screen'} bg-primary flex flex-col`}>
       <div className="flex items-center justify-between p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white/95 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
-            <img src="/logo.svg" alt="SimpleRx EMR" className="w-full h-full object-contain"/>
-          </div>
+          <img src="/logo.svg" alt="SimpleRx EMR" className="w-10 h-10 object-contain flex-shrink-0"/>
           <div>
             <p className="text-white font-bold text-base leading-none">SimpleRx EMR</p>
             <p className="text-blue-200 text-xs mt-0.5 truncate max-w-[120px]">{user?.clinic?.name || 'Clinic'}</p>

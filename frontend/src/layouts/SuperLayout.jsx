@@ -18,9 +18,7 @@ export default function SuperLayout() {
       <aside className="w-64 bg-slate-900 min-h-screen flex flex-col sticky top-0 h-screen">
         <div className="p-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-white/95 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src="/logo.svg" alt="SimpleRx EMR" className="w-full h-full object-contain"/>
-            </div>
+            <img src="/logo.svg" alt="SimpleRx EMR" className="w-10 h-10 object-contain flex-shrink-0"/>
             <div>
               <p className="text-white font-bold text-sm">SimpleRx EMR</p>
               <p className="text-slate-400 text-xs">Super Admin</p>

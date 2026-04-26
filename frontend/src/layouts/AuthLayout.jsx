@@ -18,9 +18,7 @@ export default function AuthLayout() {
         </div>
         <div className="relative">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white/95 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src="/logo.svg" alt="SimpleRx EMR" className="w-full h-full object-contain"/>
-            </div>
+            <img src="/logo.svg" alt="SimpleRx EMR" className="w-11 h-11 object-contain flex-shrink-0"/>
             <span className="text-white font-bold text-xl tracking-tight">SimpleRx EMR</span>
           </div>
           <p className="text-blue-200 text-sm">Smart Clinic Management</p>
@@ -55,9 +53,7 @@ export default function AuthLayout() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img src="/logo.svg" alt="SimpleRx EMR" className="w-full h-full object-contain"/>
-            </div>
+            <img src="/logo.svg" alt="SimpleRx EMR" className="w-10 h-10 object-contain flex-shrink-0"/>
             <span className="font-bold text-primary text-xl">SimpleRx EMR</span>
           </div>
           <Outlet />
