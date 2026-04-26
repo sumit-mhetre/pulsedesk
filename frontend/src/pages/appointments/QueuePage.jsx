@@ -1,13 +1,18 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, UserPlus, ChevronRight, Clock, CheckCircle, XCircle, Stethoscope, RefreshCw, FileText } from 'lucide-react'
-import { Card, Button, Badge, PageHeader, StatCard } from '../../components/ui'
+import {
+  Search, UserPlus, ChevronRight, Clock, CheckCircle, XCircle,
+  Stethoscope, RefreshCw, FileText, X,
+} from 'lucide-react'
+import { Card, Button, Badge, PageHeader } from '../../components/ui'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
+import { useCan } from '../../hooks/usePermission'
+import { PatientModal } from '../patients/PatientsPage'
 
 const STATUS_CONFIG = {
-  Waiting:        { label: 'Waiting',         color: 'warning', icon: Clock },
+  Waiting:        { label: 'Waiting',          color: 'warning', icon: Clock },
   InConsultation: { label: 'In Consultation',  color: 'primary', icon: Stethoscope },
   Done:           { label: 'Done',             color: 'success', icon: CheckCircle },
   Skipped:        { label: 'Skipped',          color: 'gray',    icon: XCircle },
@@ -15,22 +20,31 @@ const STATUS_CONFIG = {
 
 export default function QueuePage() {
   const navigate = useNavigate()
+  const can      = useCan()
+
   const [queue, setQueue]       = useState([])
   const [stats, setStats]       = useState({})
   const [loading, setLoading]   = useState(true)
-  const [adding, setAdding]     = useState(false)
-  const [searchQ, setSearchQ]   = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [showSearch, setShowSearch]       = useState(false)
-  const [activeFilter, setActiveFilter]   = useState('all')
-  const [doctors, setDoctors]             = useState([])
+  const [activeFilter, setActiveFilter]     = useState('all')
+  const [doctors, setDoctors]               = useState([])
   const [selectedDoctor, setSelectedDoctor] = useState('')
 
+  // Patient search (replaces Get Appointment button)
+  const [searchQ, setSearchQ]               = useState('')
+  const [searchResults, setSearchResults]   = useState([])
+  const [showResults, setShowResults]       = useState(false)
+  const [searching, setSearching]           = useState(false)
+  const searchWrapRef = useRef(null)
+
+  // Add Patient modal
+  const [showAddModal, setShowAddModal] = useState(false)
+
+  // ── Fetch queue ─────────────────────────────────────────
   const fetchQueue = useCallback(async () => {
     try {
       const params = new URLSearchParams()
       if (selectedDoctor) params.set('doctorId', selectedDoctor)
-      const { data } = await api.get(`/appointments/queue/today?${params}`)
+      const { data } = await api.get(`/appointments/queue/today?${params}`, { silent: true })
       setQueue(data.data.appointments)
       setStats(data.data.stats)
     } catch {
@@ -39,44 +53,53 @@ export default function QueuePage() {
 
   useEffect(() => {
     fetchQueue()
-    api.get('/users/doctors').then(({ data }) => setDoctors(data.data))
-    // Auto refresh every 30 seconds
+    api.get('/users/doctors', { silent: true }).then(({ data }) => setDoctors(data.data)).catch(() => {})
     const interval = setInterval(fetchQueue, 30000)
     return () => clearInterval(interval)
   }, [fetchQueue])
 
-  // Search patients
+  // ── Patient search (debounced) ──────────────────────────
   useEffect(() => {
-    if (searchQ.length < 2) { setSearchResults([]); return }
+    if (searchQ.trim().length < 2) {
+      setSearchResults([])
+      setShowResults(false)
+      return
+    }
+    setSearching(true)
     const t = setTimeout(async () => {
-      const { data } = await api.get(`/patients/search?q=${searchQ}`)
-      setSearchResults(data.data)
-    }, 300)
+      try {
+        const { data } = await api.get(
+          `/patients/search?q=${encodeURIComponent(searchQ.trim())}`,
+          { silent: true }
+        )
+        setSearchResults(Array.isArray(data?.data) ? data.data : [])
+        setShowResults(true)
+      } catch {
+        setSearchResults([])
+      } finally { setSearching(false) }
+    }, 250)
     return () => clearTimeout(t)
   }, [searchQ])
 
-  const addToQueue = async (patient) => {
-    setAdding(true)
-    try {
-      const { data } = await api.post('/appointments/queue', {
-        patientId: patient.id,
-        doctorId:  selectedDoctor || null,
-      })
-      toast.success(`Token #${data.data.tokenNo} assigned to ${patient.name}`)
-      setShowSearch(false)
-      setSearchQ('')
-      setSearchResults([])
-      fetchQueue()
-    } catch {
-    } finally { setAdding(false) }
-  }
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onDoc(e) {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
+        setShowResults(false)
+      }
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [])
 
+  // ── Status updates ──────────────────────────────────────
   const updateStatus = async (appointmentId, status) => {
     try {
       await api.patch(`/appointments/${appointmentId}/status`, { status })
       fetchQueue()
-      if (status === 'Done') toast.success('Patient marked as done')
+      if (status === 'Done')           toast.success('Patient marked as done')
       if (status === 'InConsultation') toast.success('Patient called in')
+      if (status === 'Skipped')        toast('Patient skipped', { icon: '⏭️' })
     } catch {}
   }
 
@@ -95,8 +118,8 @@ export default function QueuePage() {
   )
 
   const statusFilters = [
-    { key: 'all',           label: 'All',            count: stats.total },
-    { key: 'Waiting',       label: 'Waiting',        count: stats.waiting },
+    { key: 'all',           label: 'All',             count: stats.total },
+    { key: 'Waiting',       label: 'Waiting',         count: stats.waiting },
     { key: 'InConsultation',label: 'In Consultation', count: stats.inConsultation },
     { key: 'Done',          label: 'Done',            count: stats.done },
   ]
@@ -104,83 +127,87 @@ export default function QueuePage() {
   return (
     <div className="fade-in">
       <PageHeader
-        title="Today's Appointment Queue"
+        title="Today's Appointments"
         subtitle={format(new Date(), 'EEEE, dd MMMM yyyy')}
         action={
           <div className="flex gap-2">
             <Button variant="ghost" icon={<RefreshCw className="w-4 h-4" />} onClick={fetchQueue}>Refresh</Button>
-            <Button variant="success" onClick={callNext} icon={<ChevronRight className="w-4 h-4" />}>
-              Call Next
-            </Button>
-            <Button variant="primary" icon={<UserPlus className="w-4 h-4" />} onClick={() => setShowSearch(true)}>
-              Get Appointment
+            <Button variant="success" onClick={callNext} icon={<ChevronRight className="w-4 h-4" />}>Call Next</Button>
+            <Button variant="primary" icon={<UserPlus className="w-4 h-4" />} onClick={() => setShowAddModal(true)}>
+              Add New Patient
             </Button>
           </div>
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Today"    value={stats.total ?? 0}          icon={<Clock className="w-5 h-5" />}        color="bg-primary" />
-        <StatCard label="Waiting"        value={stats.waiting ?? 0}        icon={<Clock className="w-5 h-5" />}        color="bg-warning" />
-        <StatCard label="In Consultation"value={stats.inConsultation ?? 0} icon={<Stethoscope className="w-5 h-5" />} color="bg-secondary" />
-        <StatCard label="Done"           value={stats.done ?? 0}           icon={<CheckCircle className="w-5 h-5" />}  color="bg-success" />
-      </div>
-
-      {/* Add patient search modal */}
-      {showSearch && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowSearch(false)}>
-          <div className="modal max-w-lg">
-            <div className="modal-header">
-              <h2 className="modal-title">Add Patient to Queue</h2>
-              <button onClick={() => setShowSearch(false)} className="btn-ghost btn-icon text-slate-400">✕</button>
-            </div>
-            <div className="modal-body">
-              {doctors.length > 0 && (
-                <div className="form-group mb-4">
-                  <label className="form-label">Assign to Doctor (optional)</label>
-                  <select className="form-select" value={selectedDoctor}
-                    onChange={e => setSelectedDoctor(e.target.value)}>
-                    <option value="">Any Doctor</option>
-                    {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                  </select>
-                </div>
-              )}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input autoFocus className="form-input pl-9"
-                  placeholder="Search patient by name or phone..."
-                  value={searchQ} onChange={e => setSearchQ(e.target.value)} />
-              </div>
-
-              <div className="mt-3 space-y-2 max-h-72 overflow-y-auto">
-                {searchResults.length === 0 && searchQ.length >= 2 && (
-                  <p className="text-sm text-slate-400 text-center py-4">No patients found</p>
-                )}
-                {searchResults.map(p => (
-                  <div key={p.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-primary/30 hover:bg-blue-50 transition-all cursor-pointer"
-                    onClick={() => addToQueue(p)}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-primary text-white font-bold flex items-center justify-center flex-shrink-0">
-                        {p.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-slate-800 text-sm">{p.name}</p>
-                        <p className="text-xs text-slate-400">{p.patientCode} • {p.age}y • {p.phone}</p>
-                        {p.allergies?.length > 0 && (
-                          <p className="text-xs text-danger">⚠ {p.allergies.join(', ')}</p>
-                        )}
-                      </div>
-                    </div>
-                    <Button variant="primary" size="sm" loading={adding}>Add</Button>
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* Patient search bar — type OPD/name/phone, click result → patient profile */}
+      <Card className="mb-4">
+        <div ref={searchWrapRef} className="relative">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              className="form-input pl-9 w-full"
+              placeholder="Search patient by OPD code, name, or phone..."
+              value={searchQ}
+              onChange={e => setSearchQ(e.target.value)}
+              onFocus={() => searchQ.trim().length >= 2 && setShowResults(true)}
+            />
+            {searchQ && (
+              <button
+                type="button"
+                onClick={() => { setSearchQ(''); setSearchResults([]); setShowResults(false) }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4"/>
+              </button>
+            )}
           </div>
+
+          {showResults && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-80 overflow-y-auto z-30">
+              {searching ? (
+                <p className="px-3 py-2 text-sm text-slate-400 italic">Searching…</p>
+              ) : searchResults.length === 0 ? (
+                <p className="px-3 py-3 text-sm text-slate-400 italic text-center">
+                  No patients found.
+                  <button onClick={() => { setShowResults(false); setShowAddModal(true) }}
+                    className="text-primary font-semibold hover:underline ml-1">
+                    Add new patient?
+                  </button>
+                </p>
+              ) : (
+                searchResults.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onMouseDown={() => {
+                      navigate(`/patients/${p.id}`)
+                      setShowResults(false); setSearchQ('')
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-slate-50 last:border-0 flex items-center gap-3"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center flex-shrink-0">
+                      {(p.name || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">
+                        <span className="font-mono text-primary mr-2">{p.patientCode}</span>
+                        {p.name}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {[p.age != null ? `${p.age}y` : null, p.gender, p.phone].filter(Boolean).join(' • ')}
+                        {p.allergies?.length > 0 && <span className="text-danger ml-2">⚠ Allergic</span>}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300"/>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
-      )}
+      </Card>
 
       {/* Doctor filter */}
       {doctors.length > 1 && (
@@ -220,13 +247,12 @@ export default function QueuePage() {
             <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-4 text-primary">
               <Clock className="w-8 h-8" />
             </div>
-            <h3 className="font-semibold text-slate-700 mb-1">Queue is empty</h3>
-            <p className="text-sm text-slate-400">Add patients to today's queue</p>
+            <h3 className="font-semibold text-slate-700 mb-1">No appointments yet</h3>
+            <p className="text-sm text-slate-400">Search for a patient above or add a new patient to begin.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredQueue.map((a, idx) => {
-              const StatusIcon = STATUS_CONFIG[a.status]?.icon || Clock
+            {filteredQueue.map((a) => {
               const isActive = a.status === 'InConsultation'
               return (
                 <div key={a.id}
@@ -239,8 +265,10 @@ export default function QueuePage() {
                     #{a.tokenNo}
                   </div>
 
-                  {/* Patient Info */}
-                  <div className="flex-1 min-w-0">
+                  {/* Patient Info — clickable, goes to profile */}
+                  <button type="button"
+                    onClick={() => navigate(`/patients/${a.patient.id}`)}
+                    className="flex-1 min-w-0 text-left hover:opacity-70 transition-opacity">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-slate-800">{a.patient.name}</p>
                       {isActive && <Badge variant="primary">● In Consultation</Badge>}
@@ -254,11 +282,11 @@ export default function QueuePage() {
                     <p className="text-xs text-slate-400 mt-0.5">
                       {a.patient.patientCode} • {a.patient.age}y {a.patient.gender} • {a.patient.phone}
                     </p>
-                  </div>
+                  </button>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {(a.status === 'Waiting' || a.status === 'InConsultation') && (
+                    {(a.status === 'Waiting' || a.status === 'InConsultation') && can('createPrescriptions') && (
                       <Button variant="primary" size="sm"
                         icon={<FileText className="w-3.5 h-3.5"/>}
                         onClick={() => navigate(`/prescriptions/new?patientId=${a.patient.id}`)}>
@@ -282,6 +310,17 @@ export default function QueuePage() {
           </div>
         )}
       </Card>
+
+      {/* Add Patient modal — reuses the same modal from PatientsPage */}
+      {showAddModal && (
+        <PatientModal
+          mode="add"
+          onClose={() => setShowAddModal(false)}
+          onSaved={() => { setShowAddModal(false); fetchQueue() }}
+          navigate={navigate}
+          can={can}
+        />
+      )}
     </div>
   )
 }

@@ -85,7 +85,7 @@ function ChipInput({ label, value, onChange, suggestions }) {
 }
 
 // ── Patient Modal ─────────────────────────────────────────
-function PatientModal({ mode, initialForm, onClose, onSaved, navigate, can }) {
+export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, can }) {
   const [form, setForm]         = useState(initialForm || { ...emptyForm })
   const [saving, setSaving]     = useState(false)
   const [warning, setWarning]   = useState('')
