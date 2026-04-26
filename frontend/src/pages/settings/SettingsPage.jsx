@@ -118,6 +118,7 @@ const DEFAULT_RX_PRINT = {
   // Spacing controls (mm for padding, dropdown for line spacing)
   paddingTop: 8, paddingBottom: 8,
   lineSpacing: 'normal',  // 'tight' | 'normal' | 'comfortable' | 'airy'
+  defaultPrintLang: 'en', // 'en' | 'hi' | 'mr' — pre-fills the Rx form's language dropdown
 }
 
 const DEFAULT_BILL_PRINT = {
@@ -663,6 +664,22 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
               </select>
               <p className="text-xs text-slate-400 mt-1">Affects spacing between lines and sections in the body.</p>
             </div>
+
+            {isRx && (
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">Default Print Language</label>
+                <select
+                  className="form-select w-full"
+                  value={cfg.defaultPrintLang || 'en'}
+                  onChange={e => set('defaultPrintLang', e.target.value)}
+                >
+                  <option value="en">🇬🇧 English</option>
+                  <option value="hi">🇮🇳 Hindi</option>
+                  <option value="mr">🇮🇳 Marathi</option>
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Pre-selected when doctor opens a new prescription. They can still change it per-Rx if needed.</p>
+              </div>
+            )}
           </div>
         </CollapsibleSection>
 

@@ -1021,6 +1021,14 @@ export default function NewPrescriptionPage() {
         if (pd.data.data?.config) { setPageDesign(pd.data.data.config); setPdLoaded(true) }
         else setPdLoaded(true)
       } catch { setPdLoaded(true) }
+      // Load Rx PRINT config — we only need defaultPrintLang from it for now
+      try {
+        const printPd = await api.get('/page-design?type=prescription')
+        const lang = printPd.data?.data?.config?.defaultPrintLang
+        // Only apply for NEW Rx (not edit). For edit mode, the saved Rx's printLang wins
+        // and is set by the edit-loader effect below.
+        if (lang && !isEdit) setPrintLang(lang)
+      } catch {}
       // Load doctor's medicine preferences last (non-critical)
       try {
         const prefs = await api.get('/prescriptions/doctor-preferences')
