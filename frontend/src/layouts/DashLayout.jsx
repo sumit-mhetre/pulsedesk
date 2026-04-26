@@ -95,11 +95,8 @@ export default function DashLayout() {
     <aside className={`${mobile ? 'w-full h-full' : 'w-64 min-h-screen'} bg-primary flex flex-col`}>
       <div className="flex items-center justify-between p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-              <circle cx="11" cy="11" r="3.5" fill="white"/>
-              <path d="M11 2L11 6M11 16L11 20M2 11L6 11M16 11L20 11" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+          <div className="w-9 h-9 bg-white/95 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
+            <img src="/logo.svg" alt="SimpleRx EMR" className="w-full h-full object-contain"/>
           </div>
           <div>
             <p className="text-white font-bold text-base leading-none">SimpleRx EMR</p>

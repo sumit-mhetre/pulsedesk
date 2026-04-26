@@ -18,11 +18,8 @@ export default function AuthLayout() {
         </div>
         <div className="relative">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <circle cx="11" cy="11" r="3.5" fill="white"/>
-                <path d="M11 2 L11 6 M11 16 L11 20 M2 11 L6 11 M16 11 L20 11" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
+            <div className="w-10 h-10 bg-white/95 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img src="/logo.svg" alt="SimpleRx EMR" className="w-full h-full object-contain"/>
             </div>
             <span className="text-white font-bold text-xl tracking-tight">SimpleRx EMR</span>
           </div>
@@ -58,11 +55,8 @@ export default function AuthLayout() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
-            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-              <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-                <circle cx="11" cy="11" r="3.5" fill="white"/>
-                <path d="M11 2 L11 6 M11 16 L11 20 M2 11 L6 11 M16 11 L20 11" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img src="/logo.svg" alt="SimpleRx EMR" className="w-full h-full object-contain"/>
             </div>
             <span className="font-bold text-primary text-xl">SimpleRx EMR</span>
           </div>
