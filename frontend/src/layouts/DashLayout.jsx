@@ -165,13 +165,13 @@ export default function DashLayout() {
       <div className="flex min-h-screen bg-background">
         <div className="hidden lg:block sticky top-0 h-screen no-print"><Sidebar/></div>
         {sidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden flex no-print">
+          <div className="fixed inset-0 z-[55] lg:hidden flex no-print">
             <div className="w-72"><Sidebar mobile/></div>
             <div className="flex-1 bg-black/50" onClick={() => setSidebarOpen(false)}/>
           </div>
         )}
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="bg-white border-b border-blue-50 sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between shadow-sm">
+          <header className="bg-white border-b border-blue-50 sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-3">
               <button className="lg:hidden btn-ghost btn-icon" onClick={() => setSidebarOpen(true)}><Menu className="w-5 h-5"/></button>
               <div className="hidden sm:flex items-center gap-2 text-sm text-slate-400">
@@ -191,7 +191,7 @@ export default function DashLayout() {
                 <ChevronDown className="w-4 h-4 text-slate-400"/>
               </button>
               {profileOpen && (
-                <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-modal border border-blue-50 py-1 z-50 animate-in">
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-modal border border-blue-50 py-1 z-[60] animate-in">
                   <button onClick={() => { navigate('/profile'); setProfileOpen(false) }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 transition-colors">
                     <User className="w-4 h-4 text-primary"/> My Profile
                   </button>
