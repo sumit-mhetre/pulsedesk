@@ -38,7 +38,7 @@ async function getTodayQueue(req, res) {
 
     const appointments = await prisma.appointment.findMany({
       where,
-      orderBy: { tokenNo: 'asc' },
+      orderBy: { tokenNo: 'desc' },   // newest first — latest token at top, no scrolling
       include: {
         patient: {
           select: {
