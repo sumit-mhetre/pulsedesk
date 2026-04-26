@@ -245,16 +245,16 @@ export default function QueuePage() {
             <p className="text-sm text-slate-400">Search for a patient above or add a new patient to begin.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filteredQueue.map((a) => {
               const isActive = a.status === 'InConsultation'
               return (
                 <div key={a.id}
-                  className={`flex items-center gap-4 p-4 rounded-2xl border transition-all
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all
                     ${isActive ? 'border-primary/30 bg-blue-50 shadow-card' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
 
                   {/* Token */}
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0
                     ${isActive ? 'bg-primary text-white' : 'bg-background text-slate-600'}`}>
                     #{a.tokenNo}
                   </div>
@@ -264,7 +264,7 @@ export default function QueuePage() {
                     onClick={() => navigate(`/patients/${a.patient.id}`)}
                     className="flex-1 min-w-0 text-left hover:opacity-70 transition-opacity">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-slate-800">{a.patient.name}</p>
+                      <p className="font-semibold text-slate-800 text-sm">{a.patient.name}</p>
                       {isActive && <Badge variant="primary">● In Consultation</Badge>}
                       {a.patient.allergies?.length > 0 && (
                         <Badge variant="danger">⚠ Allergic</Badge>
@@ -273,7 +273,7 @@ export default function QueuePage() {
                         <Badge variant="warning">{a.patient.chronicConditions[0]}</Badge>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-400 leading-tight">
                       {a.patient.patientCode} • {a.patient.age}y {a.patient.gender} • {a.patient.phone}
                     </p>
                   </button>
