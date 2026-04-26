@@ -4,7 +4,7 @@ import {
   Search, UserPlus, ChevronRight, Clock, CheckCircle, XCircle,
   Stethoscope, RefreshCw, FileText, X,
 } from 'lucide-react'
-import { Card, Button, Badge, PageHeader } from '../../components/ui'
+import { Card, Button, Badge } from '../../components/ui'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
@@ -126,43 +126,42 @@ export default function QueuePage() {
 
   return (
     <div className="fade-in">
-      <PageHeader
-        title="Today's Appointments"
-        subtitle={format(new Date(), 'EEEE, dd MMMM yyyy')}
-        action={
-          <div className="flex gap-2">
-            <Button variant="ghost" icon={<RefreshCw className="w-4 h-4" />} onClick={fetchQueue}>Refresh</Button>
-            <Button variant="success" onClick={callNext} icon={<ChevronRight className="w-4 h-4" />}>Call Next</Button>
-            <Button variant="primary" icon={<UserPlus className="w-4 h-4" />} onClick={() => setShowAddModal(true)}>
-              Add New Patient
-            </Button>
-          </div>
-        }
-      />
+      <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Today's Appointments</h1>
+          <p className="text-sm text-slate-500 mt-1">{format(new Date(), 'EEEE, dd MMMM yyyy')}</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="ghost" icon={<RefreshCw className="w-4 h-4" />} onClick={fetchQueue}>Refresh</Button>
+          <Button variant="success" onClick={callNext} icon={<ChevronRight className="w-4 h-4" />}>Call Next</Button>
+          <Button variant="primary" icon={<UserPlus className="w-4 h-4" />} onClick={() => setShowAddModal(true)}>
+            Add New Patient
+          </Button>
+        </div>
+      </div>
 
-      {/* Patient search bar — type OPD/name/phone, click result → patient profile */}
-      <Card className="mb-4">
-        <div ref={searchWrapRef} className="relative">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              className="form-input pl-9 w-full"
-              placeholder="Search patient by OPD code, name, or phone..."
-              value={searchQ}
-              onChange={e => setSearchQ(e.target.value)}
-              onFocus={() => searchQ.trim().length >= 2 && setShowResults(true)}
-            />
-            {searchQ && (
-              <button
-                type="button"
-                onClick={() => { setSearchQ(''); setSearchResults([]); setShowResults(false) }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4"/>
-              </button>
-            )}
-          </div>
+      {/* Compact toolbar: search + filters all on one row (wraps on narrow screens) */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        {/* Search — flex-grow so it takes up available space */}
+        <div ref={searchWrapRef} className="relative flex-1 min-w-[220px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            className="form-input pl-9 pr-9 w-full"
+            placeholder="Search patient by OPD code, name, or phone..."
+            value={searchQ}
+            onChange={e => setSearchQ(e.target.value)}
+            onFocus={() => searchQ.trim().length >= 2 && setShowResults(true)}
+          />
+          {searchQ && (
+            <button
+              type="button"
+              onClick={() => { setSearchQ(''); setSearchResults([]); setShowResults(false) }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="w-4 h-4"/>
+            </button>
+          )}
 
           {showResults && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-80 overflow-y-auto z-30">
@@ -207,35 +206,30 @@ export default function QueuePage() {
             </div>
           )}
         </div>
-      </Card>
 
-      {/* Doctor filter */}
-      {doctors.length > 1 && (
-        <Card className="mb-4">
-          <div className="flex items-center gap-3">
-            <label className="form-label mb-0">Filter by Doctor:</label>
-            <select className="form-select w-56" value={selectedDoctor}
-              onChange={e => setSelectedDoctor(e.target.value)}>
-              <option value="">All Doctors</option>
-              {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          </div>
-        </Card>
-      )}
+        {/* Doctor filter — only shown for multi-doctor clinics (2+) */}
+        {doctors.length > 1 && (
+          <select className="form-select w-48 flex-shrink-0" value={selectedDoctor}
+            onChange={e => setSelectedDoctor(e.target.value)}>
+            <option value="">All Doctors</option>
+            {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        )}
 
-      {/* Status filter tabs */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {statusFilters.map(f => (
-          <button key={f.key} onClick={() => setActiveFilter(f.key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all
-              ${activeFilter === f.key ? 'bg-primary text-white shadow-btn' : 'bg-white text-slate-500 border border-slate-200 hover:border-primary hover:text-primary'}`}>
-            {f.label}
-            <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold
-              ${activeFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
-              {f.count ?? 0}
-            </span>
-          </button>
-        ))}
+        {/* Status filter pills */}
+        <div className="flex gap-2 flex-shrink-0 flex-wrap">
+          {statusFilters.map(f => (
+            <button key={f.key} onClick={() => setActiveFilter(f.key)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all
+                ${activeFilter === f.key ? 'bg-primary text-white shadow-btn' : 'bg-white text-slate-500 border border-slate-200 hover:border-primary hover:text-primary'}`}>
+              {f.label}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold
+                ${activeFilter === f.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                {f.count ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Queue List */}
