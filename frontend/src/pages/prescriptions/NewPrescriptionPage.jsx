@@ -114,6 +114,24 @@ const LIQUID_NOTES_MR = ['दिवसातून 2 वेळा 5ml','दि�
 // Frequency divisor — how many days between doses
 const FREQ_DIV = { DAILY: 1, ALT_DAYS: 2, EVERY_3D: 3, WEEKLY: 7 }
 
+// Infer medicine type from a typed-in name. Order matters — most specific first.
+// Returns ONLY values present in the backend MedicineType enum:
+// tablet | capsule | liquid | drops | cream | sachet | injection | inhaler | powder
+const inferMedicineType = (name) => {
+  if (!name) return 'tablet'
+  const n = String(name).toLowerCase()
+  // Order matters: more specific terms first
+  if (/\binjection|\binj\b|injectable/.test(n))                    return 'injection'
+  if (/\bsyrup|\bsuspension|\bsusp\b|elixir|\bliquid\b/.test(n))   return 'liquid'
+  if (/\bdrops?\b/.test(n))                                        return 'drops'
+  if (/\binhaler|inhalation|nebuliz|\bspray\b/.test(n))            return 'inhaler'
+  if (/\bcream|\bointment|\boint\b|\bgel\b|\blotion\b/.test(n))    return 'cream'
+  if (/\bpowder|\bsachet|\bsach\b/.test(n))                        return 'powder'
+  if (/\bcapsule|\bcap\b/.test(n))                                 return 'capsule'
+  if (/\btablet|\btab\b/.test(n))                                  return 'tablet'
+  return 'tablet'  // default
+}
+
 const calcQty = (dosage, days, type='tablet', frequency='DAILY') => {
   // Liquid/syrup/drops/cream/etc → qty always 1 bottle/tube (editable)
   // Uses NON_TABLET + 'sachet' as single source of truth to avoid duplicate-list drift
@@ -831,6 +849,16 @@ export default function NewPrescriptionPage() {
   const [ptResults,  setPtResults]  = useState([])
   const [showPtDrop, setShowPtDrop] = useState(false)
 
+  // Flip today's queue entry Waiting → InConsultation when patient is set on Rx page.
+  // Idempotent on backend; flag avoids redundant calls within a single Rx session.
+  const consultationStartedFor = useRef(null)
+  useEffect(() => {
+    if (!patient?.id) return
+    if (consultationStartedFor.current === patient.id) return
+    consultationStartedFor.current = patient.id
+    api.post(`/appointments/queue/today/${patient.id}/start`, {}, { silent: true }).catch(() => {})
+  }, [patient?.id])
+
   const [vitals,     setVitals]     = useState({ bp:'',bpSys:'',bpDia:'',sugar:'',weight:'',temp:'',spo2:'',pulse:'',height:'',bmi:'',heightUnit:'cm' })
   const [showVitals, setShowVitals] = useState(false)
   // Auto-calculate BMI when weight or height changes
@@ -1124,7 +1152,7 @@ export default function NewPrescriptionPage() {
         ...u[rowIdx],
         medicineId:   '',           // no id yet — backend will auto-create
         medicineName: name.trim(),
-        medicineType: 'tablet',     // default type for manually typed medicines
+        medicineType: inferMedicineType(name),  // smart-detect from name (cream/syrup/drops/capsule/etc.)
       }
       return u
     })
@@ -1274,6 +1302,10 @@ export default function NewPrescriptionPage() {
         toast.success(`Prescription ${data.data.rxNo} saved!`)
       }
       setDirty(false)
+      // Mark today's queue entry as Done — fire-and-forget, idempotent on backend
+      if (patient?.id) {
+        api.post(`/appointments/queue/today/${patient.id}/complete`, {}, { silent: true }).catch(() => {})
+      }
       // Route based on requested mode
       if (mode === 'print') {
         navigate(`/prescriptions/${savedId}?print=1`)

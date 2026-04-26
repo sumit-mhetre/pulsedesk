@@ -419,6 +419,8 @@ function PatientModal({ mode, initialForm, onClose, onSaved, navigate }) {
                 </div>
               ) : (
                 <div className="flex items-center justify-between flex-wrap gap-3">
+                  {/* +Create Bill / +Prescribe buttons hidden — new flow auto-routes to billing
+                      on Register. Kept in code for future quick-action use.
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" size="sm"
                       icon={<Receipt className="w-3.5 h-3.5"/>}
@@ -431,11 +433,13 @@ function PatientModal({ mode, initialForm, onClose, onSaved, navigate }) {
                       + Prescribe
                     </Button>
                   </div>
+                  */}
+                  <div/>
                   <div className="flex gap-2">
                     <Button type="button" variant="ghost" onClick={handleBackdropClick}>Cancel</Button>
                     <Button type="button" variant="primary" loading={saving}
-                      onClick={()=>handleSubmit()}>
-                      Register Patient
+                      onClick={()=>handleSubmit('bill')}>
+                      Register &amp; Create Bill
                     </Button>
                   </div>
                 </div>

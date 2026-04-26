@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Search, UserPlus, ChevronRight, Clock, CheckCircle, XCircle, Stethoscope, RefreshCw } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Search, UserPlus, ChevronRight, Clock, CheckCircle, XCircle, Stethoscope, RefreshCw, FileText } from 'lucide-react'
 import { Card, Button, Badge, PageHeader, StatCard } from '../../components/ui'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -13,6 +14,7 @@ const STATUS_CONFIG = {
 }
 
 export default function QueuePage() {
+  const navigate = useNavigate()
   const [queue, setQueue]       = useState([])
   const [stats, setStats]       = useState({})
   const [loading, setLoading]   = useState(true)
@@ -102,7 +104,7 @@ export default function QueuePage() {
   return (
     <div className="fade-in">
       <PageHeader
-        title="Today's Queue"
+        title="Today's Appointment Queue"
         subtitle={format(new Date(), 'EEEE, dd MMMM yyyy')}
         action={
           <div className="flex gap-2">
@@ -256,23 +258,19 @@ export default function QueuePage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {a.status === 'Waiting' && (
+                    {(a.status === 'Waiting' || a.status === 'InConsultation') && (
                       <Button variant="primary" size="sm"
-                        onClick={() => updateStatus(a.id, 'InConsultation')}>
-                        Call In
-                      </Button>
-                    )}
-                    {a.status === 'InConsultation' && (
-                      <Button variant="success" size="sm"
-                        onClick={() => updateStatus(a.id, 'Done')}>
-                        Done
+                        icon={<FileText className="w-3.5 h-3.5"/>}
+                        onClick={() => navigate(`/prescriptions/new?patientId=${a.patient.id}`)}>
+                        {a.status === 'InConsultation' ? 'Continue Rx' : '+ New Prescription'}
                       </Button>
                     )}
                     {(a.status === 'Waiting' || a.status === 'InConsultation') && (
-                      <Button variant="ghost" size="sm"
+                      <button type="button"
+                        className="text-xs text-slate-400 hover:text-danger underline-offset-2 hover:underline px-1"
                         onClick={() => updateStatus(a.id, 'Skipped')}>
                         Skip
-                      </Button>
+                      </button>
                     )}
                     <Badge variant={STATUS_CONFIG[a.status]?.color || 'gray'}>
                       {STATUS_CONFIG[a.status]?.label || a.status}

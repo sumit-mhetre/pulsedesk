@@ -115,13 +115,44 @@ async function createBill(req, res) {
         });
       }
 
+      // ── Auto-queue: when bill is saved for TODAY, add patient to today's queue ──
+      // One bill = one queue entry. Receptionist creates bill → patient is queued
+      // as Waiting. Doctor flips to InConsultation/Done as the visit progresses.
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const lastToken = await tx.appointment.findFirst({
+        where: { clinicId: req.clinicId, tokenDate: { gte: today, lt: tomorrow } },
+        orderBy: { tokenNo: 'desc' },
+        select: { tokenNo: true },
+      });
+      const nextToken = lastToken ? lastToken.tokenNo + 1 : 1;
+
+      try {
+        await tx.appointment.create({
+          data: {
+            clinicId:  req.clinicId,
+            patientId,
+            tokenNo:   nextToken,
+            tokenDate: today,
+            status:    'Waiting',
+            notes:     `Auto-queued from bill ${billNo}`,
+          },
+        });
+      } catch (e) {
+        // Don't fail the bill if queue insert hits a race condition — log only
+        console.warn('[createBill] auto-queue failed (non-fatal):', e?.message);
+      }
+
       return tx.bill.findUnique({
         where: { id: b.id },
         include: { patient: true, items: true, prescription: { select: { rxNo: true } } },
       });
     });
 
-    return successResponse(res, bill, 'Bill created successfully', 201);
+    return successResponse(res, bill, 'Bill created and patient added to queue', 201);
   } catch (err) {
     console.error(err);
     return errorResponse(res, 'Failed to create bill', 500);

@@ -13,7 +13,7 @@ import toast from 'react-hot-toast'
 const navItems = [
   { label: 'Dashboard',    icon: LayoutDashboard, to: '/dashboard',     requires: 'viewDashboard' },
   { label: 'Patients',     icon: User,            to: '/patients',      requires: 'managePatients' },
-  { label: 'Queue',        icon: CalendarDays,    to: '/queue',         requires: 'manageQueue' },
+  { label: 'Appointment Queue', icon: CalendarDays, to: '/queue',     requires: 'manageQueue' },
   { label: 'Prescriptions',icon: FileText,        to: '/prescriptions', requires: 'viewPrescriptions' },
   { label: 'Certificates', icon: FileCheck,       to: '/documents',     requires: 'viewDocuments' },
   { label: 'Billing',      icon: Receipt,         to: '/billing',       requires: 'viewBilling' },

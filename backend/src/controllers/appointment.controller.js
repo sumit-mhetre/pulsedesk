@@ -266,7 +266,80 @@ async function getQueueByDate(req, res) {
   }
 }
 
+// ── Status transition helpers (called from Rx flow) ─────────
+// Find today's Waiting/InConsultation appointment for this patient and flip it.
+// Idempotent: if no today's appointment exists OR it's already past target status, do nothing.
+
+async function startConsultation(req, res) {
+  try {
+    const { patientId } = req.params;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Pick today's earliest non-Done appointment for this patient (Waiting beats InConsultation)
+    const appt = await prisma.appointment.findFirst({
+      where: {
+        clinicId: req.clinicId, patientId,
+        tokenDate: { gte: today, lt: tomorrow },
+        status: { in: ['Waiting', 'InConsultation'] },
+      },
+      orderBy: [{ status: 'asc' }, { tokenNo: 'asc' }],   // Waiting < InConsultation alphabetically
+    });
+
+    if (!appt) {
+      return successResponse(res, null, 'No active queue entry — nothing to transition');
+    }
+    if (appt.status === 'InConsultation') {
+      return successResponse(res, appt, 'Already in consultation');
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id: appt.id },
+      data:  { status: 'InConsultation' },
+    });
+    return successResponse(res, updated, 'Marked as in consultation');
+  } catch (err) {
+    console.error('[startConsultation]', err);
+    return errorResponse(res, 'Failed to update queue status', 500);
+  }
+}
+
+async function completeConsultation(req, res) {
+  try {
+    const { patientId } = req.params;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const appt = await prisma.appointment.findFirst({
+      where: {
+        clinicId: req.clinicId, patientId,
+        tokenDate: { gte: today, lt: tomorrow },
+        status: { in: ['Waiting', 'InConsultation'] },
+      },
+      orderBy: { tokenNo: 'asc' },
+    });
+
+    if (!appt) {
+      return successResponse(res, null, 'No active queue entry — nothing to complete');
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id: appt.id },
+      data:  { status: 'Done' },
+    });
+    return successResponse(res, updated, 'Marked as done');
+  } catch (err) {
+    console.error('[completeConsultation]', err);
+    return errorResponse(res, 'Failed to update queue status', 500);
+  }
+}
+
 module.exports = {
   getTodayQueue, addToQueue, updateTokenStatus,
   callNext, reorderToken, getQueueByDate,
+  startConsultation, completeConsultation,
 };

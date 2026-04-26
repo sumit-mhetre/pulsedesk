@@ -19,4 +19,9 @@ router.get  ('/queue/:date',  authenticate, ctrl.getQueueByDate);
 router.patch('/:id/status',   authenticate, requirePermission('manageQueue'), ctrl.updateTokenStatus);
 router.patch('/:id/reorder',  authenticate, requirePermission('manageQueue'), ctrl.reorderToken);
 
+// Patient-scoped status transitions (called from Rx flow)
+// These are idempotent — safe to call multiple times.
+router.post('/queue/today/:patientId/start',    authenticate, requirePermission('createPrescriptions'), ctrl.startConsultation);
+router.post('/queue/today/:patientId/complete', authenticate, requirePermission('createPrescriptions'), ctrl.completeConsultation);
+
 module.exports = router;

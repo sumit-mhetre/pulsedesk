@@ -74,8 +74,13 @@ function MedicineForm({ form, setForm, onSubmit, onCancel, saving, mode }) {
       <div className="grid grid-cols-2 gap-x-4">
         <div className="col-span-2 form-group">
           <label className="form-label">Medicine Name *</label>
-          <input className="form-input" placeholder="e.g. Paracetamol 500mg" required
+          <input className="form-input" placeholder="e.g. Crocin 650 Tablet" required
             value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+        </div>
+        <div className="col-span-2 form-group">
+          <label className="form-label">Generic Name / Composition</label>
+          <input className="form-input" placeholder="e.g. Paracetamol 650 mg"
+            value={form.genericName || ''} onChange={e => setForm(f => ({ ...f, genericName: e.target.value }))} />
         </div>
         <div className="form-group">
           <label className="form-label">Type *</label>
