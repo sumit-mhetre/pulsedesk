@@ -30,8 +30,8 @@ export const PERMISSION_LABELS = {
   manageMasterData:    'Manage Master Data',
   manageSettings:      'Manage Settings',
   manageUsers:         'Manage Users',
-  viewDocuments:       'View Documents',
-  createDocuments:     'Create / Edit Documents',
+  viewDocuments:       'View Certificates',
+  createDocuments:     'Create / Edit Certificates',
 }
 
 // Grouping for the admin UI checkboxes

@@ -62,7 +62,7 @@ export default function DocumentsListPage() {
     if (!confirm) return
     try {
       await api.delete(`/documents/${confirm.id}`)
-      toast.success('Document deleted')
+      toast.success('Certificate deleted')
       setConfirm(null)
       fetchDocs()
     } catch {}
@@ -73,11 +73,11 @@ export default function DocumentsListPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Documents"
+        title="Certificates"
         subtitle="Fitness certificates, medical leave certificates, and referral letters"
         action={canCreate && (
           <Button variant="primary" icon={<Plus className="w-4 h-4"/>} onClick={() => navigate('/documents/new')}>
-            New Document
+            New Certificate
           </Button>
         )}
       />
@@ -107,7 +107,7 @@ export default function DocumentsListPage() {
           <input
             type="text"
             className="form-input pl-9 w-full"
-            placeholder="Search by document number or patient name..."
+            placeholder="Search by certificate number or patient name..."
             value={q}
             onChange={e => setQ(e.target.value)}
           />
@@ -120,14 +120,14 @@ export default function DocumentsListPage() {
       ) : items.length === 0 ? (
         <EmptyState
           icon={<FileText className="w-10 h-10 text-slate-300"/>}
-          title="No documents yet"
+          title="No certificates yet"
           description={canCreate
-            ? "Click 'New Document' to issue a fitness certificate, medical leave, or referral."
-            : "No documents have been issued."
+            ? "Click 'New Certificate' to issue a fitness certificate, medical leave, or referral."
+            : "No certificates have been issued."
           }
           action={canCreate && (
             <Button variant="primary" icon={<Plus className="w-4 h-4"/>} onClick={() => navigate('/documents/new')}>
-              New Document
+              New Certificate
             </Button>
           )}
         />
@@ -138,7 +138,7 @@ export default function DocumentsListPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-slate-500 border-b border-slate-100">
-                    <th className="py-2 px-2">Doc No</th>
+                    <th className="py-2 px-2">Cert No</th>
                     <th className="py-2 px-2">Type</th>
                     <th className="py-2 px-2">Patient</th>
                     <th className="py-2 px-2">Doctor</th>
@@ -225,7 +225,7 @@ export default function DocumentsListPage() {
         open={!!confirm}
         onClose={() => setConfirm(null)}
         onConfirm={handleDelete}
-        title="Delete document?"
+        title="Delete certificate?"
         message={confirm ? `This will permanently delete ${confirm.docNo} for ${confirm.patientName}. This cannot be undone.` : ''}
         confirmLabel="Yes, Delete"
         cancelLabel="Cancel"

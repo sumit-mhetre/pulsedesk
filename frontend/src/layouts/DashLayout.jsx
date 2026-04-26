@@ -15,7 +15,7 @@ const navItems = [
   { label: 'Patients',     icon: User,            to: '/patients',      requires: 'managePatients' },
   { label: 'Queue',        icon: CalendarDays,    to: '/queue',         requires: 'manageQueue' },
   { label: 'Prescriptions',icon: FileText,        to: '/prescriptions', requires: 'viewPrescriptions' },
-  { label: 'Documents',    icon: FileCheck,       to: '/documents',     requires: 'viewDocuments' },
+  { label: 'Certificates', icon: FileCheck,       to: '/documents',     requires: 'viewDocuments' },
   { label: 'Billing',      icon: Receipt,         to: '/billing',       requires: 'viewBilling' },
   { label: 'Reports',      icon: BarChart3,       to: '/reports',       requires: 'viewReports' },
   { label: 'Templates',    icon: BookOpen,        to: '/templates',     requires: 'viewPrescriptions' },

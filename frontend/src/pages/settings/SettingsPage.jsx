@@ -140,7 +140,7 @@ const TABS = [
   { key: 'rxform',     label: 'Prescription Form',  icon: FileText  },
   { key: 'rxprint',    label: 'Prescription Print', icon: Printer   },
   { key: 'billprint',  label: 'Bill / Receipt',     icon: Receipt   },
-  { key: 'doctemplates', label: 'Doc Templates',    icon: FileCheck },
+  { key: 'doctemplates', label: 'Cert Templates',  icon: FileCheck },
 ]
 
 // ═══════════════════════════════════════════════════════════
@@ -922,7 +922,7 @@ function DocTemplatesPanel() {
 
   return (
     <div className="max-w-3xl space-y-4">
-      <Card title="Document Templates" subtitle="Pre-fill common patterns to save typing — doctors can edit anything before saving">
+      <Card title="Certificate Templates" subtitle="Pre-fill common patterns to save typing — doctors can edit anything before saving">
         {/* Type tabs */}
         <div className="flex gap-2 mb-4 flex-wrap">
           {DOC_TYPES.map(t => (

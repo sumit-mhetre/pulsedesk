@@ -125,11 +125,17 @@ export default function PatientDetailPage() {
 
       {/* Tabs */}
       <div className="flex gap-2 mb-5 flex-wrap">
-        {['timeline','prescriptions','documents','vitals','bills'].map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium capitalize transition-all
-              ${tab === t ? 'bg-primary text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-primary hover:text-primary'}`}>
-            {t}
+        {[
+          { key: 'timeline',      label: 'Timeline' },
+          { key: 'prescriptions', label: 'Prescriptions' },
+          { key: 'documents',     label: 'Certificates' },
+          { key: 'vitals',        label: 'Vitals' },
+          { key: 'bills',         label: 'Bills' },
+        ].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all
+              ${tab === t.key ? 'bg-primary text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-primary hover:text-primary'}`}>
+            {t.label}
           </button>
         ))}
       </div>
@@ -345,12 +351,12 @@ function PatientDocumentsTab({ patientId }) {
           variant="primary" size="sm" icon={<Plus className="w-4 h-4"/>}
           onClick={() => navigate(`/documents/new?patient=${patientId}`)}
         >
-          New Document
+          New Certificate
         </Button>
       </div>
 
       {docs.length === 0 ? (
-        <Card><p className="text-center text-slate-400 text-sm py-6">No certificates or referrals issued yet.</p></Card>
+        <Card><p className="text-center text-slate-400 text-sm py-6">No certificates issued yet.</p></Card>
       ) : (
         docs.map(d => {
           const badge = DOC_TYPE_BADGE[d.type] || { label: d.type, variant: 'primary' }

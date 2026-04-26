@@ -56,7 +56,7 @@ export default function NewDocumentPage() {
         setPatientGuardian(d.patientGuardian || '')
         setPatientEmpId(d.patientEmpId || '')
       })
-      .catch(() => { toast.error('Document not found'); navigate('/documents') })
+      .catch(() => { toast.error('Certificate not found'); navigate('/documents') })
       .finally(() => setLoading(false))
   }, [id, isEdit, navigate])
 
@@ -147,11 +147,11 @@ export default function NewDocumentPage() {
       if (isEdit) {
         const { data: res } = await api.put(`/documents/${id}`, payload)
         savedDoc = res?.data
-        toast.success('Document updated')
+        toast.success('Certificate updated')
       } else {
         const { data: res } = await api.post('/documents', payload)
         savedDoc = res?.data
-        toast.success('Document created')
+        toast.success('Certificate created')
       }
       if (alsoPrint && savedDoc?.id) {
         navigate(`/documents/${savedDoc.id}/view?print=1`)

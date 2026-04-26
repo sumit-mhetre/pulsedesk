@@ -46,7 +46,7 @@ export default function ViewDocumentPage() {
       setDoc(data?.data)
       setCfg(pd?.data?.data?.data?.config || null)
     }).catch(() => {
-      toast.error('Document not found')
+      toast.error('Certificate not found')
       navigate('/documents')
     }).finally(() => setLoading(false))
   }, [id, navigate])
@@ -63,7 +63,7 @@ export default function ViewDocumentPage() {
   const handleDelete = async () => {
     try {
       await api.delete(`/documents/${id}`)
-      toast.success('Document deleted')
+      toast.success('Certificate deleted')
       navigate('/documents')
     } catch {}
   }
@@ -80,7 +80,7 @@ export default function ViewDocumentPage() {
       {/* Action bar — hidden on print */}
       <div className="print:hidden flex items-center justify-between">
         <PageHeader
-          title={TYPE_TITLE[doc.type] || 'Document'}
+          title={TYPE_TITLE[doc.type] || 'Certificate'}
           subtitle={doc.docNo}
           action={<Button variant="ghost" icon={<ArrowLeft className="w-4 h-4"/>} onClick={() => navigate('/documents')}>Back</Button>}
         />
@@ -204,7 +204,7 @@ export default function ViewDocumentPage() {
         open={confirmDel}
         onClose={() => setConfirmDel(false)}
         onConfirm={handleDelete}
-        title="Delete document?"
+        title="Delete certificate?"
         message={`This will permanently delete ${doc.docNo}. This cannot be undone.`}
         confirmLabel="Yes, Delete"
         cancelLabel="Cancel"

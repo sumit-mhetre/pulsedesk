@@ -1049,6 +1049,7 @@ export default function NewPrescriptionPage() {
       if(field==='dosage')lastUsed.current.dosage=val
       if(field==='days')lastUsed.current.days=val
       if(field==='timing')lastUsed.current.timing=val
+      if(field==='frequency')lastUsed.current.frequency=val
       // Recalc qty whenever dosage/days/frequency change
       if((field==='dosage'||field==='days'||field==='frequency')&&!NON_TABLET.includes(u[i].medicineType)) {
         u[i].qty = calcQty(
@@ -1122,11 +1123,8 @@ export default function NewPrescriptionPage() {
     return next
   })
   const applyToAll = (field) => {
-    // Frequency uses a different source (most common from current rows) since lastUsed doesn't track it
-    let val = lastUsed.current[field]
-    if (field === 'frequency') {
-      val = rxMeds.find(m => m.frequency && m.frequency !== 'DAILY')?.frequency || 'DAILY'
-    }
+    // Use last-touched value for all fields (dosage, timing, days, frequency)
+    const val = lastUsed.current[field]
     if (!val) return
     setRxMeds(prev => prev.map(m => {
       const u = { ...m, [field]: val }
@@ -1484,7 +1482,7 @@ export default function NewPrescriptionPage() {
                 <th className="pb-2 px-1">
                   <div className="flex items-center gap-1">
                     <span className="text-xs font-semibold text-slate-400 uppercase">Freq.</span>
-                    <ArrowDown active={rxMeds.some(m=>m.frequency && m.frequency !== 'DAILY')} onClick={()=>applyToAll('frequency')}/>
+                    <ArrowDown active={rxMeds.some(m=>m.frequency)} onClick={()=>applyToAll('frequency')}/>
                   </div>
                 </th>
                 <th className="pb-2 px-1">

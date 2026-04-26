@@ -30,7 +30,7 @@ export default function TemplatePicker({ type, onPick }) {
   if (!templates.length) {
     return (
       <p className="text-xs text-slate-400 italic">
-        No templates yet. Admin can add reusable templates from Settings → Document Templates.
+        No templates yet. Admin can add reusable templates from Settings → Cert Templates.
       </p>
     )
   }
