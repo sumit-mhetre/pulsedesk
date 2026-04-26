@@ -273,6 +273,8 @@ async function getQueueByDate(req, res) {
 async function startConsultation(req, res) {
   try {
     const { patientId } = req.params;
+    const createIfMissing = req.query.createIfMissing === '1' || req.body?.createIfMissing === true;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -289,6 +291,34 @@ async function startConsultation(req, res) {
     });
 
     if (!appt) {
+      if (createIfMissing) {
+        // Verify patient belongs to this clinic
+        const patient = await prisma.patient.findFirst({
+          where: { id: patientId, clinicId: req.clinicId },
+          select: { id: true },
+        });
+        if (!patient) return errorResponse(res, 'Patient not found in this clinic', 404);
+
+        // Allocate next token for today
+        const lastToken = await prisma.appointment.findFirst({
+          where: { clinicId: req.clinicId, tokenDate: { gte: today, lt: tomorrow } },
+          orderBy: { tokenNo: 'desc' },
+          select: { tokenNo: true },
+        });
+        const nextToken = lastToken ? lastToken.tokenNo + 1 : 1;
+
+        const created = await prisma.appointment.create({
+          data: {
+            clinicId:  req.clinicId,
+            patientId,
+            tokenNo:   nextToken,
+            tokenDate: today,
+            status:    'InConsultation',
+            notes:     'Direct prescription — no bill',
+          },
+        });
+        return successResponse(res, created, 'Queue entry created in consultation');
+      }
       return successResponse(res, null, 'No active queue entry — nothing to transition');
     }
     if (appt.status === 'InConsultation') {

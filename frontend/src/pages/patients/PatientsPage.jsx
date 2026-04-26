@@ -85,7 +85,7 @@ function ChipInput({ label, value, onChange, suggestions }) {
 }
 
 // ── Patient Modal ─────────────────────────────────────────
-function PatientModal({ mode, initialForm, onClose, onSaved, navigate }) {
+function PatientModal({ mode, initialForm, onClose, onSaved, navigate, can }) {
   const [form, setForm]         = useState(initialForm || { ...emptyForm })
   const [saving, setSaving]     = useState(false)
   const [warning, setWarning]   = useState('')
@@ -196,7 +196,17 @@ function PatientModal({ mode, initialForm, onClose, onSaved, navigate }) {
         toast.success(`✅ Patient ${patient.patientCode} registered!`)
         setIsDirty(false)
         onSaved(patient)
-        if (redirect === 'rx')   navigate(`/prescriptions/new?patientId=${patient.id}`)
+        if (redirect === 'rx') {
+          // Create queue entry directly in InConsultation (no bill, no Waiting state)
+          try {
+            await api.post(
+              `/appointments/queue/today/${patient.id}/start?createIfMissing=1`,
+              {},
+              { silent: true }
+            )
+          } catch {}
+          navigate(`/prescriptions/new?patientId=${patient.id}`)
+        }
         else if (redirect === 'bill') navigate(`/billing/new?patientId=${patient.id}`)
         else onClose()
       }
@@ -418,30 +428,20 @@ function PatientModal({ mode, initialForm, onClose, onSaved, navigate }) {
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  {/* +Create Bill / +Prescribe buttons hidden — new flow auto-routes to billing
-                      on Register. Kept in code for future quick-action use.
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" size="sm"
-                      icon={<Receipt className="w-3.5 h-3.5"/>}
-                      loading={saving} onClick={()=>handleSubmit('bill')}>
-                      + Create Bill
-                    </Button>
-                    <Button type="button" variant="outline" size="sm"
-                      icon={<FileText className="w-3.5 h-3.5"/>}
-                      loading={saving} onClick={()=>handleSubmit('rx')}>
-                      + Prescribe
-                    </Button>
-                  </div>
-                  */}
-                  <div/>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="ghost" onClick={handleBackdropClick}>Cancel</Button>
+                <div className="flex items-center justify-end flex-wrap gap-3">
+                  <Button type="button" variant="ghost" onClick={handleBackdropClick}>Cancel</Button>
+                  <Button type="button" variant="primary" loading={saving}
+                    icon={<Receipt className="w-4 h-4"/>}
+                    onClick={()=>handleSubmit('bill')}>
+                    Register &amp; Create Bill
+                  </Button>
+                  {can && can('createPrescriptions') && (
                     <Button type="button" variant="primary" loading={saving}
-                      onClick={()=>handleSubmit('bill')}>
-                      Register &amp; Create Bill
+                      icon={<FileText className="w-4 h-4"/>}
+                      onClick={()=>handleSubmit('rx')}>
+                      Register &amp; Prescribe
                     </Button>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -635,13 +635,15 @@ export default function PatientsPage() {
         <PatientModal mode="add"
           onClose={()=>setModal(null)}
           onSaved={()=>fetchPatients(1)}
-          navigate={navigate}/>
+          navigate={navigate}
+          can={can}/>
       )}
       {modal === 'edit' && editPt && (
         <PatientModal mode="edit" initialForm={editPt}
           onClose={()=>{ setModal(null); setEditPt(null) }}
           onSaved={()=>fetchPatients(page)}
-          navigate={navigate}/>
+          navigate={navigate}
+          can={can}/>
       )}
     </div>
   )
