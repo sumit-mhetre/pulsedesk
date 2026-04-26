@@ -1297,12 +1297,6 @@ export default function NewPrescriptionPage() {
               <option value="hi">🇮🇳 HI</option>
               <option value="mr">🇮🇳 MR</option>
             </select>
-            <Button variant="outline" size="sm" loading={saving} icon={<Save className="w-4 h-4"/>} onClick={()=>handleSave('stay')} title="Save and stay on this page">
-              <span className="hidden sm:inline">{isEdit ? 'Update' : 'Save'}</span>
-            </Button>
-            <Button variant="primary" size="sm" loading={saving} icon={<Printer className="w-4 h-4"/>} onClick={()=>handleSave('print')} title="Save and open print view">
-              <span className="hidden sm:inline">Save &amp; Print</span>
-            </Button>
           </div>
         </div>
       </div>
@@ -1679,7 +1673,7 @@ export default function NewPrescriptionPage() {
           </div>
         </Card>
 
-        <div className="flex flex-col sm:flex-row justify-between gap-3 pb-8">
+        <div className="flex flex-col sm:flex-row justify-between gap-3 pb-32 sm:pb-40">
           <Button variant="outline" icon={<BookOpen className="w-4 h-4"/>} onClick={handleSaveAsTemplate}>
             Save as Template
           </Button>
@@ -1696,6 +1690,34 @@ export default function NewPrescriptionPage() {
       </div>
     </div>
     <ConfirmDialog {...confirmProps} confirmLabel="Yes, Discard" cancelLabel="Keep Editing"/>
+
+    {/* Floating action buttons — always visible while scrolling. Hidden on print. */}
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-3 items-end no-print print:hidden">
+      <button
+        type="button"
+        onClick={() => handleSave('stay')}
+        disabled={saving}
+        title={isEdit ? 'Update' : 'Save'}
+        className="group flex items-center gap-2 pl-4 pr-5 py-3 rounded-full bg-white border-2 border-primary text-primary font-semibold shadow-lg hover:shadow-xl hover:bg-blue-50 active:scale-95 transition disabled:opacity-60 disabled:cursor-wait"
+      >
+        {saving
+          ? <span className="spinner w-4 h-4 border-primary"/>
+          : <Save className="w-5 h-5"/>}
+        <span className="text-sm">{isEdit ? 'Update' : 'Save'}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => handleSave('print')}
+        disabled={saving}
+        title="Save & Print"
+        className="group flex items-center gap-2 pl-4 pr-5 py-3 rounded-full bg-primary text-white font-semibold shadow-xl hover:bg-primary/90 hover:shadow-2xl active:scale-95 transition disabled:opacity-60 disabled:cursor-wait"
+      >
+        {saving
+          ? <span className="spinner w-4 h-4 border-white"/>
+          : <Printer className="w-5 h-5"/>}
+        <span className="text-sm">Save &amp; Print</span>
+      </button>
+    </div>
 
     {/* Resume-draft modal */}
     <Modal
