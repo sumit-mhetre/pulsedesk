@@ -32,9 +32,9 @@ const ROLE_DEFAULTS = {
   DOCTOR: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
     viewPrescriptions: true, createPrescriptions: true,
-    viewBilling: false,   createBilling: false,
+    viewBilling: true,    createBilling: true,
     viewReports: true,    manageTemplates: true,
-    manageMasterData: false, manageSettings: false, manageUsers: false,
+    manageMasterData: true, manageSettings: true, manageUsers: false,
     viewDocuments: true,  createDocuments: true,
   },
   RECEPTIONIST: {
