@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   X, Save, Building2, Users as UsersIcon, BarChart3, ShieldAlert,
   Mail, Phone, FileText, KeyRound, Power, Crown, Copy, AlertTriangle,
+  UserPlus, Pencil,
 } from 'lucide-react'
 import { Modal, Card, Button, Badge, ConfirmDialog } from '../../components/ui'
 import api from '../../lib/api'
@@ -10,6 +11,7 @@ import { format } from 'date-fns'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
+import SuperUserFormModal from './SuperUserFormModal'
 
 const TABS = [
   { key: 'info',    label: 'Info',    icon: Building2 },
@@ -41,6 +43,18 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
 
   // Status confirm
   const [pendingStatus, setPendingStatus] = useState(null)
+
+  // User form (Add/Edit)
+  const [userForm, setUserForm] = useState(null)   // null | { mode: 'add' } | { mode: 'edit', user }
+
+  // Refresh clinic detail (after user save)
+  const refreshDetail = async () => {
+    try {
+      const { data } = await api.get(`/clinics/${clinicId}`)
+      setClinic(data.data)
+      onChanged?.()
+    } catch {}
+  }
 
   // ── Load clinic detail on open ─────────────────────────
   useEffect(() => {
@@ -218,15 +232,29 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
                 {/* ─── USERS TAB ─── */}
                 {tab === 'users' && (
                   <div>
-                    <p className="text-sm text-slate-500 mb-3">{clinic.users?.length || 0} users in this clinic</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm text-slate-500">{clinic.users?.length || 0} user{(clinic.users?.length || 0) === 1 ? '' : 's'} in this clinic</p>
+                      <Button variant="primary" size="sm"
+                        icon={<UserPlus className="w-3.5 h-3.5"/>}
+                        onClick={() => setUserForm({ mode: 'add' })}>
+                        Add User
+                      </Button>
+                    </div>
                     {!clinic.users || clinic.users.length === 0 ? (
-                      <p className="text-slate-400 text-sm text-center py-8">No users yet</p>
+                      <div className="text-center py-8">
+                        <p className="text-slate-400 text-sm mb-3">No users yet — clinic has no admin or staff accounts.</p>
+                        <Button variant="outline" size="sm"
+                          icon={<UserPlus className="w-3.5 h-3.5"/>}
+                          onClick={() => setUserForm({ mode: 'add' })}>
+                          Add first user
+                        </Button>
+                      </div>
                     ) : (
                       <div className="table-wrapper">
                         <table className="table">
                           <thead>
                             <tr>
-                              <th>User</th><th>Role</th><th>Status</th><th>Created</th>
+                              <th>User</th><th>Role</th><th>Status</th><th>Created</th><th></th>
                             </tr>
                           </thead>
                           <tbody>
@@ -250,6 +278,12 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
                                   </Badge>
                                 </td>
                                 <td className="text-xs text-slate-500">{format(new Date(u.createdAt), 'dd MMM yy')}</td>
+                                <td className="text-right">
+                                  <button onClick={() => setUserForm({ mode: 'edit', user: u })}
+                                    className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                                    <Pencil className="w-3 h-3"/> Edit
+                                  </button>
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -492,6 +526,17 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
         onConfirm={() => changeStatus(pendingStatus)}
         onClose={() => setPendingStatus(null)}
       />
+
+      {/* User Add / Edit modal */}
+      {userForm && (
+        <SuperUserFormModal
+          clinicId={clinicId}
+          mode={userForm.mode}
+          initialUser={userForm.user}
+          onClose={() => setUserForm(null)}
+          onSaved={refreshDetail}
+        />
+      )}
     </>
   )
 }

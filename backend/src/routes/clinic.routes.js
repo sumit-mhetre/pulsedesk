@@ -16,15 +16,16 @@ router.put('/me', authenticate, requirePermission('manageSettings'), ctrl.update
 // Get all clinics
 router.get('/', authenticate, authorize('SUPER_ADMIN'), ctrl.getAllClinics);
 
-// Create clinic
+// Create clinic (admin user is OPTIONAL — see controller for the wantsAdmin logic)
 router.post('/',
   authenticate,
   authorize('SUPER_ADMIN'),
   [
     body('name').notEmpty().withMessage('Clinic name required'),
-    body('adminName').notEmpty().withMessage('Admin name required'),
-    body('adminEmail').isEmail().withMessage('Valid admin email required'),
-    body('adminPassword').isLength({ min: 6 }).withMessage('Password min 6 characters'),
+    // Admin fields validated conditionally inside the controller — here we only ensure
+    // that if any are sent, they're typed correctly.
+    body('adminEmail').optional({ checkFalsy: true }).isEmail().withMessage('Valid admin email required'),
+    body('adminPassword').optional({ checkFalsy: true }).isLength({ min: 6 }).withMessage('Password min 6 characters'),
   ],
   validate,
   ctrl.createClinic
@@ -42,6 +43,14 @@ router.get('/:id/stats',    authenticate, authorize('SUPER_ADMIN'), ctrl.getClin
 // Reset admin password (returns plaintext temp password)
 router.post('/:id/reset-admin-password',
   authenticate, authorize('SUPER_ADMIN'), ctrl.resetAdminPassword);
+
+// Super-admin: create / update user inside a specific clinic.
+// Reuses user controller methods which honor `req.params.clinicId` for super admin.
+const userCtrl = require('../controllers/user.controller');
+router.post('/:clinicId/users',
+  authenticate, authorize('SUPER_ADMIN'), userCtrl.createUser);
+router.patch('/:clinicId/users/:id',
+  authenticate, authorize('SUPER_ADMIN'), userCtrl.updateUser);
 
 // Update any clinic by id
 router.put('/:id', authenticate, authorize('SUPER_ADMIN'), ctrl.updateClinic);

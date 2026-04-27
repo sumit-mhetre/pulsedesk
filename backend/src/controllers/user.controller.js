@@ -95,7 +95,14 @@ async function createUser(req, res) {
     // For doctors, regNo and qualification are typically expected — warn (don't block) admin
     // (not fatal — clinics may onboard doctors before they have reg cert in hand)
 
-    // Check email unique within clinic
+    // Determine target clinic: super admin sets it via URL param `:clinicId`,
+    // regular admins implicitly use their own clinic from auth context.
+    const targetClinicId = (req.user?.role === 'SUPER_ADMIN' && req.params.clinicId)
+      ? req.params.clinicId
+      : req.clinicId;
+    if (!targetClinicId) return errorResponse(res, 'Clinic context missing', 400);
+
+    // Check email unique (across all users)
     const existing = await prisma.user.findUnique({
       where: { email: cleanEmail },
     });
@@ -106,7 +113,7 @@ async function createUser(req, res) {
 
     const user = await prisma.user.create({
       data: {
-        clinicId: req.clinicId,
+        clinicId: targetClinicId,
         name:  cleanName,
         email: cleanEmail,
         password: hashed,
@@ -139,9 +146,14 @@ async function updateUser(req, res) {
       regNo, permissions, isActive, role,
     } = req.body;
 
+    // Super admin scopes by URL :clinicId. Regular admins by their own clinic.
+    const targetClinicId = (req.user?.role === 'SUPER_ADMIN' && req.params.clinicId)
+      ? req.params.clinicId
+      : req.clinicId;
+
     // Ensure user belongs to same clinic
     const existing = await prisma.user.findFirst({
-      where: { id: req.params.id, clinicId: req.clinicId },
+      where: { id: req.params.id, clinicId: targetClinicId },
     });
     if (!existing) return errorResponse(res, 'User not found', 404);
 

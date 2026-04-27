@@ -8,18 +8,34 @@ async function createClinic(req, res) {
     const {
       name, address, phone, mobile, email, tagline, gst,
       subscriptionPlan, subscriptionEnd,
-      // First admin user details
+      // First admin user details — OPTIONAL: if all blank, no admin user created
       adminName, adminEmail, adminPassword, adminPhone,
     } = req.body;
+
+    // Determine whether to create admin: all 3 required admin fields must be present.
+    // (Frontend toggle controls this; backend defends in case fields are sent but blank.)
+    const wantsAdmin = !!(adminName && adminEmail && adminPassword);
 
     // Check clinic name unique
     const existing = await prisma.clinic.findFirst({ where: { name } });
     if (existing) return errorResponse(res, 'Clinic with this name already exists', 409);
 
-    // Hash admin password
-    const hashedPassword = await bcrypt.hash(adminPassword, 12);
+    // If creating admin, validate inputs early
+    let hashedPassword = null;
+    if (wantsAdmin) {
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) {
+        return errorResponse(res, 'Valid admin email required', 400);
+      }
+      if (String(adminPassword).length < 6) {
+        return errorResponse(res, 'Admin password must be at least 6 characters', 400);
+      }
+      // Email uniqueness check (across all users)
+      const existingUser = await prisma.user.findUnique({ where: { email: adminEmail } });
+      if (existingUser) return errorResponse(res, 'This admin email is already in use', 409);
+      hashedPassword = await bcrypt.hash(adminPassword, 12);
+    }
 
-    // Create clinic + admin user in transaction
+    // Create clinic (+ admin if wanted) in transaction
     const result = await prisma.$transaction(async (tx) => {
       const clinic = await tx.clinic.create({
         data: {
@@ -29,17 +45,20 @@ async function createClinic(req, res) {
         },
       });
 
-      const adminUser = await tx.user.create({
-        data: {
-          clinicId: clinic.id,
-          name: adminName,
-          email: adminEmail,
-          password: hashedPassword,
-          role: 'ADMIN',
-          phone: adminPhone,
-          permissions: {},
-        },
-      });
+      let adminUser = null;
+      if (wantsAdmin) {
+        adminUser = await tx.user.create({
+          data: {
+            clinicId: clinic.id,
+            name: adminName,
+            email: adminEmail,
+            password: hashedPassword,
+            role: 'ADMIN',
+            phone: adminPhone || null,
+            permissions: {},
+          },
+        });
+      }
 
       // Seed default master data for new clinic
       await seedDefaultData(tx, clinic.id);
@@ -47,9 +66,18 @@ async function createClinic(req, res) {
       return { clinic, adminUser };
     });
 
-    const { adminUser: { password: _, ...adminSafe }, clinic } = result;
+    const adminSafe = result.adminUser
+      ? (() => { const { password: _, ...rest } = result.adminUser; return rest; })()
+      : null;
 
-    return successResponse(res, { clinic, admin: adminSafe }, 'Clinic created successfully', 201);
+    return successResponse(
+      res,
+      { clinic: result.clinic, admin: adminSafe },
+      adminSafe
+        ? 'Clinic created with admin account'
+        : 'Clinic created — manage from Super Admin (no admin account created)',
+      201
+    );
   } catch (err) {
     console.error('Create clinic error:', err);
     return errorResponse(res, 'Failed to create clinic', 500);
