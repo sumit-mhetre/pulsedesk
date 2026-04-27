@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Mail, ArrowLeft, Check } from 'lucide-react'
 import api from '../../lib/api'
-import Button from '../../components/ui/index.jsx'
+import { Button } from '../../components/ui'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail]   = useState('')
