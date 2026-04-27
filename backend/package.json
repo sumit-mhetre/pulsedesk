@@ -14,6 +14,7 @@
     "seed": "dotenv -e .env.development -- node src/seed.js",
     "studio": "dotenv -e .env.development -- npx prisma studio",
     "studio:prod": "dotenv -e .env -- npx prisma studio",
+    "reset-super-local": "node scripts/reset-super-local.js",
     "postinstall": "npx prisma generate",
     "build": "npx prisma generate && npx prisma migrate deploy"
   },
