@@ -40,6 +40,9 @@ router.get('/:id',          authenticate, authorize('SUPER_ADMIN'), ctrl.getClin
 // Get clinic stats (per-clinic, date-range filterable)
 router.get('/:id/stats',    authenticate, authorize('SUPER_ADMIN'), ctrl.getClinicStats);
 
+// Get clinic audit logs (paginated)
+router.get('/:id/audit-logs', authenticate, authorize('SUPER_ADMIN'), ctrl.getClinicAuditLogs);
+
 // Reset admin password (returns plaintext temp password)
 router.post('/:id/reset-admin-password',
   authenticate, authorize('SUPER_ADMIN'), ctrl.resetAdminPassword);

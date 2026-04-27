@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse, paginatedResponse } = require('../lib/response');
 const { sanitizeOverrides, resolvePermissions, PERMISSION_KEYS } = require('../lib/permissions');
+const { logAudit } = require('../lib/audit');
 
 // ── Get all users in clinic ───────────────────────────────
 async function getUsers(req, res) {
@@ -131,6 +132,15 @@ async function createUser(req, res) {
       },
     });
 
+    // Audit log — track all user creates (regular admin or super admin)
+    await logAudit(req, {
+      clinicId: targetClinicId,
+      action:   req.user?.role === 'SUPER_ADMIN' ? 'super.user_create' : 'user.create',
+      entity:   'User',
+      entityId: user.id,
+      details:  { name: user.name, email: user.email, role: user.role },
+    });
+
     return successResponse(res, user, 'User created successfully', 201);
   } catch (err) {
     console.error('Create user error:', err);
@@ -222,6 +232,25 @@ async function updateUser(req, res) {
         phone: true, qualification: true, specialization: true,
         regNo: true, isActive: true, permissions: true,
       },
+    });
+
+    // Audit log — track changes made
+    const changedFields = Object.keys({
+      ...(cleanName !== undefined ? { name: 1 } : {}),
+      ...(phone !== undefined ? { phone: 1 } : {}),
+      ...(qualification !== undefined ? { qualification: 1 } : {}),
+      ...(specialization !== undefined ? { specialization: 1 } : {}),
+      ...(regNo !== undefined ? { regNo: 1 } : {}),
+      ...(permsOverride !== undefined ? { permissions: 1 } : {}),
+      ...(isActive !== undefined ? { isActive: 1 } : {}),
+      ...(role !== undefined ? { role: 1 } : {}),
+    });
+    await logAudit(req, {
+      clinicId: targetClinicId,
+      action:   req.user?.role === 'SUPER_ADMIN' ? 'super.user_update' : 'user.update',
+      entity:   'User',
+      entityId: user.id,
+      details:  { name: user.name, role: user.role, fieldsChanged: changedFields, isActive: user.isActive },
     });
 
     return successResponse(res, user, 'User updated successfully');

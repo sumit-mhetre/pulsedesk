@@ -610,6 +610,8 @@ model AuditLog {
   id        String   @id @default(uuid())
   clinicId  String
   userId    String?
+  actorEmail String?            // For super admin entries (no User record)
+  actorIsSuperAdmin Boolean @default(false)
   action    String
   entity    String
   entityId  String?
@@ -620,6 +622,7 @@ model AuditLog {
   clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id])
 
+  @@index([clinicId, createdAt])
   @@map("audit_logs")
 }
 

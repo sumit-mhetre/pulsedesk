@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse, paginatedResponse } = require('../lib/response');
+const { logAudit } = require('../lib/audit');
 
 // ── Create Clinic (Super Admin) ───────────────────────────
 async function createClinic(req, res) {
@@ -69,6 +70,20 @@ async function createClinic(req, res) {
     const adminSafe = result.adminUser
       ? (() => { const { password: _, ...rest } = result.adminUser; return rest; })()
       : null;
+
+    // Audit log: clinic creation (super admin action)
+    await logAudit(req, {
+      clinicId: result.clinic.id,
+      action:   'clinic.create',
+      entity:   'Clinic',
+      entityId: result.clinic.id,
+      details: {
+        clinicName:       result.clinic.name,
+        subscriptionPlan: result.clinic.subscriptionPlan,
+        adminCreated:     !!adminSafe,
+        adminEmail:       adminSafe?.email || null,
+      },
+    });
 
     return successResponse(
       res,
@@ -176,6 +191,18 @@ async function updateClinic(req, res) {
       data,
     });
 
+    // Audit log: only when super admin edits a clinic (regular admins editing
+    // their own clinic info is normal usage; we don't pollute the log for that).
+    if (isSuperAdmin) {
+      await logAudit(req, {
+        clinicId,
+        action:   'clinic.update',
+        entity:   'Clinic',
+        entityId: clinicId,
+        details:  { fieldsChanged: Object.keys(data) },
+      });
+    }
+
     return successResponse(res, clinic, 'Clinic updated successfully');
   } catch (err) {
     console.error('[updateClinic]', err);
@@ -196,6 +223,19 @@ async function updateClinicStatus(req, res) {
         ...(subscriptionPlan && { subscriptionPlan }),
         ...(subscriptionEnd && { subscriptionEnd: new Date(subscriptionEnd) }),
       },
+    });
+
+    // Audit: which fields changed
+    const changes = {};
+    if (status)           changes.status = status;
+    if (subscriptionPlan) changes.subscriptionPlan = subscriptionPlan;
+    if (subscriptionEnd)  changes.subscriptionEnd = subscriptionEnd;
+    await logAudit(req, {
+      clinicId: id,
+      action:   subscriptionPlan ? 'clinic.plan_change' : 'clinic.status_change',
+      entity:   'Clinic',
+      entityId: id,
+      details:  changes,
     });
 
     return successResponse(res, clinic, 'Clinic status updated');
@@ -493,6 +533,15 @@ async function resetAdminPassword(req, res) {
     // Invalidate all existing refresh tokens for this admin so old sessions can't continue
     await prisma.refreshToken.deleteMany({ where: { userId: admin.id } });
 
+    // Audit log
+    await logAudit(req, {
+      clinicId: id,
+      action:   'admin.password_reset',
+      entity:   'User',
+      entityId: admin.id,
+      details:  { adminEmail: admin.email, adminName: admin.name },
+    });
+
     return successResponse(
       res,
       { adminEmail: admin.email, adminName: admin.name, tempPassword: temp },
@@ -504,8 +553,37 @@ async function resetAdminPassword(req, res) {
   }
 }
 
+// ── Get Clinic Audit Logs (Super Admin) ───────────────────
+async function getClinicAuditLogs(req, res) {
+  try {
+    const { id } = req.params;
+    const limit  = Math.min(parseInt(req.query.limit) || 50, 200);
+    const cursor = req.query.cursor || null;
+
+    const logs = await prisma.auditLog.findMany({
+      where: { clinicId: id },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+      ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
+      },
+    });
+
+    const hasMore  = logs.length > limit;
+    const items    = hasMore ? logs.slice(0, -1) : logs;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+    return successResponse(res, { items, nextCursor }, 'Audit logs fetched');
+  } catch (err) {
+    console.error('[getClinicAuditLogs]', err);
+    return errorResponse(res, 'Failed to fetch audit logs', 500);
+  }
+}
+
 module.exports = {
   createClinic, getAllClinics, getMyClinic,
   updateClinic, updateClinicStatus,
   getClinicDetail, getClinicStats, resetAdminPassword,
+  getClinicAuditLogs,
 };

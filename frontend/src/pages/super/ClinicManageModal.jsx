@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   X, Save, Building2, Users as UsersIcon, BarChart3, ShieldAlert,
   Mail, Phone, FileText, KeyRound, Power, Crown, Copy, AlertTriangle,
-  UserPlus, Pencil,
+  UserPlus, Pencil, History,
 } from 'lucide-react'
 import { Modal, Card, Button, Badge, ConfirmDialog } from '../../components/ui'
 import api from '../../lib/api'
@@ -17,6 +17,7 @@ const TABS = [
   { key: 'info',    label: 'Info',    icon: Building2 },
   { key: 'users',   label: 'Users',   icon: UsersIcon },
   { key: 'stats',   label: 'Stats',   icon: BarChart3 },
+  { key: 'audit',   label: 'Audit',   icon: History },
   { key: 'actions', label: 'Actions', icon: ShieldAlert },
 ]
 
@@ -46,6 +47,12 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
 
   // User form (Add/Edit)
   const [userForm, setUserForm] = useState(null)   // null | { mode: 'add' } | { mode: 'edit', user }
+
+  // Audit logs
+  const [auditLogs, setAuditLogs]         = useState([])
+  const [auditLoading, setAuditLoading]   = useState(false)
+  const [auditCursor, setAuditCursor]     = useState(null)
+  const [auditHasMore, setAuditHasMore]   = useState(false)
 
   // Refresh clinic detail (after user save)
   const refreshDetail = async () => {
@@ -89,6 +96,31 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
       .catch(() => toast.error('Failed to load stats'))
       .finally(() => setStatsLoading(false))
   }, [tab, clinicId, from, to, clinic])
+
+  // ── Load audit logs when Audit tab opens ────────────────
+  useEffect(() => {
+    if (tab !== 'audit' || !clinic) return
+    setAuditLoading(true)
+    api.get(`/clinics/${clinicId}/audit-logs?limit=50`)
+      .then(({ data }) => {
+        setAuditLogs(data.data.items || [])
+        setAuditCursor(data.data.nextCursor)
+        setAuditHasMore(!!data.data.nextCursor)
+      })
+      .catch(() => toast.error('Failed to load audit logs'))
+      .finally(() => setAuditLoading(false))
+  }, [tab, clinicId, clinic])
+
+  const loadMoreAudit = async () => {
+    if (!auditCursor) return
+    setAuditLoading(true)
+    try {
+      const { data } = await api.get(`/clinics/${clinicId}/audit-logs?limit=50&cursor=${auditCursor}`)
+      setAuditLogs(prev => [...prev, ...(data.data.items || [])])
+      setAuditCursor(data.data.nextCursor)
+      setAuditHasMore(!!data.data.nextCursor)
+    } catch {} finally { setAuditLoading(false) }
+  }
 
   // ── Save Info tab ──────────────────────────────────────
   const saveInfo = async () => {
@@ -394,6 +426,38 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
                   </div>
                 )}
 
+                {/* ─── AUDIT TAB ─── */}
+                {tab === 'audit' && (
+                  <div>
+                    <p className="text-sm text-slate-500 mb-3">
+                      All admin actions on this clinic, most recent first.
+                    </p>
+                    {auditLoading && auditLogs.length === 0 ? (
+                      <div className="flex justify-center py-12"><div className="spinner text-primary w-8 h-8"/></div>
+                    ) : auditLogs.length === 0 ? (
+                      <div className="text-center py-8">
+                        <History className="w-12 h-12 text-slate-300 mx-auto mb-2"/>
+                        <p className="text-slate-400 text-sm">No audit entries yet for this clinic.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          {auditLogs.map(log => (
+                            <AuditLogRow key={log.id} log={log}/>
+                          ))}
+                        </div>
+                        {auditHasMore && (
+                          <div className="flex justify-center mt-4">
+                            <Button variant="outline" size="sm" loading={auditLoading} onClick={loadMoreAudit}>
+                              Load more
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {/* ─── ACTIONS TAB ─── */}
                 {tab === 'actions' && (
                   <div className="space-y-4">
@@ -547,6 +611,69 @@ function KPI({ label, value }) {
     <div className="bg-white border border-slate-100 rounded-xl p-3 text-center">
       <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">{label}</p>
       <p className="text-xl font-bold text-slate-800 mt-1">{value}</p>
+    </div>
+  )
+}
+
+// ── Audit log row ───────────────────────────────────────
+const ACTION_LABELS = {
+  'clinic.create':         { label: 'Clinic created',           color: 'success' },
+  'clinic.update':         { label: 'Clinic info updated',      color: 'primary' },
+  'clinic.plan_change':    { label: 'Subscription plan changed',color: 'warning' },
+  'clinic.status_change':  { label: 'Clinic status changed',    color: 'warning' },
+  'admin.password_reset':  { label: 'Admin password reset',     color: 'danger'  },
+  'super.user_create':     { label: 'User created (by super admin)', color: 'success' },
+  'super.user_update':     { label: 'User updated (by super admin)', color: 'primary' },
+  'user.create':           { label: 'User created',             color: 'success' },
+  'user.update':           { label: 'User updated',             color: 'primary' },
+}
+
+function AuditLogRow({ log }) {
+  const meta = ACTION_LABELS[log.action] || { label: log.action, color: 'gray' }
+  const actorName  = log.actorIsSuperAdmin
+    ? `Super Admin (${log.actorEmail || 'system'})`
+    : (log.user?.name || log.actorEmail || 'Unknown')
+  const date = log.createdAt ? new Date(log.createdAt) : null
+
+  // Build a compact details string for common cases
+  const d = log.details || {}
+  let detailLine = ''
+  if (log.action === 'clinic.update' && Array.isArray(d.fieldsChanged)) {
+    detailLine = `Changed: ${d.fieldsChanged.join(', ')}`
+  } else if (log.action === 'clinic.plan_change') {
+    detailLine = `New plan: ${d.subscriptionPlan}`
+  } else if (log.action === 'clinic.status_change') {
+    detailLine = `New status: ${d.status}`
+  } else if (log.action === 'clinic.create') {
+    detailLine = d.adminCreated ? `Admin: ${d.adminEmail}` : 'No admin account'
+  } else if (log.action === 'admin.password_reset') {
+    detailLine = `For: ${d.adminEmail}`
+  } else if (log.action === 'super.user_create' || log.action === 'user.create') {
+    detailLine = `${d.role}: ${d.name} (${d.email})`
+  } else if (log.action === 'super.user_update' || log.action === 'user.update') {
+    detailLine = `${d.name} — changed: ${(d.fieldsChanged || []).join(', ') || '(no fields)'}`
+  }
+
+  return (
+    <div className="flex items-start gap-3 px-3 py-2.5 rounded-xl border border-slate-100 hover:border-slate-200 bg-white">
+      <Badge variant={meta.color}>
+        {meta.label}
+      </Badge>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-slate-700">
+          <span className="font-medium">{actorName}</span>
+          {log.actorIsSuperAdmin && <span className="text-xs text-warning ml-2">★ super</span>}
+        </p>
+        {detailLine && <p className="text-xs text-slate-500 mt-0.5">{detailLine}</p>}
+      </div>
+      <div className="text-right text-xs text-slate-400 flex-shrink-0">
+        {date && (
+          <>
+            <p>{date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}</p>
+            <p>{date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
+          </>
+        )}
+      </div>
     </div>
   )
 }
