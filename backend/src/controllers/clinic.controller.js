@@ -276,7 +276,208 @@ async function seedDefaultData(tx, clinicId) {
   await tx.medicalDocumentTemplate.createMany({ data: docTemplates.map(t => ({ ...t, clinicId })) });
 }
 
+// ── Get Clinic Detail with users (Super Admin) ───────────
+async function getClinicDetail(req, res) {
+  try {
+    const { id } = req.params;
+
+    const clinic = await prisma.clinic.findUnique({
+      where: { id },
+      include: {
+        users: {
+          select: {
+            id: true, name: true, email: true, phone: true,
+            role: true, isActive: true,
+            qualification: true, specialization: true, regNo: true,
+            createdAt: true, updatedAt: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+        _count: {
+          select: { patients: true, users: true },
+        },
+      },
+    });
+
+    if (!clinic) return errorResponse(res, 'Clinic not found', 404);
+
+    return successResponse(res, clinic, 'Clinic detail fetched');
+  } catch (err) {
+    console.error('[getClinicDetail]', err);
+    return errorResponse(res, 'Failed to fetch clinic detail', 500);
+  }
+}
+
+// ── Get Clinic Stats (Super Admin) ───────────────────────
+// Returns counts + activity dates for the per-clinic Stats tab.
+// Date-range filterable via ?from=ISO&to=ISO (defaults: all-time)
+async function getClinicStats(req, res) {
+  try {
+    const { id } = req.params;
+    const { from, to } = req.query;
+
+    const fromDate = from ? new Date(from) : null;
+    const toDate   = to   ? new Date(to)   : null;
+    const dateFilter = (fromDate || toDate) ? {
+      gte: fromDate || undefined,
+      lte: toDate   || undefined,
+    } : undefined;
+
+    // Verify clinic exists
+    const clinic = await prisma.clinic.findUnique({
+      where: { id },
+      select: { id: true, name: true, subscriptionPlan: true, status: true, createdAt: true },
+    });
+    if (!clinic) return errorResponse(res, 'Clinic not found', 404);
+
+    // Run all queries in parallel
+    const [
+      totalPatients,
+      totalPrescriptions,
+      totalBills,
+      totalRevenue,
+      lastPrescription,
+      mostRecentUserUpdate,
+      activeUsers,
+      patientsByMonth,
+      prescriptionsByMonth,
+      prescriptionsByHour,
+    ] = await Promise.all([
+      prisma.patient.count({
+        where: { clinicId: id, ...(dateFilter && { createdAt: dateFilter }) },
+      }),
+      prisma.prescription.count({
+        where: { clinicId: id, ...(dateFilter && { createdAt: dateFilter }) },
+      }),
+      prisma.bill.count({
+        where: { clinicId: id, ...(dateFilter && { createdAt: dateFilter }) },
+      }),
+      prisma.bill.aggregate({
+        where: {
+          clinicId: id,
+          paymentStatus: { in: ['Paid', 'Partial'] },
+          ...(dateFilter && { createdAt: dateFilter }),
+        },
+        _sum: { amountPaid: true },
+      }),
+      prisma.prescription.findFirst({
+        where: { clinicId: id },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      }),
+      // Proxy for "last login" — most-recently-updated user record
+      prisma.user.findFirst({
+        where: { clinicId: id },
+        orderBy: { updatedAt: 'desc' },
+        select: { updatedAt: true },
+      }),
+      prisma.user.count({
+        where: { clinicId: id, isActive: true },
+      }),
+      // Patients by month (last 12 months)
+      prisma.$queryRaw`
+        SELECT to_char(date_trunc('month', "createdAt"), 'YYYY-MM') as month,
+               count(*)::int as count
+        FROM "patients"
+        WHERE "clinicId" = ${id}
+          AND "createdAt" >= NOW() - INTERVAL '12 months'
+        GROUP BY 1 ORDER BY 1
+      `,
+      prisma.$queryRaw`
+        SELECT to_char(date_trunc('month', "createdAt"), 'YYYY-MM') as month,
+               count(*)::int as count
+        FROM "prescriptions"
+        WHERE "clinicId" = ${id}
+          AND "createdAt" >= NOW() - INTERVAL '12 months'
+        GROUP BY 1 ORDER BY 1
+      `,
+      // Peak hours — Rx count by hour of day
+      prisma.$queryRaw`
+        SELECT extract(hour from "createdAt")::int as hour,
+               count(*)::int as count
+        FROM "prescriptions"
+        WHERE "clinicId" = ${id}
+        GROUP BY 1 ORDER BY 1
+      `,
+    ]);
+
+    const lastRxAt = lastPrescription?.createdAt || null;
+    const isInactive = lastRxAt
+      ? (Date.now() - new Date(lastRxAt).getTime()) > (30 * 24 * 60 * 60 * 1000)
+      : true;
+
+    const stats = {
+      clinic,
+      totals: {
+        patients:      totalPatients,
+        prescriptions: totalPrescriptions,
+        bills:         totalBills,
+        revenue:       Number(totalRevenue._sum?.amountPaid || 0),
+        activeUsers,
+      },
+      activity: {
+        // Note: No login tracking yet — using user record updatedAt as proxy
+        lastUserUpdate:   mostRecentUserUpdate?.updatedAt || null,
+        lastPrescription: lastRxAt,
+        isInactive,
+      },
+      charts: {
+        patientsByMonth:      patientsByMonth.map(r => ({ month: r.month, count: r.count })),
+        prescriptionsByMonth: prescriptionsByMonth.map(r => ({ month: r.month, count: r.count })),
+        prescriptionsByHour:  prescriptionsByHour.map(r => ({ hour: r.hour, count: r.count })),
+      },
+    };
+
+    return successResponse(res, stats, 'Stats fetched');
+  } catch (err) {
+    console.error('[getClinicStats]', err);
+    return errorResponse(res, 'Failed to fetch stats', 500);
+  }
+}
+
+// ── Reset Admin Password (Super Admin) ───────────────────
+// Generates a temp password, sets it for clinic's admin user, returns plaintext to caller.
+// Caller (super admin) shares it manually with clinic admin.
+async function resetAdminPassword(req, res) {
+  try {
+    const { id } = req.params;
+
+    // Find the first ADMIN user in the clinic
+    const admin = await prisma.user.findFirst({
+      where: { clinicId: id, role: 'ADMIN' },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!admin) return errorResponse(res, 'No admin user found for this clinic', 404);
+
+    // Generate temp password (8 chars: 4 letters + 4 digits) — readable, easy to share
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // exclude I/O for clarity
+    const digits  = '23456789';                    // exclude 0/1 for clarity
+    let temp = '';
+    for (let i = 0; i < 4; i++) temp += letters[Math.floor(Math.random() * letters.length)];
+    for (let i = 0; i < 4; i++) temp += digits[Math.floor(Math.random() * digits.length)];
+
+    const hashed = await bcrypt.hash(temp, 10);
+    await prisma.user.update({
+      where: { id: admin.id },
+      data: { password: hashed },
+    });
+
+    // Invalidate all existing refresh tokens for this admin so old sessions can't continue
+    await prisma.refreshToken.deleteMany({ where: { userId: admin.id } });
+
+    return successResponse(
+      res,
+      { adminEmail: admin.email, adminName: admin.name, tempPassword: temp },
+      'Admin password reset. Share the temporary password with the admin securely.'
+    );
+  } catch (err) {
+    console.error('[resetAdminPassword]', err);
+    return errorResponse(res, 'Failed to reset password', 500);
+  }
+}
+
 module.exports = {
   createClinic, getAllClinics, getMyClinic,
   updateClinic, updateClinicStatus,
+  getClinicDetail, getClinicStats, resetAdminPassword,
 };

@@ -33,6 +33,16 @@ router.post('/',
 // Update clinic status/plan
 router.patch('/:id/status', authenticate, authorize('SUPER_ADMIN'), ctrl.updateClinicStatus);
 
+// Get clinic detail (with users)
+router.get('/:id',          authenticate, authorize('SUPER_ADMIN'), ctrl.getClinicDetail);
+
+// Get clinic stats (per-clinic, date-range filterable)
+router.get('/:id/stats',    authenticate, authorize('SUPER_ADMIN'), ctrl.getClinicStats);
+
+// Reset admin password (returns plaintext temp password)
+router.post('/:id/reset-admin-password',
+  authenticate, authorize('SUPER_ADMIN'), ctrl.resetAdminPassword);
+
 // Update any clinic by id
 router.put('/:id', authenticate, authorize('SUPER_ADMIN'), ctrl.updateClinic);
 

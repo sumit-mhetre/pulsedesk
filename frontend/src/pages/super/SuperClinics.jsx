@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search, Building2, Eye } from 'lucide-react'
+import { Plus, Search, Building2, Settings as SettingsIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Button, Badge, PageHeader, EmptyState } from '../../components/ui'
 import api from '../../lib/api'
 import { format } from 'date-fns'
+import ClinicManageModal from './ClinicManageModal'
 
 const statusColors = { Active: 'success', Inactive: 'gray', Suspended: 'danger' }
 const planColors   = { Pro: 'success', Standard: 'accent', Basic: 'primary' }
@@ -13,6 +14,7 @@ export default function SuperClinics() {
   const [clinics, setClinics] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [manageId, setManageId] = useState(null)   // clinic id being managed
 
   const fetchClinics = async () => {
     try {
@@ -28,13 +30,6 @@ export default function SuperClinics() {
     const t = setTimeout(fetchClinics, 300)
     return () => clearTimeout(t)
   }, [search])
-
-  const updateStatus = async (id, status) => {
-    try {
-      await api.patch(`/clinics/${id}/status`, { status })
-      fetchClinics()
-    } catch {}
-  }
 
   return (
     <div className="fade-in">
@@ -74,7 +69,7 @@ export default function SuperClinics() {
                   <th>Users</th>
                   <th>Patients</th>
                   <th>Created</th>
-                  <th>Actions</th>
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -92,16 +87,12 @@ export default function SuperClinics() {
                     <td className="text-sm font-medium text-slate-700">{c._count?.users ?? '—'}</td>
                     <td className="text-sm font-medium text-slate-700">{c._count?.patients ?? '—'}</td>
                     <td className="text-sm text-slate-500">{format(new Date(c.createdAt), 'dd MMM yy')}</td>
-                    <td>
-                      <select
-                        className="form-select text-xs py-1 px-2 w-32"
-                        value={c.status}
-                        onChange={e => updateStatus(c.id, e.target.value)}
-                      >
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                        <option value="Suspended">Suspended</option>
-                      </select>
+                    <td className="text-right">
+                      <Button variant="outline" size="sm"
+                        icon={<SettingsIcon className="w-3.5 h-3.5"/>}
+                        onClick={() => setManageId(c.id)}>
+                        Manage
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -110,6 +101,14 @@ export default function SuperClinics() {
           </div>
         )}
       </Card>
+
+      {manageId && (
+        <ClinicManageModal
+          clinicId={manageId}
+          onClose={() => setManageId(null)}
+          onChanged={fetchClinics}
+        />
+      )}
     </div>
   )
 }
