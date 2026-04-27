@@ -8,7 +8,7 @@ import { Card, Button, PageHeader } from '../../components/ui'
 import ImageUploader from '../../components/branding/ImageUploader'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
-import { setGlobalDirty } from '../../hooks/useUnsavedChanges'
+import { setGlobalDirty, useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import useAuthStore from '../../store/authStore'
 
 // ─── Shared UI Primitives ─────────────────────────────────
@@ -152,6 +152,11 @@ export default function SettingsPage() {
   const [fetching,  setFetching]  = useState(true)
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
+
+  // Hook activates beforeunload listener when global dirty flag is set.
+  // The page already calls setGlobalDirty(true/false) on field changes / saves,
+  // so we just need this to be mounted. Existing dirty/clean calls keep working.
+  useUnsavedChanges()
 
   // Clinic info state
   const [clinic, setClinic] = useState({

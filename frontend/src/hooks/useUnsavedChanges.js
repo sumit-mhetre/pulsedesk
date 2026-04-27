@@ -30,6 +30,15 @@ export function useUnsavedChanges() {
     setGlobalDirty(v)
   }, [])
 
+  // Subscribe to global dirty flag — so pages that call setGlobalDirty(true)
+  // directly (without going through this hook's setDirty) also activate the
+  // beforeunload guard. Bidirectional sync.
+  useEffect(() => {
+    return onGlobalDirtyChange((v) => {
+      setDirtyState(prev => prev === v ? prev : v)
+    })
+  }, [])
+
   // Block browser refresh/tab close
   useEffect(() => {
     if (!isDirty) return

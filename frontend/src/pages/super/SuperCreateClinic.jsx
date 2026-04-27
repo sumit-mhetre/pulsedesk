@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Building2, Save } from 'lucide-react'
-import { Card, Button, PageHeader, Badge } from '../../components/ui'
+import { Card, Button, PageHeader, Badge, ConfirmDialog } from '../../components/ui'
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
@@ -14,14 +15,20 @@ export default function SuperCreateClinic() {
   })
   const [saving, setSaving] = useState(false)
   const [created, setCreated] = useState(null)
+  const { setDirty, confirmProps, guardedAction } = useUnsavedChanges()
 
-  const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+  // Mark form as dirty whenever a field changes
+  const f = (k) => (e) => {
+    setForm(p => ({ ...p, [k]: e.target.value }))
+    setDirty(true)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
     try {
       const { data } = await api.post('/clinics', form)
+      setDirty(false)   // clear dirty flag — clinic is saved
       setCreated(data.data)
       toast.success('Clinic created successfully!')
     } catch {
@@ -68,7 +75,7 @@ export default function SuperCreateClinic() {
   return (
     <div className="fade-in">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/super/clinics')} className="btn-ghost btn-icon">
+        <button onClick={() => guardedAction(() => navigate('/super/clinics'))} className="btn-ghost btn-icon">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <PageHeader title="Create New Clinic" subtitle="Register a new clinic on SimpleRx EMR" />
@@ -110,12 +117,14 @@ export default function SuperCreateClinic() {
         </div>
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={() => navigate('/super/clinics')}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={() => guardedAction(() => navigate('/super/clinics'))}>Cancel</Button>
           <Button type="submit" variant="primary" loading={saving} icon={<Save className="w-4 h-4" />}>
             Create Clinic
           </Button>
         </div>
       </form>
+
+      <ConfirmDialog {...confirmProps} />
     </div>
   )
 }

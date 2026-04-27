@@ -1,13 +1,17 @@
+import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Building2, LogOut } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import toast from 'react-hot-toast'
+import { ConfirmDialog } from '../components/ui'
 
 export default function SuperLayout() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
-  const handleLogout = async () => {
+  const doLogout = async () => {
+    setShowLogoutConfirm(false)
     await logout()
     toast.success('Logged out')
     navigate('/login')
@@ -50,7 +54,7 @@ export default function SuperLayout() {
             <p className="text-white text-sm font-medium">{user?.name}</p>
             <p className="text-slate-400 text-xs">Super Administrator</p>
           </div>
-          <button onClick={handleLogout}
+          <button onClick={() => setShowLogoutConfirm(true)}
             className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 w-full transition-colors">
             <LogOut className="w-4 h-4" /> Logout
           </button>
@@ -60,6 +64,17 @@ export default function SuperLayout() {
       <main className="flex-1 p-6 fade-in">
         <Outlet />
       </main>
+
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        title="Logout?"
+        message="Are you sure you want to logout? You'll need to sign in again to access Super Admin."
+        variant="warning"
+        confirmLabel="Yes, Logout"
+        cancelLabel="Stay Signed In"
+        onConfirm={doLogout}
+        onClose={() => setShowLogoutConfirm(false)}
+      />
     </div>
   )
 }
