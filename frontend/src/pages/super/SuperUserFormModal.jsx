@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { Modal, Button } from '../../components/ui'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import {
+  getDefaultsForRole, resolvePermissions, computeOverrides,
+} from '../../lib/permissions'
+import PermissionsEditor from '../../components/PermissionsEditor'
 
 export default function SuperUserFormModal({ clinicId, mode, initialUser, onClose, onSaved }) {
   const isEdit = mode === 'edit'
@@ -12,9 +16,11 @@ export default function SuperUserFormModal({ clinicId, mode, initialUser, onClos
     qualification: '', specialization: '', regNo: '',
     isActive: true,
   }))
+  // Capabilities (permissions) — flat { key: bool }, always 14 keys
+  const [permissions, setPermissions] = useState(() => getDefaultsForRole('DOCTOR'))
   const [errors, setErrors] = useState({})
 
-  // Hydrate form when editing
+  // Hydrate form + permissions when editing
   useEffect(() => {
     if (isEdit && initialUser) {
       setForm({
@@ -28,12 +34,26 @@ export default function SuperUserFormModal({ clinicId, mode, initialUser, onClos
         regNo: initialUser.regNo || '',
         isActive: initialUser.isActive !== false,
       })
+      // Resolve effective permissions = role defaults + saved overrides
+      setPermissions(resolvePermissions({
+        role: initialUser.role || 'DOCTOR',
+        permissions: initialUser.permissions || {},
+      }))
+    } else {
+      // Adding: start from role defaults
+      setPermissions(getDefaultsForRole(form.role))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit, initialUser])
 
   const set = (k) => (e) => {
-    setForm(f => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
+    setForm(f => ({ ...f, [k]: value }))
     if (errors[k]) setErrors(prev => { const { [k]: _, ...rest } = prev; return rest })
+    // When role changes mid-form, re-seed permissions with new role's defaults
+    if (k === 'role') {
+      setPermissions(getDefaultsForRole(value))
+    }
   }
 
   const validate = () => {
@@ -57,16 +77,17 @@ export default function SuperUserFormModal({ clinicId, mode, initialUser, onClos
     if (!validate()) return
     setSaving(true)
     try {
+      // Compute overrides — only the keys that differ from role defaults
+      const overrides = computeOverrides(form.role, permissions)
+
       if (isEdit) {
-        // Don't send password if blank
-        const body = { ...form }
+        const body = { ...form, permissions: overrides }
         if (!body.password) delete body.password
-        // Email is immutable for safety (auth concerns); skip sending it on edit
-        delete body.email
+        delete body.email   // email locked on edit
         await api.patch(`/clinics/${clinicId}/users/${initialUser.id}`, body)
         toast.success('User updated')
       } else {
-        await api.post(`/clinics/${clinicId}/users`, form)
+        await api.post(`/clinics/${clinicId}/users`, { ...form, permissions: overrides })
         toast.success('User created')
       }
       onSaved?.()
@@ -78,7 +99,7 @@ export default function SuperUserFormModal({ clinicId, mode, initialUser, onClos
   }
 
   return (
-    <Modal open={true} onClose={onClose} title={isEdit ? 'Edit User' : 'Add New User'} size="lg"
+    <Modal open={true} onClose={onClose} title={isEdit ? 'Edit User' : 'Add New User'} size="xl"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -154,11 +175,8 @@ export default function SuperUserFormModal({ clinicId, mode, initialUser, onClos
           </div>
         )}
 
-        <div className="sm:col-span-2 bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-slate-600">
-          {isEdit
-            ? 'Permissions for this user are managed by the clinic admin in the Users page (or stay at role defaults).'
-            : 'New user gets default permissions for their role. Clinic admin can fine-tune per-permission later.'}
-        </div>
+        {/* Capabilities editor (formerly "Permissions") */}
+        <PermissionsEditor role={form.role} permissions={permissions} setPermissions={setPermissions}/>
       </div>
     </Modal>
   )
