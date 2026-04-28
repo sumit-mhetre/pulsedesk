@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import useAutosave from '../../hooks/useAutosave'
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom'
-import { Plus, Trash2, ArrowLeft, Save, Printer, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap } from 'lucide-react'
+import { Plus, Trash2, ArrowLeft, Save, Printer, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap, FlaskConical, Calendar } from 'lucide-react'
 import { Button, Badge, Card, PageHeader, ConfirmDialog, Modal } from '../../components/ui'
 import AutosaveIndicator from '../../components/ui/AutosaveIndicator'
 import api from '../../lib/api'
@@ -877,6 +877,14 @@ export default function NewPrescriptionPage() {
   const lastUsed    = useRef({ dosage:'1-0-1', days:'5 days', timing:'AF' })
   const [rxTests,   setRxTests]   = useState([])
   const [rxAdvice,  setRxAdvice]  = useState([])
+  // Lab Results / Test Outcomes — Phase 2 of lab feature.
+  // Shape: [{ tempId, id?, labTestId?, testName, testCategory?, resultDate (yyyy-MM-dd),
+  //           expectedFields?: [{key,label,unit,normalLow,normalHigh}],
+  //           values: {fieldKey: string}, freeTextResult?: string, notes?: string }]
+  // tempId is local-only for React keying. Server id is set after first save.
+  const [rxLabResults, setRxLabResults] = useState([])
+  const [deletedLabResultIds, setDeletedLabResultIds] = useState([])  // IDs to DELETE on save
+  const [outcomesOpen, setOutcomesOpen] = useState(false)             // full-screen Test Outcomes modal
   const [nextVisit, setNextVisit] = useState('')
   const [printLang, setPrintLang] = useState('en')
   const [customRxNo,setCustomRxNo]= useState('')
@@ -961,13 +969,13 @@ export default function NewPrescriptionPage() {
 
   // ── Section auto-scroll (next-section navigation) ───────────────
   const SECTION_ORDER = [
-    { id: 'sec-patient',   key: null },                // always visible
-    { id: 'sec-vitals',    key: 'showVitals' },
-    { id: 'sec-complaint', key: 'showComplaint' },
-    { id: 'sec-diagnosis', key: 'showDiagnosis' },
-    { id: 'sec-medicines', key: 'showMedicines' },
-    { id: 'sec-labtests',  key: 'showLabTests' },
-    { id: 'sec-advice',    key: 'showAdvice' },
+    { id: 'sec-patient',       key: null },                // always visible
+    { id: 'sec-vitals',        key: 'showVitals' },
+    { id: 'sec-complaint',     key: 'showComplaint' },
+    { id: 'sec-diagnosis',     key: 'showDiagnosis' },
+    { id: 'sec-medicines',     key: 'showMedicines' },
+    { id: 'sec-labtests',      key: 'showLabTests' },
+    { id: 'sec-advice',        key: 'showAdvice' },
   ]
   const scrollToNext = (fromId) => {
     const idx = SECTION_ORDER.findIndex(s => s.id === fromId)
@@ -1079,6 +1087,37 @@ export default function NewPrescriptionPage() {
     }).catch(()=>navigate('/prescriptions'))
   }, [editId, isEdit])
 
+  // ── Load existing lab results for this prescription (edit mode) ──
+  useEffect(() => {
+    if (!isEdit || !editId) return
+    api.get(`/lab-results/prescription/${editId}`).then(({ data }) => {
+      const items = (data.data || []).map((r, i) => {
+        const valuesMap = {}
+        for (const v of (r.values || [])) valuesMap[v.fieldKey] = v.value
+        // Reconstruct expectedFields from stored values (preserves the structure across edits)
+        const expectedFields = (r.values || []).length > 0
+          ? r.values.map(v => ({
+              key: v.fieldKey, label: v.fieldLabel, unit: v.fieldUnit,
+              normalLow: v.normalLow, normalHigh: v.normalHigh,
+            }))
+          : null
+        return {
+          tempId:        'srv_'+r.id,
+          id:            r.id,
+          labTestId:     r.labTestId,
+          testName:      r.testName,
+          testCategory:  r.testCategory,
+          resultDate:    r.resultDate ? format(new Date(r.resultDate),'yyyy-MM-dd') : format(new Date(),'yyyy-MM-dd'),
+          expectedFields,
+          values:        valuesMap,
+          freeTextResult: r.freeTextResult || '',
+          notes:         r.notes || '',
+        }
+      })
+      setRxLabResults(items)
+    }).catch(() => {})  // non-blocking — empty array if endpoint fails
+  }, [editId, isEdit])
+
   const fetchPatients = async (q='') => {
     try { const {data}=await api.get(`/patients/search?q=${q}`); setPtResults(data.data); setShowPtDrop(true) } catch {}
   }
@@ -1092,6 +1131,68 @@ export default function NewPrescriptionPage() {
     const max = Math.max(...rxMeds.map(m=>parseInt(m.days)||0), 0)
     if (max>0) setNextVisit(format(addDays(new Date(),max+1),'yyyy-MM-dd'))
   }, [rxMeds])
+
+  // ── Lab Results / Test Outcomes helpers ───────────────────────────
+  // Add a test outcome row from the searchable lab tests catalog. If the test has
+  // expectedFields, we snapshot them onto the row so display + save share one source.
+  const addTestOutcome = useCallback((labTestEntry) => {
+    if (!labTestEntry) return
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const row = {
+      tempId:        'lr_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      id:            null,
+      labTestId:     labTestEntry.id || null,
+      testName:      labTestEntry.name,
+      testCategory:  labTestEntry.category || null,
+      resultDate:    today,
+      expectedFields: Array.isArray(labTestEntry.expectedFields) && labTestEntry.expectedFields.length
+                       ? labTestEntry.expectedFields
+                       : null,
+      values:        {},
+      freeTextResult: '',
+      notes:         '',
+    }
+    setRxLabResults(prev => [...prev, row])
+    setDirty(true)
+  }, [])
+
+  // Add a free-text test (no catalog entry) — for tests not in master data
+  const addFreeTextOutcome = useCallback((testName) => {
+    const trimmed = String(testName || '').trim()
+    if (!trimmed) return
+    addTestOutcome({ id: null, name: trimmed, category: null, expectedFields: null })
+  }, [addTestOutcome])
+
+  const updateOutcomeField = (tempId, fieldKey, value) => {
+    setRxLabResults(prev => prev.map(r => r.tempId === tempId
+      ? { ...r, values: { ...(r.values || {}), [fieldKey]: value } }
+      : r))
+    setDirty(true)
+  }
+  const updateOutcomeMeta = (tempId, key, value) => {
+    setRxLabResults(prev => prev.map(r => r.tempId === tempId ? { ...r, [key]: value } : r))
+    setDirty(true)
+  }
+  const removeOutcome = (tempId) => {
+    setRxLabResults(prev => {
+      const target = prev.find(r => r.tempId === tempId)
+      if (target?.id) setDeletedLabResultIds(d => [...d, target.id])
+      return prev.filter(r => r.tempId !== tempId)
+    })
+    setDirty(true)
+  }
+
+  // Category → color (Ocean Blue palette + accents). Used as left-edge stripe per outcome card.
+  const categoryColor = (cat) => {
+    const c = String(cat || '').toLowerCase()
+    if (c.includes('haema') || c.includes('haemo'))   return 'bg-primary'         // blood-related → primary blue
+    if (c.includes('biochem'))                         return 'bg-accent'          // biochem → cyan
+    if (c.includes('urine') || c.includes('patho'))    return 'bg-warning'         // urine/path → orange
+    if (c.includes('micro') || c.includes('serolog'))  return 'bg-secondary'       // serology/micro → secondary
+    if (c.includes('radio'))                           return 'bg-purple-500'      // imaging → purple
+    if (c.includes('cardio'))                          return 'bg-danger'          // cardio → red
+    return 'bg-slate-400'                                                          // unknown → neutral
+  }
 
   const updateMed = (i, field, val) => {
     setRxMeds(prev => {
@@ -1309,6 +1410,55 @@ export default function NewPrescriptionPage() {
         savedId = data.data.id
         toast.success(`Prescription ${data.data.rxNo} saved!`)
       }
+
+      // ── Save lab results (Test Outcomes) — fire-and-forget per row, non-blocking on Rx success ──
+      try {
+        // Delete removed ones
+        for (const id of deletedLabResultIds) {
+          await api.delete(`/lab-results/${id}`).catch(() => {})
+        }
+        if (deletedLabResultIds.length) setDeletedLabResultIds([])
+
+        // Upsert each row
+        for (const r of rxLabResults) {
+          // Skip empty rows (no test name AND no values AND no free text)
+          const hasValues = r.values && Object.values(r.values).some(v => v !== '' && v != null)
+          const hasFreeText = !!(r.freeTextResult && r.freeTextResult.trim())
+          if (!r.testName?.trim()) continue
+          if (!hasValues && !hasFreeText && !r.notes?.trim()) continue  // empty rows are ignored
+
+          const valuesPayload = (r.expectedFields || []).map(f => ({
+            fieldKey:   f.key,
+            fieldLabel: f.label,
+            fieldUnit:  f.unit || null,
+            value:      r.values?.[f.key] ?? '',
+            normalLow:  typeof f.normalLow  === 'number' ? f.normalLow  : null,
+            normalHigh: typeof f.normalHigh === 'number' ? f.normalHigh : null,
+          })).filter(v => v.value !== '' && v.value != null)
+
+          const body = {
+            patientId:      patient.id,
+            prescriptionId: savedId,
+            labTestId:      r.labTestId || null,
+            testName:       r.testName.trim(),
+            testCategory:   r.testCategory || null,
+            resultDate:     r.resultDate || format(new Date(),'yyyy-MM-dd'),
+            freeTextResult: r.freeTextResult?.trim() || null,
+            notes:          r.notes?.trim() || null,
+            values:         valuesPayload,
+          }
+          if (r.id) {
+            await api.patch(`/lab-results/${r.id}`, body).catch(() => {})
+          } else {
+            const { data } = await api.post('/lab-results', body).catch(() => ({}))
+            // Stamp id back on the row so subsequent saves PATCH instead of duplicating
+            if (data?.data?.id) {
+              setRxLabResults(prev => prev.map(x => x.tempId === r.tempId ? { ...x, id: data.data.id } : x))
+            }
+          }
+        }
+      } catch {}
+
       setDirty(false)
       // Mark today's queue entry as Done — fire-and-forget, idempotent on backend
       if (patient?.id) {
@@ -1687,6 +1837,7 @@ export default function NewPrescriptionPage() {
             allowCustom={true}/>
         </Card></div>
 
+
         {/* Advice */}
         <div id="sec-advice" className="scroll-mt-20" style={{display: showSection('showAdvice') ? '' : 'none'}}><Card>
           <div className="flex items-center justify-between mb-3">
@@ -1745,7 +1896,30 @@ export default function NewPrescriptionPage() {
     </div>
     <ConfirmDialog {...confirmProps} confirmLabel="Yes, Discard" cancelLabel="Keep Editing"/>
 
-    {/* Floating action buttons — icon-only, auto-hide when bottom save bar is visible */}
+    {/* Left-side FAB rail — section jumps / dedicated workspaces.
+        Mirrors the right-side rail but for "open in focused space" actions.
+        Auto-hides with the right rail when bottom save bar is visible. */}
+    {!bottomBarVisible && showSection('showTestOutcomes') && (
+      <div className="fixed bottom-6 left-6 z-40 flex flex-col gap-2.5 items-start no-print print:hidden animate-in fade-in">
+        <button
+          type="button"
+          onClick={() => setOutcomesOpen(true)}
+          title="Open Test Outcomes"
+          aria-label="Open Test Outcomes"
+          className="w-14 h-14 rounded-full bg-primary text-white shadow-xl hover:bg-primary/90 hover:shadow-2xl active:scale-95 transition flex items-center justify-center relative"
+        >
+          <FlaskConical className="w-6 h-6"/>
+          {rxLabResults.length > 0 && (
+            <span className="absolute -top-1 -right-1 bg-success text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white">
+              {rxLabResults.length > 9 ? '9+' : rxLabResults.length}
+            </span>
+          )}
+        </button>
+      </div>
+    )}
+
+    {/* Right-side FAB rail — save / print actions.
+        Auto-hides when the bottom save bar is visible to avoid duplicate controls. */}
     {!bottomBarVisible && (
       <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-2.5 items-end no-print print:hidden animate-in fade-in">
         <button
@@ -1775,6 +1949,178 @@ export default function NewPrescriptionPage() {
       </div>
     )}
 
+    {/* Test Outcomes — full-screen modal that feels like a dedicated page.
+        Lives inside the Rx form so state (rxLabResults) stays in one place — no routing,
+        no draft sync, no data loss risk. Click left FAB to open. Outcomes auto-save when
+        the parent Rx is saved (same flow as before). */}
+    {outcomesOpen && (
+      <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-stretch justify-center p-3 sm:p-6 no-print print:hidden animate-in fade-in"
+           onClick={(e) => { if (e.target === e.currentTarget) setOutcomesOpen(false) }}>
+        <div className="bg-background w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4">
+          {/* Header — patient context + close */}
+          <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 bg-white flex-shrink-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                <FlaskConical className="w-5 h-5"/>
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-bold text-slate-800 text-base sm:text-lg truncate">Test Outcomes</h2>
+                {patient && (
+                  <p className="text-xs text-slate-500 truncate">
+                    {patient.prefix ? patient.prefix + ' ' : ''}{patient.name}
+                    {patient.patientCode && <span> · {patient.patientCode}</span>}
+                    {patient.age && <span> · {patient.age}y</span>}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOutcomesOpen(false)}
+              className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full p-2 transition flex-shrink-0"
+              title="Close"
+              aria-label="Close">
+              <X className="w-5 h-5"/>
+            </button>
+          </div>
+
+          {/* Body — scrollable */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            {/* Search bar — pulls from existing lab tests master data + allows free-text */}
+            <div>
+              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 block">
+                Add a test
+              </label>
+              <TestOutcomeSearch
+                items={labTestList}
+                onPickExisting={addTestOutcome}
+                onPickCustom={addFreeTextOutcome}
+                alreadyAdded={rxLabResults.map(r => (r.testName || '').toLowerCase())}
+              />
+              <p className="text-xs text-slate-400 mt-1.5">
+                Tests with sub-fields (CBC, Lipid, KFT…) show a structured form. Others use a free-text result box.
+              </p>
+            </div>
+
+            {/* Recorded outcomes list */}
+            {rxLabResults.length === 0 ? (
+              <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl py-12 text-center">
+                <FlaskConical className="w-10 h-10 text-slate-300 mx-auto mb-2"/>
+                <p className="text-sm text-slate-500">No test outcomes recorded yet.</p>
+                <p className="text-xs text-slate-400 mt-1">Use the search above to add one.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                    Recorded ({rxLabResults.length})
+                  </h3>
+                </div>
+                {rxLabResults.map((r) => {
+                  const hasFields = Array.isArray(r.expectedFields) && r.expectedFields.length > 0
+                  return (
+                    <div key={r.tempId} className="relative bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition">
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${categoryColor(r.testCategory)}`}/>
+                      <div className="pl-4 pr-3 py-3">
+                        <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="font-semibold text-slate-800 truncate">{r.testName}</span>
+                            {r.testCategory && <Badge variant="gray">{r.testCategory}</Badge>}
+                            {!hasFields && <Badge variant="warning">Free-text</Badge>}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <Calendar className="w-3.5 h-3.5"/>
+                              <input
+                                type="date"
+                                className="bg-transparent border-0 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5"
+                                value={r.resultDate}
+                                onChange={(e) => updateOutcomeMeta(r.tempId, 'resultDate', e.target.value)}/>
+                            </div>
+                            <button type="button"
+                              onClick={() => removeOutcome(r.tempId)}
+                              className="text-slate-400 hover:text-danger transition p-1"
+                              title="Remove">
+                              <X className="w-4 h-4"/>
+                            </button>
+                          </div>
+                        </div>
+
+                        {hasFields ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+                            {r.expectedFields.map((f) => (
+                              <div key={f.key}>
+                                <div className="flex items-baseline justify-between gap-1 mb-1">
+                                  <label className="text-xs font-medium text-slate-600 truncate">{f.label}</label>
+                                  {f.unit && <span className="text-xs text-slate-400 flex-shrink-0">{f.unit}</span>}
+                                </div>
+                                <input
+                                  type="text"
+                                  className="form-input text-sm py-1.5"
+                                  placeholder="—"
+                                  value={r.values?.[f.key] ?? ''}
+                                  onChange={(e) => updateOutcomeField(r.tempId, f.key, e.target.value)}/>
+                                {(typeof f.normalLow === 'number' || typeof f.normalHigh === 'number') && (
+                                  <p className="text-[10px] text-slate-400 mt-0.5 ml-1">
+                                    {typeof f.normalLow === 'number' && typeof f.normalHigh === 'number'
+                                      ? `Normal: ${f.normalLow} – ${f.normalHigh}`
+                                      : typeof f.normalLow === 'number'
+                                        ? `Normal: ≥ ${f.normalLow}`
+                                        : `Normal: ≤ ${f.normalHigh}`}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="text-xs font-medium text-slate-600 mb-1 block">Result</label>
+                            <textarea
+                              className="form-input text-sm py-1.5"
+                              rows={2}
+                              placeholder="Enter test findings (e.g., 'Normal study', 'Reactive', specific values…)"
+                              value={r.freeTextResult || ''}
+                              onChange={(e) => updateOutcomeMeta(r.tempId, 'freeTextResult', e.target.value)}/>
+                          </div>
+                        )}
+
+                        <details className="mt-2 group">
+                          <summary className="text-xs text-slate-500 hover:text-primary cursor-pointer select-none inline-flex items-center gap-1">
+                            <ChevronDown className="w-3 h-3 group-open:rotate-180 transition"/>
+                            Add notes
+                          </summary>
+                          <textarea
+                            className="form-input text-xs py-1.5 mt-1"
+                            rows={2}
+                            placeholder="Clinical notes or interpretation…"
+                            value={r.notes || ''}
+                            onChange={(e) => updateOutcomeMeta(r.tempId, 'notes', e.target.value)}/>
+                        </details>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Footer — info + Done button. Test outcomes save when the parent Rx is saved. */}
+          <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-200 bg-white flex-shrink-0">
+            <p className="text-xs text-slate-500 hidden sm:block">
+              {rxLabResults.length > 0
+                ? `${rxLabResults.length} test outcome${rxLabResults.length > 1 ? 's' : ''} will be saved with the prescription.`
+                : 'Add tests above. Outcomes save with the prescription.'}
+            </p>
+            <div className="flex gap-2 ml-auto">
+              <Button variant="primary" onClick={() => setOutcomesOpen(false)} icon={<X className="w-4 h-4"/>}>
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* Resume-draft modal */}
     <Modal
       open={!!resumeDraft}
@@ -1796,6 +2142,109 @@ export default function NewPrescriptionPage() {
       </div>
     </Modal>
     </>
+  )
+}
+
+// ── TestOutcomeSearch ────────────────────────────────────────────────
+// Standalone search bar for adding lab tests to record outcomes.
+// Behaves like a tag/typeahead: type → see catalog matches → click to add (uses expectedFields if defined).
+// If user types a name not in catalog and presses Enter, that name is added as a free-text outcome.
+function TestOutcomeSearch({ items, onPickExisting, onPickCustom, alreadyAdded }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef(null)
+  const containerRef = useRef(null)
+
+  // Hide dropdown when clicking outside
+  useEffect(() => {
+    const handle = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handle)
+    return () => document.removeEventListener('mousedown', handle)
+  }, [])
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const list = items || []
+    if (!q) {
+      // No query → show top 8 by usage
+      return list.slice().sort((a,b) => (b.usageCount||0) - (a.usageCount||0)).slice(0, 8)
+    }
+    return list.filter(t => t.name?.toLowerCase().includes(q)).slice(0, 12)
+  }, [items, query])
+
+  const exactExisting = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return null
+    return (items || []).find(t => t.name?.toLowerCase() === q) || null
+  }, [items, query])
+
+  const handlePick = (item) => {
+    onPickExisting(item)
+    setQuery('')
+    setOpen(false)
+    inputRef.current?.focus()
+  }
+
+  const handleEnter = () => {
+    const q = query.trim()
+    if (!q) return
+    if (exactExisting) handlePick(exactExisting)
+    else { onPickCustom(q); setQuery(''); setOpen(false); inputRef.current?.focus() }
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <FlaskConical className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"/>
+        <input
+          ref={inputRef}
+          type="text"
+          className="form-input pl-9"
+          placeholder="Search test (e.g., CBC, Lipid, Sugar) or type custom name…"
+          value={query}
+          onFocus={() => setOpen(true)}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleEnter() } }}/>
+      </div>
+      {open && (
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
+          {matches.length === 0 && !query.trim() && (
+            <div className="px-3 py-3 text-xs text-slate-400">Start typing to search lab tests…</div>
+          )}
+          {matches.length === 0 && query.trim() && (
+            <button type="button" onClick={handleEnter}
+              className="w-full text-left px-3 py-2.5 hover:bg-slate-50 transition flex items-center gap-2 group">
+              <Plus className="w-4 h-4 text-success"/>
+              <span className="text-sm text-slate-700">Add <strong>"{query.trim()}"</strong> as free-text test</span>
+            </button>
+          )}
+          {matches.map((item) => {
+            const taken = (alreadyAdded || []).includes(item.name?.toLowerCase())
+            return (
+              <button key={item.id} type="button" disabled={taken}
+                onClick={() => !taken && handlePick(item)}
+                className={`w-full text-left px-3 py-2 transition flex items-center justify-between gap-2 border-b border-slate-50 last:border-b-0 ${taken ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-50'}`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-sm font-medium text-slate-800 truncate">{item.name}</span>
+                  {item.category && <Badge variant="gray">{item.category}</Badge>}
+                  {Array.isArray(item.expectedFields) && item.expectedFields.length > 0 && (
+                    <Badge variant="success">{item.expectedFields.length} fields</Badge>
+                  )}
+                </div>
+                {taken && <span className="text-xs text-slate-400 flex-shrink-0">already added</span>}
+              </button>
+            )
+          })}
+          {query.trim() && matches.length > 0 && !exactExisting && (
+            <button type="button" onClick={handleEnter}
+              className="w-full text-left px-3 py-2 bg-slate-50 hover:bg-blue-50 transition flex items-center gap-2 border-t border-slate-100">
+              <Plus className="w-4 h-4 text-success"/>
+              <span className="text-xs text-slate-600">Or add <strong>"{query.trim()}"</strong> as custom (free-text)</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
