@@ -104,6 +104,7 @@ const __LFT_FIELDS = [
   { key:'albumin',           label:'Albumin',             unit:'g/dL',  normalLow:3.5, normalHigh:5.0 },
   { key:'globulin',          label:'Globulin',            unit:'g/dL',  normalLow:2.0, normalHigh:3.5 },
   { key:'agRatio',           label:'A/G Ratio',           unit:'',      normalLow:1.0, normalHigh:2.5 },
+  { key:'ggt',               label:'GGT',                 unit:'U/L',   normalLow:0,   normalHigh:55 },
 ];
 const __KFT_FIELDS = [
   { key:'bloodUrea',       label:'Blood Urea',           unit:'mg/dL', normalLow:15,  normalHigh:45 },
@@ -114,6 +115,7 @@ const __KFT_FIELDS = [
   { key:'chloride',        label:'Chloride (Cl-)',       unit:'mEq/L', normalLow:98,  normalHigh:107 },
   { key:'uricAcid',        label:'Uric Acid',            unit:'mg/dL', normalLow:3.5, normalHigh:7.2 },
   { key:'serumCalcium',    label:'Serum Calcium',        unit:'mg/dL', normalLow:8.5, normalHigh:10.5 },
+  { key:'phosphorus',      label:'Phosphorus',           unit:'mg/dL', normalLow:2.5, normalHigh:4.5 },
   { key:'egfr',            label:'eGFR',                 unit:'mL/min/1.73m²', normalLow:90, normalHigh:null },
 ];
 const __TFT_FIELDS = [
@@ -139,51 +141,207 @@ const __URINE_FIELDS = [
   { key:'rbcCells',        label:'RBC',              unit:'/HPF', normalLow:0,   normalHigh:2 },
   { key:'epithelialCells', label:'Epithelial Cells', unit:'/HPF', normalLow:0,   normalHigh:5 },
 ];
+const __ELECTROLYTES_FIELDS = [
+  { key:'sodium',    label:'Sodium (Na+)',   unit:'mEq/L', normalLow:136, normalHigh:145 },
+  { key:'potassium', label:'Potassium (K+)', unit:'mEq/L', normalLow:3.5, normalHigh:5.1 },
+  { key:'chloride',  label:'Chloride (Cl-)', unit:'mEq/L', normalLow:98,  normalHigh:107 },
+  { key:'bicarbonate', label:'Bicarbonate (HCO3-)', unit:'mEq/L', normalLow:22, normalHigh:29 },
+];
+const __IRON_STUDIES_FIELDS = [
+  { key:'serumIron',    label:'Serum Iron',      unit:'µg/dL', normalLow:60,  normalHigh:170 },
+  { key:'tibc',         label:'TIBC',            unit:'µg/dL', normalLow:240, normalHigh:450 },
+  { key:'transferrinSat', label:'Transferrin Saturation', unit:'%', normalLow:20, normalHigh:50 },
+  { key:'ferritin',     label:'Ferritin',        unit:'ng/mL', normalLow:30,  normalHigh:400 },
+];
+const __COAGULATION_FIELDS = [
+  { key:'pt',      label:'PT',       unit:'sec', normalLow:11,  normalHigh:13.5 },
+  { key:'inr',     label:'INR',      unit:'',    normalLow:0.8, normalHigh:1.2 },
+  { key:'aptt',    label:'aPTT',     unit:'sec', normalLow:25,  normalHigh:35 },
+];
+const __CARDIAC_MARKERS_FIELDS = [
+  { key:'troponinI', label:'Troponin I', unit:'ng/mL', normalLow:0,   normalHigh:0.04 },
+  { key:'ckMB',      label:'CK-MB',      unit:'ng/mL', normalLow:0,   normalHigh:5 },
+  { key:'totalCK',   label:'Total CK',   unit:'U/L',   normalLow:30,  normalHigh:200 },
+];
+const __HORMONE_PANEL_FIELDS = [
+  { key:'lh',           label:'LH',           unit:'mIU/mL', normalLow:1.7, normalHigh:8.6 },
+  { key:'fsh',          label:'FSH',          unit:'mIU/mL', normalLow:1.5, normalHigh:12.4 },
+  { key:'prolactin',    label:'Prolactin',    unit:'ng/mL',  normalLow:4,   normalHigh:23 },
+  { key:'testosterone', label:'Testosterone', unit:'ng/dL',  normalLow:280, normalHigh:1100 },
+];
+const __PCOS_FIELDS = [
+  { key:'lh',           label:'LH',                  unit:'mIU/mL', normalLow:1.7, normalHigh:8.6 },
+  { key:'fsh',          label:'FSH',                 unit:'mIU/mL', normalLow:1.5, normalHigh:12.4 },
+  { key:'lhFshRatio',   label:'LH/FSH Ratio',        unit:'',       normalLow:0,   normalHigh:2 },
+  { key:'testosterone', label:'Testosterone (Total)', unit:'ng/dL', normalLow:15,  normalHigh:70 },
+  { key:'dheas',        label:'DHEA-S',              unit:'µg/dL',  normalLow:35,  normalHigh:430 },
+  { key:'shbg',         label:'SHBG',                unit:'nmol/L', normalLow:18,  normalHigh:144 },
+  { key:'amh',          label:'AMH',                 unit:'ng/mL',  normalLow:1,   normalHigh:5 },
+  { key:'prolactin',    label:'Prolactin',           unit:'ng/mL',  normalLow:4,   normalHigh:23 },
+  { key:'tsh',          label:'TSH',                 unit:'µIU/mL', normalLow:0.4, normalHigh:4.0 },
+  { key:'fastingInsulin', label:'Fasting Insulin',   unit:'µIU/mL', normalLow:2,   normalHigh:25 },
+];
+const __INFERTILITY_F_FIELDS = [
+  { key:'lh',           label:'LH (Day 2-3)',     unit:'mIU/mL', normalLow:1.7, normalHigh:8.6 },
+  { key:'fsh',          label:'FSH (Day 2-3)',    unit:'mIU/mL', normalLow:1.5, normalHigh:12.4 },
+  { key:'estradiol',    label:'Estradiol (E2)',   unit:'pg/mL',  normalLow:30,  normalHigh:400 },
+  { key:'amh',          label:'AMH',              unit:'ng/mL',  normalLow:1,   normalHigh:5 },
+  { key:'progesterone', label:'Progesterone (Day 21)', unit:'ng/mL', normalLow:5, normalHigh:20 },
+  { key:'prolactin',    label:'Prolactin',        unit:'ng/mL',  normalLow:4,   normalHigh:23 },
+  { key:'tsh',          label:'TSH',              unit:'µIU/mL', normalLow:0.4, normalHigh:4.0 },
+];
+const __INSULIN_FIELDS = [
+  { key:'fastingInsulin', label:'Fasting Insulin',  unit:'µIU/mL', normalLow:2,    normalHigh:25 },
+  { key:'cPeptide',       label:'C-Peptide',        unit:'ng/mL',  normalLow:0.8,  normalHigh:3.1 },
+  { key:'homaIR',         label:'HOMA-IR',          unit:'',       normalLow:0,    normalHigh:2.5 },
+];
+const __UACR_FIELDS = [
+  { key:'urineAlbumin',    label:'Urine Albumin',    unit:'mg/L',  normalLow:0,  normalHigh:30 },
+  { key:'urineCreatinine', label:'Urine Creatinine', unit:'mg/dL', normalLow:20, normalHigh:320 },
+  { key:'acr',             label:'Albumin/Creatinine Ratio', unit:'mg/g', normalLow:0, normalHigh:30 },
+];
+const __CALCIUM_PROFILE_FIELDS = [
+  { key:'totalCalcium',  label:'Total Calcium',     unit:'mg/dL', normalLow:8.5,  normalHigh:10.5 },
+  { key:'ionizedCalcium', label:'Ionized Calcium',  unit:'mg/dL', normalLow:4.5,  normalHigh:5.6 },
+  { key:'phosphorus',    label:'Phosphorus',        unit:'mg/dL', normalLow:2.5,  normalHigh:4.5 },
+  { key:'alkPhos',       label:'Alkaline Phosphatase', unit:'U/L', normalLow:40,  normalHigh:130 },
+  { key:'pth',           label:'PTH',               unit:'pg/mL', normalLow:15,   normalHigh:65 },
+  { key:'vitD',          label:'Vitamin D (25-OH)', unit:'ng/mL', normalLow:30,   normalHigh:100 },
+];
+const __ABG_FIELDS = [
+  { key:'ph',         label:'pH',          unit:'',       normalLow:7.35, normalHigh:7.45 },
+  { key:'pco2',       label:'pCO2',        unit:'mmHg',   normalLow:35,   normalHigh:45 },
+  { key:'po2',        label:'pO2',         unit:'mmHg',   normalLow:80,   normalHigh:100 },
+  { key:'hco3',       label:'HCO3-',       unit:'mEq/L',  normalLow:22,   normalHigh:26 },
+  { key:'baseExcess', label:'Base Excess', unit:'mEq/L',  normalLow:-2,   normalHigh:2 },
+  { key:'sao2',       label:'SaO2',        unit:'%',      normalLow:95,   normalHigh:100 },
+  { key:'lactate',    label:'Lactate',     unit:'mmol/L', normalLow:0.5,  normalHigh:2.2 },
+];
+const __PSA_FIELDS = [
+  { key:'totalPSA', label:'Total PSA', unit:'ng/mL', normalLow:0, normalHigh:4 },
+  { key:'freePSA',  label:'Free PSA',  unit:'ng/mL', normalLow:null, normalHigh:null },
+  { key:'fpsaRatio', label:'Free/Total PSA Ratio', unit:'%', normalLow:25, normalHigh:null },
+];
 
 export const labTests = [
+  // ── HAEMATOLOGY ────────────────────────────────────────────────
   { name:"Complete Blood Count (CBC)",          category:"Haematology",  expectedFields: __CBC_FIELDS },
-  { name:"Blood Sugar Fasting (BSF)",            category:"Biochemistry", expectedFields: [{ key:'fbs', label:'FBS', unit:'mg/dL', normalLow:70, normalHigh:100 }] },
-  { name:"Blood Sugar Post Prandial (BSPP)",     category:"Biochemistry", expectedFields: [{ key:'ppbs', label:'PPBS (2 hr)', unit:'mg/dL', normalLow:70, normalHigh:140 }] },
-  { name:"Random Blood Sugar (RBS)",             category:"Biochemistry", expectedFields: [{ key:'rbs', label:'RBS', unit:'mg/dL', normalLow:70, normalHigh:140 }] },
-  { name:"HbA1c (Glycated Haemoglobin)",         category:"Biochemistry", expectedFields: __HBA1C_FIELDS },
-  { name:"Lipid Profile",                        category:"Biochemistry", expectedFields: __LIPID_FIELDS },
-  { name:"Liver Function Test (LFT)",            category:"Biochemistry", expectedFields: __LFT_FIELDS },
-  { name:"Kidney Function Test (KFT)",           category:"Biochemistry", expectedFields: __KFT_FIELDS },
-  { name:"Thyroid Function Test (TFT)",          category:"Biochemistry", expectedFields: __TFT_FIELDS },
-  { name:"TSH (Thyroid Stimulating Hormone)",    category:"Biochemistry", expectedFields: [{ key:'tsh', label:'TSH', unit:'µIU/mL', normalLow:0.4, normalHigh:4.0 }] },
-  { name:"Urine Routine & Microscopy",           category:"Urine",        expectedFields: __URINE_FIELDS },
-  { name:"Urine Culture & Sensitivity",          category:"Microbiology" },
-  { name:"Stool Examination",                    category:"Stool" },
-  { name:"Malaria Antigen Test (MAT)",           category:"Serology" },
+  { name:"ESR (Erythrocyte Sedimentation Rate)", category:"Haematology",  expectedFields: [{ key:'esr', label:'ESR', unit:'mm/hour', normalLow:0, normalHigh:20 }] },
+  { name:"Peripheral Smear",                     category:"Haematology" },
+  { name:"Reticulocyte Count",                   category:"Haematology",  expectedFields: [{ key:'retic', label:'Reticulocytes', unit:'%', normalLow:0.5, normalHigh:2.5 }] },
+  { name:"Prothrombin Time (PT/INR/aPTT)",       category:"Haematology",  expectedFields: __COAGULATION_FIELDS },
+  { name:"D-Dimer",                              category:"Haematology",  expectedFields: [{ key:'dDimer', label:'D-Dimer', unit:'µg/mL', normalLow:0, normalHigh:0.5 }] },
+
+  // ── BIO CHEMISTRY (Glucose) ────────────────────────────────────
+  { name:"Blood Sugar Fasting (FBS)",            category:"Bio Chemistry", expectedFields: [{ key:'fbs', label:'FBS', unit:'mg/dL', normalLow:70, normalHigh:100 }] },
+  { name:"Blood Sugar Post Prandial (PPBS)",     category:"Bio Chemistry", expectedFields: [{ key:'ppbs', label:'PPBS (2 hr)', unit:'mg/dL', normalLow:70, normalHigh:140 }] },
+  { name:"Random Blood Sugar (RBS)",             category:"Bio Chemistry", expectedFields: [{ key:'rbs', label:'RBS', unit:'mg/dL', normalLow:70, normalHigh:140 }] },
+  { name:"HbA1c (Glycated Haemoglobin)",         category:"Bio Chemistry", expectedFields: __HBA1C_FIELDS },
+  { name:"Insulin & C-Peptide Profile",          category:"Bio Chemistry", expectedFields: __INSULIN_FIELDS },
+  { name:"Glucose Tolerance Test (GTT)",         category:"Bio Chemistry", expectedFields: [
+      { key:'fasting',  label:'Fasting',          unit:'mg/dL', normalLow:70, normalHigh:100 },
+      { key:'oneHour',  label:'After 1 hour',     unit:'mg/dL', normalLow:0,  normalHigh:180 },
+      { key:'twoHour',  label:'After 2 hours',    unit:'mg/dL', normalLow:0,  normalHigh:140 },
+    ] },
+
+  // ── BIO CHEMISTRY (Profiles) ──────────────────────────────────
+  { name:"Lipid Profile",                        category:"Bio Chemistry", expectedFields: __LIPID_FIELDS },
+  { name:"Liver Function Test (LFT)",            category:"Bio Chemistry", expectedFields: __LFT_FIELDS },
+  { name:"Kidney Function Test (KFT)",           category:"Bio Chemistry", expectedFields: __KFT_FIELDS },
+  { name:"Calcium / Bone Profile",               category:"Bio Chemistry", expectedFields: __CALCIUM_PROFILE_FIELDS },
+  { name:"Iron Studies",                         category:"Bio Chemistry", expectedFields: __IRON_STUDIES_FIELDS },
+  { name:"Serum Electrolytes",                   category:"Bio Chemistry", expectedFields: __ELECTROLYTES_FIELDS },
+  { name:"Arterial Blood Gas (ABG)",             category:"Bio Chemistry", expectedFields: __ABG_FIELDS },
+
+  // ── BIO CHEMISTRY (Single markers) ─────────────────────────────
+  { name:"Serum Uric Acid",                      category:"Bio Chemistry", expectedFields: [{ key:'uricAcid', label:'Uric Acid', unit:'mg/dL', normalLow:3.5, normalHigh:7.2 }] },
+  { name:"Serum Creatinine",                     category:"Bio Chemistry", expectedFields: [{ key:'serumCreatinine', label:'Creatinine', unit:'mg/dL', normalLow:0.6, normalHigh:1.3 }] },
+  { name:"Vitamin D (25-OH)",                    category:"Bio Chemistry", expectedFields: [{ key:'vitD',  label:'Vitamin D (25-OH)', unit:'ng/mL', normalLow:30, normalHigh:100 }] },
+  { name:"Vitamin B12 Level",                    category:"Bio Chemistry", expectedFields: [{ key:'vitB12', label:'Vitamin B12', unit:'pg/mL', normalLow:200, normalHigh:900 }] },
+  { name:"Folate / Folic Acid",                  category:"Bio Chemistry", expectedFields: [{ key:'folate', label:'Folate', unit:'ng/mL', normalLow:3,   normalHigh:17 }] },
+  { name:"Serum Ferritin",                       category:"Bio Chemistry", expectedFields: [{ key:'ferritin', label:'Ferritin', unit:'ng/mL', normalLow:30, normalHigh:400 }] },
+  { name:"Magnesium",                            category:"Bio Chemistry", expectedFields: [{ key:'mag', label:'Magnesium', unit:'mg/dL', normalLow:1.7, normalHigh:2.4 }] },
+  { name:"CRP (C-Reactive Protein)",             category:"Bio Chemistry", expectedFields: [{ key:'crp', label:'CRP', unit:'mg/L', normalLow:0, normalHigh:6 }] },
+  { name:"hs-CRP (high-sensitivity)",            category:"Bio Chemistry", expectedFields: [{ key:'hsCrp', label:'hs-CRP', unit:'mg/L', normalLow:0, normalHigh:3 }] },
+  { name:"Procalcitonin",                        category:"Bio Chemistry", expectedFields: [{ key:'pct', label:'Procalcitonin', unit:'ng/mL', normalLow:0, normalHigh:0.1 }] },
+
+  // ── THYROID / ENDOCRINE ─────────────────────────────────────────
+  { name:"Thyroid Function Test (TFT)",          category:"Endocrine", expectedFields: __TFT_FIELDS },
+  { name:"TSH (only)",                           category:"Endocrine", expectedFields: [{ key:'tsh', label:'TSH', unit:'µIU/mL', normalLow:0.4, normalHigh:4.0 }] },
+  { name:"Free T3 / Free T4",                    category:"Endocrine", expectedFields: [
+      { key:'freeT3', label:'Free T3', unit:'pg/mL', normalLow:2.0, normalHigh:4.4 },
+      { key:'freeT4', label:'Free T4', unit:'ng/dL', normalLow:0.8, normalHigh:1.8 },
+    ] },
+  { name:"Anti-TPO Antibody",                    category:"Endocrine", expectedFields: [{ key:'antiTpo', label:'Anti-TPO', unit:'IU/mL', normalLow:0, normalHigh:34 }] },
+  { name:"Cortisol (Serum)",                     category:"Endocrine", expectedFields: [{ key:'cortisol', label:'Cortisol', unit:'µg/dL', normalLow:6, normalHigh:23 }] },
+  { name:"PCOS / Hirsutism Profile",             category:"Endocrine", expectedFields: __PCOS_FIELDS },
+  { name:"Female Infertility Profile",           category:"Endocrine", expectedFields: __INFERTILITY_F_FIELDS },
+  { name:"Male Hormone Panel",                   category:"Endocrine", expectedFields: __HORMONE_PANEL_FIELDS },
+
+  // ── CARDIAC ────────────────────────────────────────────────────
+  { name:"Cardiac Markers (Troponin / CK-MB)",   category:"Cardiac", expectedFields: __CARDIAC_MARKERS_FIELDS },
+  { name:"BNP / NT-proBNP",                      category:"Cardiac", expectedFields: [{ key:'bnp', label:'BNP', unit:'pg/mL', normalLow:0, normalHigh:100 }] },
+
+  // ── URINE ──────────────────────────────────────────────────────
+  { name:"Urine Routine & Microscopy",           category:"Urine",   expectedFields: __URINE_FIELDS },
+  { name:"Urine Albumin/Creatinine Ratio (UACR)", category:"Urine",  expectedFields: __UACR_FIELDS },
+  { name:"24-hour Urine Protein",                category:"Urine",   expectedFields: [
+      { key:'volume',         label:'Volume',          unit:'mL/24h', normalLow:800, normalHigh:2000 },
+      { key:'totalProtein',   label:'Total Protein',   unit:'mg/24h', normalLow:0,   normalHigh:150 },
+    ] },
+  { name:"Urine Culture & Sensitivity",          category:"Urine" },
+  { name:"Urine Microalbumin",                   category:"Urine",   expectedFields: [{ key:'microalbumin', label:'Microalbumin', unit:'mg/L', normalLow:0, normalHigh:30 }] },
+
+  // ── SEROLOGY / INFECTIOUS DISEASE ──────────────────────────────
+  { name:"Widal Test",                           category:"Serology" },
   { name:"Dengue NS1 Antigen",                   category:"Serology" },
   { name:"Dengue IgM / IgG",                     category:"Serology" },
-  { name:"Widal Test",                           category:"Serology" },
-  { name:"CRP (C-Reactive Protein)",             category:"Biochemistry", expectedFields: [{ key:'crp', label:'CRP', unit:'mg/L', normalLow:0, normalHigh:6 }] },
-  { name:"ESR (Erythrocyte Sedimentation Rate)", category:"Haematology",  expectedFields: [{ key:'esr', label:'ESR', unit:'mm/hour', normalLow:0, normalHigh:20 }] },
-  { name:"Chest X-Ray (PA View)",                category:"Radiology" },
-  { name:"ECG (Electrocardiogram)",              category:"Cardiology" },
-  { name:"USG Abdomen & Pelvis",                 category:"Radiology" },
-  { name:"Serum Electrolytes (Na, K, Cl)",       category:"Biochemistry", expectedFields: [
-      { key:'sodium',    label:'Sodium (Na+)',   unit:'mEq/L', normalLow:136, normalHigh:145 },
-      { key:'potassium', label:'Potassium (K+)', unit:'mEq/L', normalLow:3.5, normalHigh:5.1 },
-      { key:'chloride',  label:'Chloride (Cl-)', unit:'mEq/L', normalLow:98,  normalHigh:107 },
-    ] },
-  { name:"Serum Uric Acid",                      category:"Biochemistry", expectedFields: [{ key:'uricAcid', label:'Uric Acid', unit:'mg/dL', normalLow:3.5, normalHigh:7.2 }] },
-  { name:"Serum Creatinine",                     category:"Biochemistry", expectedFields: [{ key:'serumCreatinine', label:'Creatinine', unit:'mg/dL', normalLow:0.6, normalHigh:1.3 }] },
-  { name:"Vitamin D3 Level",                     category:"Biochemistry", expectedFields: [{ key:'vitD',  label:'Vitamin D3 (25-OH)', unit:'ng/mL', normalLow:30, normalHigh:100 }] },
-  { name:"Vitamin B12 Level",                    category:"Biochemistry", expectedFields: [{ key:'vitB12', label:'Vitamin B12', unit:'pg/mL', normalLow:200, normalHigh:900 }] },
-  { name:"COVID-19 Antigen Test",                category:"Serology" },
+  { name:"Malaria Antigen Test",                 category:"Serology" },
+  { name:"Typhoid IgM",                          category:"Serology" },
+  { name:"COVID-19 RT-PCR / Antigen",            category:"Serology" },
+  { name:"HIV (1 & 2) ELISA",                    category:"Serology" },
+  { name:"HBsAg (Hepatitis B)",                  category:"Serology" },
+  { name:"Anti-HCV (Hepatitis C)",               category:"Serology" },
+  { name:"VDRL / RPR",                           category:"Serology" },
+  { name:"ASO Titre",                            category:"Serology", expectedFields: [{ key:'aso', label:'ASO Titre', unit:'IU/mL', normalLow:0, normalHigh:200 }] },
+  { name:"RA Factor (Rheumatoid Arthritis)",     category:"Serology", expectedFields: [{ key:'raFactor', label:'RA Factor', unit:'IU/mL', normalLow:0, normalHigh:14 }] },
+  { name:"ANA (Antinuclear Antibody)",           category:"Serology" },
+
+  // ── MICROBIOLOGY ───────────────────────────────────────────────
   { name:"Throat Swab Culture",                  category:"Microbiology" },
-  { name:"Sputum AFB (TB Test)",                 category:"Microbiology" },
+  { name:"Sputum AFB / GeneXpert (TB)",          category:"Microbiology" },
   { name:"Blood Culture & Sensitivity",          category:"Microbiology" },
-  { name:"Peripheral Smear",                     category:"Haematology" },
-  { name:"Serum Ferritin",                       category:"Biochemistry", expectedFields: [{ key:'ferritin', label:'Ferritin', unit:'ng/mL', normalLow:30, normalHigh:400 }] },
-  { name:"RA Factor (Rheumatoid Arthritis)",     category:"Serology" },
-  { name:"Pregnancy Test (Urine)",               category:"Other" },
-  { name:"Prothrombin Time (PT/INR)",            category:"Haematology",  expectedFields: [
-      { key:'pt',  label:'PT',  unit:'sec', normalLow:11,  normalHigh:13.5 },
-      { key:'inr', label:'INR', unit:'',    normalLow:0.8, normalHigh:1.2 },
-    ] },
+  { name:"Stool Examination",                    category:"Microbiology" },
+  { name:"Stool Occult Blood",                   category:"Microbiology" },
+
+  // ── ONCOLOGY MARKERS ────────────────────────────────────────────
+  { name:"PSA (Prostate Specific Antigen)",      category:"Oncology", expectedFields: __PSA_FIELDS },
+  { name:"CA-125",                               category:"Oncology", expectedFields: [{ key:'ca125', label:'CA-125', unit:'U/mL', normalLow:0, normalHigh:35 }] },
+  { name:"AFP (Alpha-Fetoprotein)",              category:"Oncology", expectedFields: [{ key:'afp', label:'AFP', unit:'ng/mL', normalLow:0, normalHigh:10 }] },
+  { name:"CEA",                                  category:"Oncology", expectedFields: [{ key:'cea', label:'CEA', unit:'ng/mL', normalLow:0, normalHigh:5 }] },
+
+  // ── RADIOLOGY (free-text) ──────────────────────────────────────
+  { name:"Chest X-Ray (PA View)",                category:"Radiology" },
+  { name:"X-Ray (other)",                        category:"Radiology" },
+  { name:"USG Abdomen & Pelvis",                 category:"Radiology" },
+  { name:"USG Whole Abdomen",                    category:"Radiology" },
+  { name:"USG Pelvis (Obs/Gynae)",               category:"Radiology" },
+  { name:"CT Scan",                              category:"Radiology" },
+  { name:"MRI",                                  category:"Radiology" },
+  { name:"Mammography",                          category:"Radiology" },
+  { name:"DEXA Scan (Bone Density)",             category:"Radiology" },
+
+  // ── CARDIOLOGY (free-text) ─────────────────────────────────────
+  { name:"ECG (Electrocardiogram)",              category:"Cardiology" },
+  { name:"2D Echocardiography",                  category:"Cardiology" },
+  { name:"TMT (Treadmill Test)",                 category:"Cardiology" },
+  { name:"Holter Monitoring",                    category:"Cardiology" },
+
+  // ── OTHER ──────────────────────────────────────────────────────
+  { name:"Pregnancy Test (Urine β-hCG)",         category:"Other",    expectedFields: [{ key:'bhcg', label:'β-hCG', unit:'', normalLow:null, normalHigh:null }] },
+  { name:"Serum β-hCG",                          category:"Other",    expectedFields: [{ key:'bhcg', label:'β-hCG', unit:'mIU/mL', normalLow:0, normalHigh:5 }] },
+  { name:"Pap Smear",                            category:"Other" },
+  { name:"Biopsy / Histopathology",              category:"Other" },
 ];
 
 export const complaints = [

@@ -158,6 +158,7 @@ async function updateClinic(req, res) {
       name, address, phone, mobile, email, tagline, gst, opdSeriesPrefix,
       letterheadMode, logo, footerImageUrl, letterheadUrl,
       headerImageUrl, hideTextOnHeader,
+      settings,
     } = req.body;
 
     // Only include fields that were actually sent (avoid overwriting with undefined)
@@ -177,6 +178,12 @@ async function updateClinic(req, res) {
     if (headerImageUrl   !== undefined) data.headerImageUrl = headerImageUrl || null;
     if (footerImageUrl   !== undefined) data.footerImageUrl = footerImageUrl || null;
     if (letterheadUrl    !== undefined) data.letterheadUrl  = letterheadUrl  || null;
+    // Settings JSON: shallow-merge on save so partial updates don't wipe other keys.
+    if (settings !== undefined && settings !== null && typeof settings === 'object' && !Array.isArray(settings)) {
+      const existing = await prisma.clinic.findUnique({ where: { id: clinicId }, select: { settings: true } });
+      const merged = { ...(existing?.settings || {}), ...settings };
+      data.settings = merged;
+    }
     if (opdSeriesPrefix  !== undefined) {
       // Normalize: uppercase, trim, strip non-alphanumeric, max 10 chars
       const cleaned = String(opdSeriesPrefix).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);

@@ -336,14 +336,35 @@ function sanitizeExpectedFields(input) {
   if (input === undefined) return undefined;        // not in body → leave field untouched
   if (input === null) return null;                   // explicit clear
   if (!Array.isArray(input)) return null;            // garbage → clear
+
+  // Coerce a value to a number, accepting both real numbers and numeric strings ("13", "13.5").
+  // Returns null for anything else (empty string, null, undefined, "abc", NaN).
+  const toNum = (v) => {
+    if (v === null || v === undefined || v === '') return null;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  // If key is missing, auto-derive from label so the editor doesn't have to.
+  // "Total WBC" → "totalWbc", "HbA1c" → "hbA1c"
+  const slugify = (label) => {
+    if (!label) return '';
+    const parts = String(label).replace(/[^a-zA-Z0-9 ]/g, '').trim().split(/\s+/);
+    if (!parts.length) return '';
+    return parts.map((w, i) => i === 0
+      ? w.charAt(0).toLowerCase() + w.slice(1)
+      : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+  };
+
   const cleaned = input
-    .filter(f => f && typeof f === 'object' && f.key && f.label)
+    .filter(f => f && typeof f === 'object' && f.label)              // label is required (key auto-derives)
     .map(f => ({
-      key:   String(f.key).trim(),
+      key:   String(f.key || slugify(f.label)).trim(),
       label: String(f.label).trim(),
       unit:  f.unit ? String(f.unit).trim() : null,
-      normalLow:  typeof f.normalLow  === 'number' ? f.normalLow  : (f.normalLow  === null ? null : null),
-      normalHigh: typeof f.normalHigh === 'number' ? f.normalHigh : (f.normalHigh === null ? null : null),
+      normalLow:  toNum(f.normalLow),
+      normalHigh: toNum(f.normalHigh),
     }))
     .filter(f => f.key.length && f.label.length);
   return cleaned.length ? cleaned : null;

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Save, RotateCcw, Eye, Check, ChevronDown, ChevronUp,
   Building2, FileText, Printer, Receipt, Palette, ImageIcon, FileCheck,
-  Plus, Trash2, Star, X, Edit3,
+  Plus, Trash2, Star, X, Edit3, Stethoscope,
 } from 'lucide-react'
 import { Card, Button, PageHeader } from '../../components/ui'
 import ImageUploader from '../../components/branding/ImageUploader'
@@ -138,6 +138,7 @@ const DEFAULT_BILL_PRINT = {
 const TABS = [
   { key: 'clinic',     label: 'Clinic Info',        icon: Building2 },
   { key: 'branding',   label: 'Branding',           icon: Palette   },
+  { key: 'clinical',   label: 'Clinical',           icon: Stethoscope },
   { key: 'rxform',     label: 'Prescription Form',  icon: FileText  },
   { key: 'rxprint',    label: 'Prescription Print', icon: Printer   },
   { key: 'billprint',  label: 'Bill / Receipt',     icon: Receipt   },
@@ -164,6 +165,12 @@ export default function SettingsPage() {
     email: '', tagline: '', gst: '', opdSeriesPrefix: '',
     logo: null, headerImageUrl: null, footerImageUrl: null, letterheadUrl: null,
     hideTextOnHeader: true, letterheadMode: false,
+  })
+
+  // Clinical settings state — separate from clinic info because saving has a different shape.
+  // Maps to Clinic.settings JSON column on backend (shallow-merged on save).
+  const [clinical, setClinical] = useState({
+    flagOutOfRangeLabValues: true,   // default ON when no setting saved yet
   })
 
   // Three separate page-design configs (by `type` param)
@@ -196,6 +203,11 @@ export default function SettingsPage() {
         hideTextOnHeader: c.hideTextOnHeader !== false,  // default true
         letterheadMode:   !!c.letterheadMode,
       })
+      // Clinical settings — hydrate from clinic.settings JSON. Default to ON when not set.
+      const s = c.settings || {}
+      setClinical({
+        flagOutOfRangeLabValues: s.flagOutOfRangeLabValues !== false,
+      })
       if (rxFormRes.data.data?.config)  setRxForm(f   => ({ ...f,                ...rxFormRes.data.data.config }))
       if (rxPrintRes.data.data?.config) setRxPrint(c  => ({ ...DEFAULT_RX_PRINT,  ...rxPrintRes.data.data.config }))
       if (billRes.data.data?.config)    setBillPrint(c=> ({ ...DEFAULT_BILL_PRINT, ...billRes.data.data.config }))
@@ -214,6 +226,18 @@ export default function SettingsPage() {
       setGlobalDirty(false)
       flashSaved()
     } catch { toast.error('Failed to save clinic info') }
+    finally { setSaving(false) }
+  }
+
+  const saveClinical = async () => {
+    setSaving(true)
+    try {
+      // Backend shallow-merges settings, so we only need to send the key(s) that changed.
+      await api.put('/clinics/me', { settings: clinical })
+      toast.success('Clinical settings saved!')
+      setGlobalDirty(false)
+      flashSaved()
+    } catch { toast.error('Failed to save clinical settings') }
     finally { setSaving(false) }
   }
 
@@ -435,6 +459,27 @@ export default function SettingsPage() {
               onClick={saveClinicInfo}
               icon={saved ? <Check className="w-4 h-4"/> : <Save className="w-4 h-4"/>}>
               {saved ? 'Saved!' : 'Save Branding'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────── */}
+      {/*  Tab — Clinical Settings                                */}
+      {/* ─────────────────────────────────────────────────────── */}
+      {activeTab === 'clinical' && (
+        <div className="max-w-2xl space-y-5">
+          <Card title="Lab Results" subtitle="How lab values are displayed when doctors record test outcomes">
+            <Toggle
+              checked={clinical.flagOutOfRangeLabValues}
+              onChange={v => { setClinical(c => ({ ...c, flagOutOfRangeLabValues: v })); setGlobalDirty(true) }}
+              label="Highlight out-of-range values"
+              sub="When ON, lab values outside the configured normal range get a soft red background. Doctors still make all clinical decisions — this is just a visual cue."
+            />
+          </Card>
+          <div className="flex justify-end pt-2">
+            <Button variant="primary" loading={saving} icon={<Save className="w-4 h-4"/>} onClick={saveClinical}>
+              Save Clinical Settings
             </Button>
           </div>
         </div>

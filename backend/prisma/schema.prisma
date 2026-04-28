@@ -106,6 +106,7 @@ model Clinic {
   status           ClinicStatus     @default(Active)
   subscriptionPlan SubscriptionPlan @default(Basic)
   subscriptionEnd  DateTime?
+  settings         Json?            // Misc per-clinic config flags (e.g., flagOutOfRangeLabValues). Schemaless on purpose.
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 

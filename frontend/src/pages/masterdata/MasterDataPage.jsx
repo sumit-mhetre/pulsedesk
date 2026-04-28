@@ -193,6 +193,105 @@ function BillingItemForm({ form, setForm, onSubmit, onCancel, saving, mode }) {
   )
 }
 
+// ── Lab Test Sub-fields Editor ────────────────────────────
+// Lets admin/permitted-doctor define structured fields for a lab test (e.g., CBC has Hb, WBC, etc).
+// Backend stores this as JSON on LabTest.expectedFields. Each field has:
+//   - key:    machine-readable identifier (e.g., 'hemoglobin'). Auto-derived from label if blank.
+//   - label:  human-readable name ('Hb')
+//   - unit:   optional unit string ('g/dL')
+//   - normalLow / normalHigh: optional reference range numbers
+function LabTestSubFieldsEditor({ fields, onChange }) {
+  const safeFields = Array.isArray(fields) ? fields : []
+
+  const addField = () => onChange([...safeFields, { key: '', label: '', unit: '', normalLow: '', normalHigh: '' }])
+  const updateField = (idx, patch) => {
+    const next = safeFields.map((f, i) => i === idx ? { ...f, ...patch } : f)
+    onChange(next)
+  }
+  const removeField = (idx) => onChange(safeFields.filter((_, i) => i !== idx))
+
+  // Auto-generate key from label on blur (e.g., "Total WBC" → "totalWbc")
+  const slugifyKey = (label) => {
+    if (!label) return ''
+    return label.replace(/[^a-zA-Z0-9 ]/g, '').trim().split(/\s+/)
+      .map((w, i) => i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join('')
+  }
+
+  return (
+    <div className="form-group">
+      <div className="flex items-center justify-between mb-2">
+        <label className="form-label mb-0">Sub-fields (optional)</label>
+        <Button type="button" variant="ghost" size="sm" icon={<Plus className="w-3.5 h-3.5"/>} onClick={addField}>
+          Add field
+        </Button>
+      </div>
+      {safeFields.length === 0 ? (
+        <p className="text-xs text-slate-400 italic py-2">
+          No sub-fields. The test will use a free-text result box. Add sub-fields here if this test has multiple measurements (e.g., CBC has Hb, WBC, Platelets…).
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {safeFields.map((f, idx) => (
+            <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+              <div className="grid grid-cols-12 gap-2 items-start">
+                <div className="col-span-12 sm:col-span-5">
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Label *</label>
+                  <input
+                    className="form-input text-sm py-1.5"
+                    placeholder="e.g. Hemoglobin"
+                    value={f.label || ''}
+                    onChange={(e) => updateField(idx, { label: e.target.value })}
+                    onBlur={() => { if (!f.key && f.label) updateField(idx, { key: slugifyKey(f.label) }) }}
+                  />
+                </div>
+                <div className="col-span-6 sm:col-span-3">
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Unit</label>
+                  <input
+                    className="form-input text-sm py-1.5"
+                    placeholder="g/dL"
+                    value={f.unit || ''}
+                    onChange={(e) => updateField(idx, { unit: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-3 sm:col-span-2">
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Low</label>
+                  <input
+                    type="number" step="any"
+                    className="form-input text-sm py-1.5"
+                    placeholder="13"
+                    value={f.normalLow ?? ''}
+                    onChange={(e) => updateField(idx, { normalLow: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-3 sm:col-span-2">
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">High</label>
+                  <input
+                    type="number" step="any"
+                    className="form-input text-sm py-1.5"
+                    placeholder="17"
+                    value={f.normalHigh ?? ''}
+                    onChange={(e) => updateField(idx, { normalHigh: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-1.5">
+                <span className="text-[10px] text-slate-400">
+                  Internal key: <code className="bg-white px-1 py-0.5 rounded text-slate-500">{f.key || '(auto)'}</code>
+                </span>
+                <button type="button" onClick={() => removeField(idx)}
+                  className="text-slate-400 hover:text-danger text-xs flex items-center gap-1">
+                  <Trash2 className="w-3 h-3"/> Remove
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Simple Form (Lab Tests / Dosage / Timing) ─────────────
 function SimpleForm({ form, setForm, onSubmit, onCancel, saving, mode, tab }) {
   return (
@@ -208,6 +307,10 @@ function SimpleForm({ form, setForm, onSubmit, onCancel, saving, mode, tab }) {
           <input className="form-input" placeholder="e.g. Haematology"
             value={form.category || ''} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} />
         </div>
+        <LabTestSubFieldsEditor
+          fields={form.expectedFields || []}
+          onChange={(next) => setForm(f => ({ ...f, expectedFields: next }))}
+        />
       </>}
 
       {tab === 'dosage' && <>

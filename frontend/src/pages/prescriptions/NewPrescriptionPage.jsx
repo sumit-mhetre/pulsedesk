@@ -1186,12 +1186,32 @@ export default function NewPrescriptionPage() {
   const categoryColor = (cat) => {
     const c = String(cat || '').toLowerCase()
     if (c.includes('haema') || c.includes('haemo'))   return 'bg-primary'         // blood-related → primary blue
-    if (c.includes('biochem'))                         return 'bg-accent'          // biochem → cyan
+    if (c.includes('biochem') || c.includes('bio chem')) return 'bg-accent'       // biochem → cyan
+    if (c.includes('endocrine'))                       return 'bg-purple-500'      // endocrine/thyroid
     if (c.includes('urine') || c.includes('patho'))    return 'bg-warning'         // urine/path → orange
     if (c.includes('micro') || c.includes('serolog'))  return 'bg-secondary'       // serology/micro → secondary
     if (c.includes('radio'))                           return 'bg-purple-500'      // imaging → purple
-    if (c.includes('cardio'))                          return 'bg-danger'          // cardio → red
+    if (c.includes('cardio') || c.includes('cardiac')) return 'bg-danger'          // cardio → red
+    if (c.includes('oncol'))                           return 'bg-pink-600'        // oncology
     return 'bg-slate-400'                                                          // unknown → neutral
+  }
+
+  // Read out-of-range flag from clinic settings (loaded via /auth/me).
+  // Default ON when not set, so existing clinics get reasonable behavior.
+  const flagOutOfRange = useMemo(() => {
+    const s = user?.clinic?.settings || {}
+    return s.flagOutOfRangeLabValues !== false
+  }, [user])
+
+  // Is this string-value numerically out of [low, high]? Returns false for non-numeric values.
+  // Treats one-sided ranges (low only or high only) sensibly.
+  const isValueOutOfRange = (rawValue, low, high) => {
+    if (rawValue === null || rawValue === undefined || rawValue === '') return false
+    const n = Number(String(rawValue).replace(/[^\d.\-]/g, ''))
+    if (!Number.isFinite(n)) return false  // text values like "Negative" are never flagged
+    if (typeof low === 'number' && n < low) return true
+    if (typeof high === 'number' && n > high) return true
+    return false
   }
 
   const updateMed = (i, field, val) => {
@@ -1896,17 +1916,19 @@ export default function NewPrescriptionPage() {
     </div>
     <ConfirmDialog {...confirmProps} confirmLabel="Yes, Discard" cancelLabel="Keep Editing"/>
 
-    {/* Left-side FAB rail — section jumps / dedicated workspaces.
-        Mirrors the right-side rail but for "open in focused space" actions.
-        Auto-hides with the right rail when bottom save bar is visible. */}
-    {!bottomBarVisible && showSection('showTestOutcomes') && (
-      <div className="fixed bottom-6 left-6 z-40 flex flex-col gap-2.5 items-start no-print print:hidden animate-in fade-in">
+    {/* Right-side FAB rail.
+        - Test Outcomes flask: stays visible always (per design).
+        - Save + Print: auto-hide when bottom save bar is visible (avoid duplicate controls).
+        Note: when bar is visible, only the bottom two FABs hide; the flask stays so
+        doctor can always open the test outcomes workspace, even from the bottom of the form. */}
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-2.5 items-end no-print print:hidden">
+      {showSection('showTestOutcomes') && (
         <button
           type="button"
           onClick={() => setOutcomesOpen(true)}
           title="Open Test Outcomes"
           aria-label="Open Test Outcomes"
-          className="w-14 h-14 rounded-full bg-primary text-white shadow-xl hover:bg-primary/90 hover:shadow-2xl active:scale-95 transition flex items-center justify-center relative"
+          className="w-14 h-14 rounded-full bg-primary text-white shadow-xl hover:bg-primary/90 hover:shadow-2xl active:scale-95 transition flex items-center justify-center relative animate-in fade-in"
         >
           <FlaskConical className="w-6 h-6"/>
           {rxLabResults.length > 0 && (
@@ -1915,39 +1937,36 @@ export default function NewPrescriptionPage() {
             </span>
           )}
         </button>
-      </div>
-    )}
-
-    {/* Right-side FAB rail — save / print actions.
-        Auto-hides when the bottom save bar is visible to avoid duplicate controls. */}
-    {!bottomBarVisible && (
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col gap-2.5 items-end no-print print:hidden animate-in fade-in">
-        <button
-          type="button"
-          onClick={() => handleSave('stay')}
-          disabled={saving}
-          title={isEdit ? 'Update' : 'Save'}
-          aria-label={isEdit ? 'Update' : 'Save'}
-          className="w-12 h-12 rounded-full bg-white border-2 border-primary text-primary shadow-lg hover:shadow-xl hover:bg-blue-50 active:scale-95 transition disabled:opacity-60 disabled:cursor-wait flex items-center justify-center"
-        >
-          {saving
-            ? <span className="spinner w-4 h-4 border-primary"/>
-            : <Save className="w-5 h-5"/>}
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSave('print')}
-          disabled={saving}
-          title="Save & Print"
-          aria-label="Save & Print"
-          className="w-14 h-14 rounded-full bg-primary text-white shadow-xl hover:bg-primary/90 hover:shadow-2xl active:scale-95 transition disabled:opacity-60 disabled:cursor-wait flex items-center justify-center"
-        >
-          {saving
-            ? <span className="spinner w-5 h-5 border-white"/>
-            : <Printer className="w-6 h-6"/>}
-        </button>
-      </div>
-    )}
+      )}
+      {!bottomBarVisible && (
+        <>
+          <button
+            type="button"
+            onClick={() => handleSave('stay')}
+            disabled={saving}
+            title={isEdit ? 'Update' : 'Save'}
+            aria-label={isEdit ? 'Update' : 'Save'}
+            className="w-12 h-12 rounded-full bg-white border-2 border-primary text-primary shadow-lg hover:shadow-xl hover:bg-blue-50 active:scale-95 transition disabled:opacity-60 disabled:cursor-wait flex items-center justify-center animate-in fade-in"
+          >
+            {saving
+              ? <span className="spinner w-4 h-4 border-primary"/>
+              : <Save className="w-5 h-5"/>}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSave('print')}
+            disabled={saving}
+            title="Save & Print"
+            aria-label="Save & Print"
+            className="w-14 h-14 rounded-full bg-primary text-white shadow-xl hover:bg-primary/90 hover:shadow-2xl active:scale-95 transition disabled:opacity-60 disabled:cursor-wait flex items-center justify-center animate-in fade-in"
+          >
+            {saving
+              ? <span className="spinner w-5 h-5 border-white"/>
+              : <Printer className="w-6 h-6"/>}
+          </button>
+        </>
+      )}
+    </div>
 
     {/* Test Outcomes — full-screen modal that feels like a dedicated page.
         Lives inside the Rx form so state (rxLabResults) stays in one place — no routing,
@@ -1986,10 +2005,17 @@ export default function NewPrescriptionPage() {
 
           {/* Body — scrollable */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            {/* Search bar — pulls from existing lab tests master data + allows free-text */}
+            {/* Browse by category — categorized accordion. Click category → expand → tap test to add. */}
+            <LabTestCategoryBrowser
+              items={labTestList}
+              alreadyAdded={rxLabResults.map(r => (r.testName || '').toLowerCase())}
+              onPickExisting={addTestOutcome}
+            />
+
+            {/* Search — fallback for finding tests fast or adding custom ones not in master data */}
             <div>
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 block">
-                Add a test
+                Or search / add custom
               </label>
               <TestOutcomeSearch
                 items={labTestList}
@@ -1998,16 +2024,16 @@ export default function NewPrescriptionPage() {
                 alreadyAdded={rxLabResults.map(r => (r.testName || '').toLowerCase())}
               />
               <p className="text-xs text-slate-400 mt-1.5">
-                Tests with sub-fields (CBC, Lipid, KFT…) show a structured form. Others use a free-text result box.
+                Tests with sub-fields show structured forms. Others use a free-text result box.
               </p>
             </div>
 
             {/* Recorded outcomes list */}
             {rxLabResults.length === 0 ? (
-              <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl py-12 text-center">
-                <FlaskConical className="w-10 h-10 text-slate-300 mx-auto mb-2"/>
+              <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl py-8 text-center">
+                <FlaskConical className="w-8 h-8 text-slate-300 mx-auto mb-2"/>
                 <p className="text-sm text-slate-500">No test outcomes recorded yet.</p>
-                <p className="text-xs text-slate-400 mt-1">Use the search above to add one.</p>
+                <p className="text-xs text-slate-400 mt-1">Browse categories or search above to add a test.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -2048,29 +2074,36 @@ export default function NewPrescriptionPage() {
 
                         {hasFields ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
-                            {r.expectedFields.map((f) => (
-                              <div key={f.key}>
-                                <div className="flex items-baseline justify-between gap-1 mb-1">
-                                  <label className="text-xs font-medium text-slate-600 truncate">{f.label}</label>
-                                  {f.unit && <span className="text-xs text-slate-400 flex-shrink-0">{f.unit}</span>}
+                            {r.expectedFields.map((f) => {
+                              const v = r.values?.[f.key] ?? ''
+                              const flagged = flagOutOfRange && isValueOutOfRange(v, f.normalLow, f.normalHigh)
+                              return (
+                                <div key={f.key}>
+                                  <div className="flex items-baseline justify-between gap-1 mb-1">
+                                    <label className="text-xs font-medium text-slate-600 truncate flex items-center gap-1">
+                                      {f.label}
+                                      {flagged && <span className="w-1.5 h-1.5 rounded-full bg-danger inline-block" title="Out of normal range"/>}
+                                    </label>
+                                    {f.unit && <span className="text-xs text-slate-400 flex-shrink-0">{f.unit}</span>}
+                                  </div>
+                                  <input
+                                    type="text"
+                                    className={`form-input text-sm py-1.5 ${flagged ? 'bg-red-50 border-red-200 focus:border-red-400 focus:ring-red-200' : ''}`}
+                                    placeholder="—"
+                                    value={v}
+                                    onChange={(e) => updateOutcomeField(r.tempId, f.key, e.target.value)}/>
+                                  {(typeof f.normalLow === 'number' || typeof f.normalHigh === 'number') && (
+                                    <p className={`text-[10px] mt-0.5 ml-1 ${flagged ? 'text-danger font-medium' : 'text-slate-400'}`}>
+                                      {typeof f.normalLow === 'number' && typeof f.normalHigh === 'number'
+                                        ? `Normal: ${f.normalLow} – ${f.normalHigh}`
+                                        : typeof f.normalLow === 'number'
+                                          ? `Normal: ≥ ${f.normalLow}`
+                                          : `Normal: ≤ ${f.normalHigh}`}
+                                    </p>
+                                  )}
                                 </div>
-                                <input
-                                  type="text"
-                                  className="form-input text-sm py-1.5"
-                                  placeholder="—"
-                                  value={r.values?.[f.key] ?? ''}
-                                  onChange={(e) => updateOutcomeField(r.tempId, f.key, e.target.value)}/>
-                                {(typeof f.normalLow === 'number' || typeof f.normalHigh === 'number') && (
-                                  <p className="text-[10px] text-slate-400 mt-0.5 ml-1">
-                                    {typeof f.normalLow === 'number' && typeof f.normalHigh === 'number'
-                                      ? `Normal: ${f.normalLow} – ${f.normalHigh}`
-                                      : typeof f.normalLow === 'number'
-                                        ? `Normal: ≥ ${f.normalLow}`
-                                        : `Normal: ≤ ${f.normalHigh}`}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         ) : (
                           <div>
@@ -2142,6 +2175,111 @@ export default function NewPrescriptionPage() {
       </div>
     </Modal>
     </>
+  )
+}
+
+// ── LabTestCategoryBrowser ───────────────────────────────────────────
+// Categorized accordion of lab tests pulled from master data. Click category to expand,
+// click a test row to add it to the outcomes list. Already-added tests show as disabled.
+// Categories with the most tests appear first (Bio Chemistry, Haematology, etc.).
+function LabTestCategoryBrowser({ items, alreadyAdded, onPickExisting }) {
+  const [openCategories, setOpenCategories] = useState({})
+
+  // Group tests by category, preserving the master-data sort order within each group.
+  const grouped = useMemo(() => {
+    const map = new Map()
+    for (const item of (items || [])) {
+      const cat = (item.category || 'Other').trim() || 'Other'
+      if (!map.has(cat)) map.set(cat, [])
+      map.get(cat).push(item)
+    }
+    // Convert to array, sort categories by count descending so common ones appear first
+    return Array.from(map.entries())
+      .map(([category, list]) => ({ category, list }))
+      .sort((a, b) => b.list.length - a.list.length)
+  }, [items])
+
+  const toggle = (cat) => setOpenCategories(prev => ({ ...prev, [cat]: !prev[cat] }))
+
+  // Accordion left-edge color matching outcome card stripes — keeps visual identity consistent.
+  const catStripe = (cat) => {
+    const c = String(cat || '').toLowerCase()
+    if (c.includes('haema'))                           return 'bg-primary'
+    if (c.includes('bio chem') || c.includes('biochem')) return 'bg-accent'
+    if (c.includes('endocrine'))                       return 'bg-purple-500'
+    if (c.includes('urine'))                           return 'bg-warning'
+    if (c.includes('serolog') || c.includes('micro'))  return 'bg-secondary'
+    if (c.includes('radio'))                           return 'bg-purple-500'
+    if (c.includes('cardio') || c.includes('cardiac')) return 'bg-danger'
+    if (c.includes('oncol'))                           return 'bg-pink-600'
+    return 'bg-slate-400'
+  }
+
+  if (!grouped.length) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+        No lab tests in master data yet. Ask your admin to <strong>Load Default Data</strong> in Master Data → Lab Tests, or add tests via search below.
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+          Browse by Category
+        </label>
+        <span className="text-xs text-slate-400">{grouped.length} categories · {(items || []).length} tests</span>
+      </div>
+      <div className="space-y-2">
+        {grouped.map(({ category, list }) => {
+          const open = !!openCategories[category]
+          return (
+            <div key={category} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <button type="button"
+                onClick={() => toggle(category)}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-slate-50 transition text-left">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={`w-1 h-5 rounded-full flex-shrink-0 ${catStripe(category)}`}/>
+                  <span className="font-semibold text-sm text-slate-800 truncate uppercase tracking-wide">{category}</span>
+                  <span className="text-xs text-slate-400 flex-shrink-0">({list.length})</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition ${open ? 'rotate-180' : ''}`}/>
+              </button>
+              {open && (
+                <div className="border-t border-slate-100 divide-y divide-slate-100">
+                  {list.map((item) => {
+                    const taken = (alreadyAdded || []).includes(item.name?.toLowerCase())
+                    const fieldsCount = Array.isArray(item.expectedFields) ? item.expectedFields.length : 0
+                    return (
+                      <button key={item.id} type="button"
+                        disabled={taken}
+                        onClick={() => !taken && onPickExisting(item)}
+                        className={`w-full text-left px-3 py-2 text-sm transition flex items-center justify-between gap-2 ${
+                          taken ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-50'
+                        }`}>
+                        <span className="text-slate-700 truncate">{item.name}</span>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {fieldsCount > 0 && (
+                            <span className="text-[10px] bg-success/10 text-success font-semibold px-1.5 py-0.5 rounded">
+                              {fieldsCount} fields
+                            </span>
+                          )}
+                          {taken
+                            ? <span className="text-[10px] text-slate-400">added</span>
+                            : <Plus className="w-3.5 h-3.5 text-primary"/>
+                          }
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
