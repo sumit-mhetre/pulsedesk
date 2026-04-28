@@ -885,6 +885,7 @@ export default function NewPrescriptionPage() {
   const [rxLabResults, setRxLabResults] = useState([])
   const [deletedLabResultIds, setDeletedLabResultIds] = useState([])  // IDs to DELETE on save
   const [outcomesOpen, setOutcomesOpen] = useState(false)             // full-screen Test Outcomes modal
+  const [outcomesDate, setOutcomesDate] = useState(() => format(new Date(), 'yyyy-MM-dd')) // single date for all tests in this batch
   const [nextVisit, setNextVisit] = useState('')
   const [printLang, setPrintLang] = useState('en')
   const [customRxNo,setCustomRxNo]= useState('')
@@ -1133,18 +1134,29 @@ export default function NewPrescriptionPage() {
   }, [rxMeds])
 
   // ── Lab Results / Test Outcomes helpers ───────────────────────────
+  // Sync the top-level outcomes date when modal opens. If existing rows are loaded
+  // (e.g. editing an Rx), pick up the first row's date so it doesn't look stale.
+  // If no rows yet, default to today.
+  useEffect(() => {
+    if (!outcomesOpen) return
+    const firstRow = rxLabResults[0]
+    setOutcomesDate(firstRow?.resultDate || format(new Date(), 'yyyy-MM-dd'))
+    // intentionally only depend on outcomesOpen — we sync once per modal open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outcomesOpen])
+
   // Add a test outcome row from the searchable lab tests catalog. If the test has
   // expectedFields, we snapshot them onto the row so display + save share one source.
+  // The new row inherits the top-level outcomes date (one date per batch — simpler UX).
   const addTestOutcome = useCallback((labTestEntry) => {
     if (!labTestEntry) return
-    const today = format(new Date(), 'yyyy-MM-dd')
     const row = {
       tempId:        'lr_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
       id:            null,
       labTestId:     labTestEntry.id || null,
       testName:      labTestEntry.name,
       testCategory:  labTestEntry.category || null,
-      resultDate:    today,
+      resultDate:    outcomesDate || format(new Date(), 'yyyy-MM-dd'),
       expectedFields: Array.isArray(labTestEntry.expectedFields) && labTestEntry.expectedFields.length
                        ? labTestEntry.expectedFields
                        : null,
@@ -1154,7 +1166,16 @@ export default function NewPrescriptionPage() {
     }
     setRxLabResults(prev => [...prev, row])
     setDirty(true)
-  }, [])
+  }, [outcomesDate])
+
+  // Change the batch date — cascade to all existing rows so the whole modal
+  // stays in sync with what the user sees in the header.
+  const updateOutcomesDate = (newDate) => {
+    if (!newDate) return
+    setOutcomesDate(newDate)
+    setRxLabResults(prev => prev.map(r => ({ ...r, resultDate: newDate })))
+    setDirty(true)
+  }
 
   // Add a free-text test (no catalog entry) — for tests not in master data
   const addFreeTextOutcome = useCallback((testName) => {
@@ -1971,12 +1992,14 @@ export default function NewPrescriptionPage() {
     {/* Test Outcomes — full-screen modal that feels like a dedicated page.
         Lives inside the Rx form so state (rxLabResults) stays in one place — no routing,
         no draft sync, no data loss risk. Click left FAB to open. Outcomes auto-save when
-        the parent Rx is saved (same flow as before). */}
+        the parent Rx is saved (same flow as before).
+        Design: search-first. Pick a test from the dropdown → its values appear inline below.
+        Single date at the top applies to all tests in this batch (cascades on change). */}
     {outcomesOpen && (
       <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-stretch justify-center p-3 sm:p-6 no-print print:hidden animate-in fade-in"
            onClick={(e) => { if (e.target === e.currentTarget) setOutcomesOpen(false) }}>
         <div className="bg-background w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4">
-          {/* Header — patient context + close */}
+          {/* Header — patient context + batch date + close */}
           <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 bg-white flex-shrink-0">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
@@ -1993,6 +2016,17 @@ export default function NewPrescriptionPage() {
                 )}
               </div>
             </div>
+            {/* Batch date picker — applies to all tests in this modal. Changing cascades. */}
+            <div className="flex items-center gap-2 flex-shrink-0 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5 hover:bg-blue-100 transition"
+                 title="Date applies to all tests in this batch">
+              <Calendar className="w-4 h-4 text-primary flex-shrink-0"/>
+              <input
+                type="date"
+                className="bg-transparent border-0 text-sm font-medium text-slate-700 focus:outline-none focus:ring-0 p-0 cursor-pointer"
+                value={outcomesDate}
+                onChange={(e) => updateOutcomesDate(e.target.value)}
+                aria-label="Test date"/>
+            </div>
             <button
               type="button"
               onClick={() => setOutcomesOpen(false)}
@@ -2003,19 +2037,12 @@ export default function NewPrescriptionPage() {
             </button>
           </div>
 
-          {/* Body — scrollable */}
+          {/* Body — scrollable. Search-first: pick a test → it shows up below with inline value boxes. */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            {/* Browse by category — categorized accordion. Click category → expand → tap test to add. */}
-            <LabTestCategoryBrowser
-              items={labTestList}
-              alreadyAdded={rxLabResults.map(r => (r.testName || '').toLowerCase())}
-              onPickExisting={addTestOutcome}
-            />
-
-            {/* Search — fallback for finding tests fast or adding custom ones not in master data */}
+            {/* Search — primary entry. Click to see all tests, type to filter, Enter to add custom. */}
             <div>
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 block">
-                Or search / add custom
+                Add Lab Test
               </label>
               <TestOutcomeSearch
                 items={labTestList}
@@ -2024,23 +2051,24 @@ export default function NewPrescriptionPage() {
                 alreadyAdded={rxLabResults.map(r => (r.testName || '').toLowerCase())}
               />
               <p className="text-xs text-slate-400 mt-1.5">
-                Tests with sub-fields show structured forms. Others use a free-text result box.
+                Click search to browse all tests, or type to filter. Press Enter to add a custom test.
               </p>
             </div>
 
-            {/* Recorded outcomes list */}
+            {/* Added tests list — appears immediately below search with inline value entry */}
             {rxLabResults.length === 0 ? (
-              <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl py-8 text-center">
-                <FlaskConical className="w-8 h-8 text-slate-300 mx-auto mb-2"/>
-                <p className="text-sm text-slate-500">No test outcomes recorded yet.</p>
-                <p className="text-xs text-slate-400 mt-1">Browse categories or search above to add a test.</p>
+              <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl py-10 text-center">
+                <FlaskConical className="w-10 h-10 text-slate-300 mx-auto mb-2"/>
+                <p className="text-sm text-slate-500">No tests added yet.</p>
+                <p className="text-xs text-slate-400 mt-1">Use the search box above to pick a test — values appear here for entry.</p>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                    Recorded ({rxLabResults.length})
+                    Added ({rxLabResults.length})
                   </h3>
+                  <span className="text-xs text-slate-400">all dated {outcomesDate}</span>
                 </div>
                 {rxLabResults.map((r) => {
                   const hasFields = Array.isArray(r.expectedFields) && r.expectedFields.length > 0
@@ -2054,22 +2082,12 @@ export default function NewPrescriptionPage() {
                             {r.testCategory && <Badge variant="gray">{r.testCategory}</Badge>}
                             {!hasFields && <Badge variant="warning">Free-text</Badge>}
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <div className="flex items-center gap-1 text-xs text-slate-500">
-                              <Calendar className="w-3.5 h-3.5"/>
-                              <input
-                                type="date"
-                                className="bg-transparent border-0 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 py-0.5"
-                                value={r.resultDate}
-                                onChange={(e) => updateOutcomeMeta(r.tempId, 'resultDate', e.target.value)}/>
-                            </div>
-                            <button type="button"
-                              onClick={() => removeOutcome(r.tempId)}
-                              className="text-slate-400 hover:text-danger transition p-1"
-                              title="Remove">
-                              <X className="w-4 h-4"/>
-                            </button>
-                          </div>
+                          <button type="button"
+                            onClick={() => removeOutcome(r.tempId)}
+                            className="text-slate-400 hover:text-danger transition p-1 flex-shrink-0"
+                            title="Remove">
+                            <X className="w-4 h-4"/>
+                          </button>
                         </div>
 
                         {hasFields ? (
@@ -2141,7 +2159,7 @@ export default function NewPrescriptionPage() {
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-200 bg-white flex-shrink-0">
             <p className="text-xs text-slate-500 hidden sm:block">
               {rxLabResults.length > 0
-                ? `${rxLabResults.length} test outcome${rxLabResults.length > 1 ? 's' : ''} will be saved with the prescription.`
+                ? `${rxLabResults.length} test${rxLabResults.length > 1 ? 's' : ''} · ${outcomesDate} · saves with prescription`
                 : 'Add tests above. Outcomes save with the prescription.'}
             </p>
             <div className="flex gap-2 ml-auto">
@@ -2178,115 +2196,13 @@ export default function NewPrescriptionPage() {
   )
 }
 
-// ── LabTestCategoryBrowser ───────────────────────────────────────────
-// Categorized accordion of lab tests pulled from master data. Click category to expand,
-// click a test row to add it to the outcomes list. Already-added tests show as disabled.
-// Categories with the most tests appear first (Bio Chemistry, Haematology, etc.).
-function LabTestCategoryBrowser({ items, alreadyAdded, onPickExisting }) {
-  const [openCategories, setOpenCategories] = useState({})
-
-  // Group tests by category, preserving the master-data sort order within each group.
-  const grouped = useMemo(() => {
-    const map = new Map()
-    for (const item of (items || [])) {
-      const cat = (item.category || 'Other').trim() || 'Other'
-      if (!map.has(cat)) map.set(cat, [])
-      map.get(cat).push(item)
-    }
-    // Convert to array, sort categories by count descending so common ones appear first
-    return Array.from(map.entries())
-      .map(([category, list]) => ({ category, list }))
-      .sort((a, b) => b.list.length - a.list.length)
-  }, [items])
-
-  const toggle = (cat) => setOpenCategories(prev => ({ ...prev, [cat]: !prev[cat] }))
-
-  // Accordion left-edge color matching outcome card stripes — keeps visual identity consistent.
-  const catStripe = (cat) => {
-    const c = String(cat || '').toLowerCase()
-    if (c.includes('haema'))                           return 'bg-primary'
-    if (c.includes('bio chem') || c.includes('biochem')) return 'bg-accent'
-    if (c.includes('endocrine'))                       return 'bg-purple-500'
-    if (c.includes('urine'))                           return 'bg-warning'
-    if (c.includes('serolog') || c.includes('micro'))  return 'bg-secondary'
-    if (c.includes('radio'))                           return 'bg-purple-500'
-    if (c.includes('cardio') || c.includes('cardiac')) return 'bg-danger'
-    if (c.includes('oncol'))                           return 'bg-pink-600'
-    return 'bg-slate-400'
-  }
-
-  if (!grouped.length) {
-    return (
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
-        No lab tests in master data yet. Ask your admin to <strong>Load Default Data</strong> in Master Data → Lab Tests, or add tests via search below.
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-          Browse by Category
-        </label>
-        <span className="text-xs text-slate-400">{grouped.length} categories · {(items || []).length} tests</span>
-      </div>
-      <div className="space-y-2">
-        {grouped.map(({ category, list }) => {
-          const open = !!openCategories[category]
-          return (
-            <div key={category} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <button type="button"
-                onClick={() => toggle(category)}
-                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-slate-50 transition text-left">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className={`w-1 h-5 rounded-full flex-shrink-0 ${catStripe(category)}`}/>
-                  <span className="font-semibold text-sm text-slate-800 truncate uppercase tracking-wide">{category}</span>
-                  <span className="text-xs text-slate-400 flex-shrink-0">({list.length})</span>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition ${open ? 'rotate-180' : ''}`}/>
-              </button>
-              {open && (
-                <div className="border-t border-slate-100 divide-y divide-slate-100">
-                  {list.map((item) => {
-                    const taken = (alreadyAdded || []).includes(item.name?.toLowerCase())
-                    const fieldsCount = Array.isArray(item.expectedFields) ? item.expectedFields.length : 0
-                    return (
-                      <button key={item.id} type="button"
-                        disabled={taken}
-                        onClick={() => !taken && onPickExisting(item)}
-                        className={`w-full text-left px-3 py-2 text-sm transition flex items-center justify-between gap-2 ${
-                          taken ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-50'
-                        }`}>
-                        <span className="text-slate-700 truncate">{item.name}</span>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {fieldsCount > 0 && (
-                            <span className="text-[10px] bg-success/10 text-success font-semibold px-1.5 py-0.5 rounded">
-                              {fieldsCount} fields
-                            </span>
-                          )}
-                          {taken
-                            ? <span className="text-[10px] text-slate-400">added</span>
-                            : <Plus className="w-3.5 h-3.5 text-primary"/>
-                          }
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 // ── TestOutcomeSearch ────────────────────────────────────────────────
-// Standalone search bar for adding lab tests to record outcomes.
-// Behaves like a tag/typeahead: type → see catalog matches → click to add (uses expectedFields if defined).
-// If user types a name not in catalog and presses Enter, that name is added as a free-text outcome.
+// Primary entry point for adding lab tests. Behavior:
+// • Click → dropdown shows ALL master tests, sorted by category then name.
+// • Type → live filters to matching names.
+// • Click a row → adds the test (uses expectedFields if defined). Dropdown stays open
+//   for rapid multi-add — clears query but keeps focus, doctor can pick next test immediately.
+// • Press Enter on a name not in catalog → adds as free-text outcome.
 function TestOutcomeSearch({ items, onPickExisting, onPickCustom, alreadyAdded }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -2300,15 +2216,24 @@ function TestOutcomeSearch({ items, onPickExisting, onPickCustom, alreadyAdded }
     return () => document.removeEventListener('mousedown', handle)
   }, [])
 
+  // Sort full master list by category then name — used both for "no query" and "filtered" display.
+  // Already-added tests stay in the list (visually dimmed) so doctor sees what's done.
+  const sortedAll = useMemo(() => {
+    const list = (items || []).slice()
+    list.sort((a, b) => {
+      const catA = String(a.category || 'zzz').toLowerCase()
+      const catB = String(b.category || 'zzz').toLowerCase()
+      if (catA !== catB) return catA.localeCompare(catB)
+      return String(a.name || '').localeCompare(String(b.name || ''))
+    })
+    return list
+  }, [items])
+
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const list = items || []
-    if (!q) {
-      // No query → show top 8 by usage
-      return list.slice().sort((a,b) => (b.usageCount||0) - (a.usageCount||0)).slice(0, 8)
-    }
-    return list.filter(t => t.name?.toLowerCase().includes(q)).slice(0, 12)
-  }, [items, query])
+    if (!q) return sortedAll                           // show full list on focus
+    return sortedAll.filter(t => t.name?.toLowerCase().includes(q))
+  }, [sortedAll, query])
 
   const exactExisting = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -2319,7 +2244,8 @@ function TestOutcomeSearch({ items, onPickExisting, onPickCustom, alreadyAdded }
   const handlePick = (item) => {
     onPickExisting(item)
     setQuery('')
-    setOpen(false)
+    // Keep dropdown OPEN after pick — doctor can immediately pick the next test
+    // without re-clicking the search box. Cuts clicks per test from 3 down to 1.
     inputRef.current?.focus()
   }
 
@@ -2327,7 +2253,7 @@ function TestOutcomeSearch({ items, onPickExisting, onPickCustom, alreadyAdded }
     const q = query.trim()
     if (!q) return
     if (exactExisting) handlePick(exactExisting)
-    else { onPickCustom(q); setQuery(''); setOpen(false); inputRef.current?.focus() }
+    else { onPickCustom(q); setQuery(''); inputRef.current?.focus() }
   }
 
   return (
@@ -2338,16 +2264,18 @@ function TestOutcomeSearch({ items, onPickExisting, onPickCustom, alreadyAdded }
           ref={inputRef}
           type="text"
           className="form-input pl-9"
-          placeholder="Search test (e.g., CBC, Lipid, Sugar) or type custom name…"
+          placeholder="Click to browse all tests, or type to search (e.g., CBC, Lipid, Sugar)…"
           value={query}
           onFocus={() => setOpen(true)}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleEnter() } }}/>
       </div>
       {open && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-72 overflow-y-auto">
-          {matches.length === 0 && !query.trim() && (
-            <div className="px-3 py-3 text-xs text-slate-400">Start typing to search lab tests…</div>
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-96 overflow-y-auto">
+          {sortedAll.length === 0 && (
+            <div className="px-3 py-3 text-xs text-amber-800 bg-amber-50 border-b border-amber-200">
+              No lab tests in master data yet. Ask your admin to <strong>Load Default Data</strong> in Master Data → Lab Tests. You can still type a custom test name and press Enter.
+            </div>
           )}
           {matches.length === 0 && query.trim() && (
             <button type="button" onClick={handleEnter}
@@ -2369,13 +2297,16 @@ function TestOutcomeSearch({ items, onPickExisting, onPickCustom, alreadyAdded }
                     <Badge variant="success">{item.expectedFields.length} fields</Badge>
                   )}
                 </div>
-                {taken && <span className="text-xs text-slate-400 flex-shrink-0">already added</span>}
+                {taken
+                  ? <span className="text-xs text-slate-400 flex-shrink-0">added</span>
+                  : <Plus className="w-3.5 h-3.5 text-primary flex-shrink-0"/>
+                }
               </button>
             )
           })}
           {query.trim() && matches.length > 0 && !exactExisting && (
             <button type="button" onClick={handleEnter}
-              className="w-full text-left px-3 py-2 bg-slate-50 hover:bg-blue-50 transition flex items-center gap-2 border-t border-slate-100">
+              className="w-full text-left px-3 py-2 bg-slate-50 hover:bg-blue-50 transition flex items-center gap-2 border-t border-slate-100 sticky bottom-0">
               <Plus className="w-4 h-4 text-success"/>
               <span className="text-xs text-slate-600">Or add <strong>"{query.trim()}"</strong> as custom (free-text)</span>
             </button>
