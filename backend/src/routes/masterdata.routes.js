@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { authenticate, requirePermission } = require('../middleware/auth.middleware');
+const { authenticate, authorize, requirePermission } = require('../middleware/auth.middleware');
 const {
   medicineCtrl, labTestCtrl, complainCtrl,
   diagnosisCtrl, adviceCtrl, medicineNoteCtrl, billingItemCtrl,
@@ -64,6 +64,9 @@ router.post  ('/timing-options',     authenticate, requirePermission('manageMast
 router.delete('/timing-options/:id', authenticate, requirePermission('manageMasterData'), timingCtrl.remove);
 
 // ── Bulk seed ─────────────────────────────────────────────
-router.post  ('/seed',               authenticate, requirePermission('manageMasterData'), seedMasterData);
+// Seed default master data — restricted to ADMIN role only.
+// Doctors and receptionists cannot bulk-load defaults even if they have manageMasterData
+// (which is now true by default). Bulk-loading is destructive enough to warrant role gating.
+router.post  ('/seed',               authenticate, authorize('ADMIN', 'SUPER_ADMIN'), seedMasterData);
 
 module.exports = router;

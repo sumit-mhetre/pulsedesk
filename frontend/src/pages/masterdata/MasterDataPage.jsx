@@ -8,6 +8,7 @@ import {
 import { PageHeader, Button, Badge, Card, EmptyState, Modal } from '../../components/ui'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import useAuthStore from '../../store/authStore'
 
 // ── Tab config ────────────────────────────────────────────
 const TABS = [
@@ -270,6 +271,11 @@ export default function MasterDataPage() {
   const [saving, setSaving]         = useState(false)
   const [showSeed, setShowSeed]     = useState(false)
 
+  // Only ADMIN can bulk-load default master data. Doctors/receptionists see plain "empty" state.
+  // Super admins use the Manage modal for clinics they oversee.
+  const user      = useAuthStore(s => s.user)
+  const canSeed   = user?.role === 'ADMIN'
+
   const currentTab = TABS.find(t => t.key === activeTab)
 
   const fetchItems = useCallback(async () => {
@@ -424,17 +430,27 @@ export default function MasterDataPage() {
     <div className="fade-in">
       <PageHeader title="Master Data" subtitle="Configure medicines, tests, complaints and all reference data" />
 
-      {/* Seed banner */}
-      {items.length === 0 && !loading && !search && (
+      {/* Seed banner — admin only */}
+      {canSeed && items.length === 0 && !loading && !search && (
         <SeedImporter onDone={fetchItems} />
       )}
-      {items.length > 0 && (
+      {canSeed && items.length > 0 && (
         <div className="flex justify-end mb-4">
           <Button variant="ghost" size="sm" icon={<Upload className="w-4 h-4" />}
             onClick={() => setShowSeed(s => !s)}>Load Default Data</Button>
         </div>
       )}
-      {showSeed && <SeedImporter onDone={() => { setShowSeed(false); fetchItems() }} />}
+      {canSeed && showSeed && <SeedImporter onDone={() => { setShowSeed(false); fetchItems() }} />}
+
+      {/* Doctor/Receptionist with empty data — show simple empty state instead of seed prompt */}
+      {!canSeed && items.length === 0 && !loading && !search && (
+        <Card className="mb-4">
+          <div className="text-center py-6 text-sm text-slate-500">
+            No {currentTab?.label?.toLowerCase() || 'items'} configured yet.
+            Please ask your admin to set up master data.
+          </div>
+        </Card>
+      )}
 
       <div className="flex gap-6">
         {/* Sidebar tabs */}
