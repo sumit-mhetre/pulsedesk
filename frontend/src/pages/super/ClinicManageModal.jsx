@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   X, Save, Building2, Users as UsersIcon, BarChart3, ShieldAlert,
   Mail, Phone, FileText, KeyRound, Power, Crown, Copy, AlertTriangle,
-  UserPlus, Pencil, History,
+  UserPlus, Pencil, History, Database,
 } from 'lucide-react'
 import { Modal, Card, Button, Badge, ConfirmDialog } from '../../components/ui'
 import api from '../../lib/api'
@@ -47,6 +47,12 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
 
   // User form (Add/Edit)
   const [userForm, setUserForm] = useState(null)   // null | { mode: 'add' } | { mode: 'edit', user }
+
+  // Master data seeding (Actions tab)
+  const [seedCounts, setSeedCounts]       = useState(null)   // null until fetched
+  const [seedConfirmOpen, setSeedConfirmOpen] = useState(false)
+  const [seeding, setSeeding]             = useState(false)
+  const [seedResult, setSeedResult]       = useState(null)   // last successful seed summary
 
   // Audit logs
   const [auditLogs, setAuditLogs]         = useState([])
@@ -120,6 +126,39 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
       setAuditCursor(data.data.nextCursor)
       setAuditHasMore(!!data.data.nextCursor)
     } catch {} finally { setAuditLoading(false) }
+  }
+
+  // ── Master data seeding (Actions tab) ───────────────────
+  // Load current item counts when Actions tab opens, so we can show "this clinic has X medicines"
+  useEffect(() => {
+    if (tab !== 'actions' || !clinic) return
+    api.get(`/clinics/${clinicId}/master-data-counts`)
+      .then(({ data }) => setSeedCounts(data.data))
+      .catch(() => {})  // non-blocking — button still works without counts
+  }, [tab, clinicId, clinic])
+
+  const handleSeedMasterData = async () => {
+    setSeedConfirmOpen(false)
+    setSeeding(true)
+    try {
+      // Load seed data from frontend's bundled seedData.js (same module clinic admins use)
+      const seedData = await import('../../data/seedData.js')
+      const { data } = await api.post(`/clinics/${clinicId}/seed-master-data`, {
+        medicines:    seedData.medicines,
+        labTests:     seedData.labTests,
+        complaints:   seedData.complaints,
+        diagnoses:    seedData.diagnoses,
+        adviceOptions:seedData.adviceOptions,
+        billingItems: seedData.billingItems,
+      })
+      setSeedResult(data.data)
+      toast.success('Default master data loaded')
+      // Refresh counts to reflect new totals
+      const { data: cdata } = await api.get(`/clinics/${clinicId}/master-data-counts`)
+      setSeedCounts(cdata.data)
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to load master data')
+    } finally { setSeeding(false) }
   }
 
   // ── Save Info tab ──────────────────────────────────────
@@ -546,6 +585,45 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
                         </div>
                       )}
                     </Card>
+
+                    {/* Load Default Master Data */}
+                    <Card>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold text-slate-800 flex items-center gap-2"><Database className="w-4 h-4 text-primary"/>Load Default Master Data</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">Load default medicines, diagnoses, lab tests, complaints, advice and billing items into this clinic.</p>
+                        </div>
+                      </div>
+
+                      {seedCounts && (
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-3">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Current data in this clinic</p>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div><span className="text-slate-500">Medicines:</span> <span className="font-semibold text-slate-800">{seedCounts.medicines}</span></div>
+                            <div><span className="text-slate-500">Lab Tests:</span> <span className="font-semibold text-slate-800">{seedCounts.labTests}</span></div>
+                            <div><span className="text-slate-500">Complaints:</span> <span className="font-semibold text-slate-800">{seedCounts.complaints}</span></div>
+                            <div><span className="text-slate-500">Diagnoses:</span> <span className="font-semibold text-slate-800">{seedCounts.diagnoses}</span></div>
+                            <div><span className="text-slate-500">Advice:</span> <span className="font-semibold text-slate-800">{seedCounts.adviceOptions}</span></div>
+                            <div><span className="text-slate-500">Billing Items:</span> <span className="font-semibold text-slate-800">{seedCounts.billingItems}</span></div>
+                          </div>
+                        </div>
+                      )}
+
+                      <Button variant="outline" size="sm" loading={seeding}
+                        onClick={() => setSeedConfirmOpen(true)}
+                        icon={<Database className="w-3.5 h-3.5"/>}>
+                        {seedCounts && seedCounts.total > 0 ? 'Load More Default Data' : 'Load Default Data'}
+                      </Button>
+
+                      {seedResult && (
+                        <div className="mt-3 bg-green-50 border border-green-200 rounded-xl p-3 text-sm">
+                          <p className="font-semibold text-green-900 mb-1">✓ Successfully loaded</p>
+                          <p className="text-green-800 text-xs">
+                            {Object.entries(seedResult).map(([k, v]) => `${v} ${k}`).join(' · ')}
+                          </p>
+                        </div>
+                      )}
+                    </Card>
                   </div>
                 )}
               </>
@@ -589,6 +667,20 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
         cancelLabel="Cancel"
         onConfirm={() => changeStatus(pendingStatus)}
         onClose={() => setPendingStatus(null)}
+      />
+
+      {/* Seed master data confirm */}
+      <ConfirmDialog
+        open={seedConfirmOpen}
+        title={seedCounts && seedCounts.total > 0 ? 'Add more default data?' : 'Load default data?'}
+        message={seedCounts && seedCounts.total > 0
+          ? `This clinic already has ${seedCounts.total} master data items. Loading defaults will add ~200 more items, but exact duplicates by name will be skipped automatically. Continue?`
+          : 'This will add ~200 default items (medicines, diagnoses, lab tests, complaints, advice, billing items) into this clinic. Continue?'}
+        variant="warning"
+        confirmLabel="Yes, Load Data"
+        cancelLabel="Cancel"
+        onConfirm={handleSeedMasterData}
+        onClose={() => setSeedConfirmOpen(false)}
       />
 
       {/* User Add / Edit modal */}

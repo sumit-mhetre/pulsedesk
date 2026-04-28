@@ -8,7 +8,7 @@ import {
 import { PageHeader, Button, Badge, Card, EmptyState, Modal } from '../../components/ui'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
-import useAuthStore from '../../store/authStore'
+import usePermission from '../../hooks/usePermission'
 
 // ── Tab config ────────────────────────────────────────────
 const TABS = [
@@ -271,10 +271,10 @@ export default function MasterDataPage() {
   const [saving, setSaving]         = useState(false)
   const [showSeed, setShowSeed]     = useState(false)
 
-  // Only ADMIN can bulk-load default master data. Doctors/receptionists see plain "empty" state.
-  // Super admins use the Manage modal for clinics they oversee.
-  const user      = useAuthStore(s => s.user)
-  const canSeed   = user?.role === 'ADMIN'
+  // Gate "Load Default Data" by permission. Admin gets it true by default. Doctors get false
+  // by default, but admin can grant it per-doctor via Capabilities editor. SUPER_ADMIN
+  // bypasses this UI — they use the Manage modal's Actions tab instead.
+  const canSeed   = usePermission('loadDefaultMasterData')
 
   const currentTab = TABS.find(t => t.key === activeTab)
 

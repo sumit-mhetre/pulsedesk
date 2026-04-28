@@ -271,9 +271,18 @@ const timingCtrl = {
 };
 
 // ── Seed bulk ─────────────────────────────────────────────
+// Regular flow: clinic admin/doctor with `loadDefaultMasterData` permission seeds their own clinic
+//   (clinicId comes from req.clinicId via auth middleware).
+// Super admin flow: super admin seeds any clinic (clinicId comes from req.params.clinicId via the
+//   /clinics/:clinicId/seed-master-data route).
 async function seedMasterData(req, res) {
   try {
-    const clinicId = req.clinicId;
+    // Determine target clinic: super admin sets it via URL param, regular users use their own.
+    const clinicId = (req.user?.role === 'SUPER_ADMIN' && req.params.clinicId)
+      ? req.params.clinicId
+      : req.clinicId;
+    if (!clinicId) return errorResponse(res, 'Clinic context missing', 400);
+
     const { medicines, labTests, complaints, diagnoses, adviceOptions, billingItems } = req.body;
     const results = {};
     if (medicines?.length) {
@@ -292,6 +301,30 @@ async function seedMasterData(req, res) {
   }
 }
 
+// ── Master Data Counts (for super admin's "this clinic has X items" preview) ──
+async function getMasterDataCounts(req, res) {
+  try {
+    const clinicId = (req.user?.role === 'SUPER_ADMIN' && req.params.clinicId)
+      ? req.params.clinicId
+      : req.clinicId;
+    if (!clinicId) return errorResponse(res, 'Clinic context missing', 400);
+
+    const [medicines, labTests, complaints, diagnoses, adviceOptions, billingItems] = await Promise.all([
+      prisma.medicine.count({ where: { clinicId } }),
+      prisma.labTest.count({ where: { clinicId } }),
+      prisma.complaint.count({ where: { clinicId } }),
+      prisma.diagnosis.count({ where: { clinicId } }),
+      prisma.adviceOption.count({ where: { clinicId } }),
+      prisma.billingItem.count({ where: { clinicId } }),
+    ]);
+    const total = medicines + labTests + complaints + diagnoses + adviceOptions + billingItems;
+    return successResponse(res, { medicines, labTests, complaints, diagnoses, adviceOptions, billingItems, total }, 'Counts fetched');
+  } catch (err) {
+    console.error('[getMasterDataCounts]', err);
+    return errorResponse(res, 'Failed to fetch counts', 500);
+  }
+}
+
 const complainCtrl    = masterController('complaint',    'nameEn');
 const diagnosisCtrl   = masterController('diagnosis',    'nameEn');
 const adviceCtrl      = masterController('adviceOption', 'nameEn');
@@ -301,5 +334,5 @@ const labTestCtrl     = masterController('labTest',      'name');
 module.exports = {
   medicineCtrl, labTestCtrl, complainCtrl,
   diagnosisCtrl, adviceCtrl, medicineNoteCtrl, billingItemCtrl,
-  dosageCtrl, timingCtrl, seedMasterData,
+  dosageCtrl, timingCtrl, seedMasterData, getMasterDataCounts,
 };

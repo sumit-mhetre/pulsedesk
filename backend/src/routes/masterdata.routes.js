@@ -64,9 +64,10 @@ router.post  ('/timing-options',     authenticate, requirePermission('manageMast
 router.delete('/timing-options/:id', authenticate, requirePermission('manageMasterData'), timingCtrl.remove);
 
 // ── Bulk seed ─────────────────────────────────────────────
-// Seed default master data — restricted to ADMIN role only.
-// Doctors and receptionists cannot bulk-load defaults even if they have manageMasterData
-// (which is now true by default). Bulk-loading is destructive enough to warrant role gating.
-router.post  ('/seed',               authenticate, authorize('ADMIN', 'SUPER_ADMIN'), seedMasterData);
+// Seed default master data — gated by 'loadDefaultMasterData' permission.
+// ADMIN role gets this true by default. DOCTOR/RECEPTIONIST get it false by default
+// but admin can grant it per-user via the Capabilities editor. SUPER_ADMIN bypasses
+// all permission checks (handled inside requirePermission middleware).
+router.post  ('/seed',               authenticate, requirePermission('loadDefaultMasterData'), seedMasterData);
 
 module.exports = router;

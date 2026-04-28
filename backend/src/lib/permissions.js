@@ -1,7 +1,7 @@
 // Single source of truth for RBAC permissions.
 // Roles set defaults; user.permissions holds overrides only (keeps DB clean).
 
-// 14 granular permissions. Keep keys stable — they're stored in DB + sent to frontend.
+// 15 granular permissions. Keep keys stable — they're stored in DB + sent to frontend.
 const PERMISSION_KEYS = [
   'viewDashboard',
   'managePatients',
@@ -13,6 +13,7 @@ const PERMISSION_KEYS = [
   'viewReports',
   'manageTemplates',
   'manageMasterData',
+  'loadDefaultMasterData',  // Bulk-load default catalogs (medicines, diagnoses, etc.) — destructive enough to warrant separate gate
   'manageSettings',
   'manageUsers',
   'viewDocuments',     // see fitness/medical certs + referrals
@@ -26,7 +27,8 @@ const ROLE_DEFAULTS = {
     viewPrescriptions: true, createPrescriptions: true,
     viewBilling: true,    createBilling: true,
     viewReports: true,    manageTemplates: true,
-    manageMasterData: true, manageSettings: true, manageUsers: true,
+    manageMasterData: true, loadDefaultMasterData: true,
+    manageSettings: true, manageUsers: true,
     viewDocuments: true,  createDocuments: true,
   },
   DOCTOR: {
@@ -34,7 +36,8 @@ const ROLE_DEFAULTS = {
     viewPrescriptions: true, createPrescriptions: true,
     viewBilling: true,    createBilling: true,
     viewReports: true,    manageTemplates: true,
-    manageMasterData: true, manageSettings: true, manageUsers: false,
+    manageMasterData: true, loadDefaultMasterData: false,
+    manageSettings: true, manageUsers: false,
     viewDocuments: true,  createDocuments: true,
   },
   RECEPTIONIST: {
@@ -42,7 +45,8 @@ const ROLE_DEFAULTS = {
     viewPrescriptions: false, createPrescriptions: false,
     viewBilling: true,    createBilling: true,
     viewReports: false,   manageTemplates: false,
-    manageMasterData: false, manageSettings: false, manageUsers: false,
+    manageMasterData: false, loadDefaultMasterData: false,
+    manageSettings: false, manageUsers: false,
     viewDocuments: false, createDocuments: false,
   },
 };

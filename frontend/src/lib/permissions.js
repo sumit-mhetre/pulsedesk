@@ -11,6 +11,7 @@ export const PERMISSION_KEYS = [
   'viewReports',
   'manageTemplates',
   'manageMasterData',
+  'loadDefaultMasterData',
   'manageSettings',
   'manageUsers',
   'viewDocuments',
@@ -18,20 +19,21 @@ export const PERMISSION_KEYS = [
 ]
 
 export const PERMISSION_LABELS = {
-  viewDashboard:       'View Dashboard',
-  managePatients:      'Manage Patients',
-  manageQueue:         'Manage Queue',
-  viewPrescriptions:   'View Prescriptions',
-  createPrescriptions: 'Create / Edit Prescriptions',
-  viewBilling:         'View Billing',
-  createBilling:       'Create / Edit Bills',
-  viewReports:         'View Reports',
-  manageTemplates:     'Manage Templates',
-  manageMasterData:    'Manage Master Data',
-  manageSettings:      'Manage Settings',
-  manageUsers:         'Manage Users',
-  viewDocuments:       'View Certificates',
-  createDocuments:     'Create / Edit Certificates',
+  viewDashboard:         'View Dashboard',
+  managePatients:        'Manage Patients',
+  manageQueue:           'Manage Queue',
+  viewPrescriptions:     'View Prescriptions',
+  createPrescriptions:   'Create / Edit Prescriptions',
+  viewBilling:           'View Billing',
+  createBilling:         'Create / Edit Bills',
+  viewReports:           'View Reports',
+  manageTemplates:       'Manage Templates',
+  manageMasterData:      'Manage Master Data',
+  loadDefaultMasterData: 'Load Default Master Data',
+  manageSettings:        'Manage Settings',
+  manageUsers:           'Manage Users',
+  viewDocuments:         'View Certificates',
+  createDocuments:       'Create / Edit Certificates',
 }
 
 // Grouping for the admin UI checkboxes
@@ -46,7 +48,7 @@ export const PERMISSION_GROUPS = [
   },
   {
     label: 'Administration',
-    keys: ['manageMasterData','manageSettings','manageUsers'],
+    keys: ['manageMasterData','loadDefaultMasterData','manageSettings','manageUsers'],
   },
 ]
 
@@ -56,7 +58,8 @@ export const ROLE_DEFAULTS = {
     viewPrescriptions: true, createPrescriptions: true,
     viewBilling: true,    createBilling: true,
     viewReports: true,    manageTemplates: true,
-    manageMasterData: true, manageSettings: true, manageUsers: true,
+    manageMasterData: true, loadDefaultMasterData: true,
+    manageSettings: true, manageUsers: true,
     viewDocuments: true,  createDocuments: true,
   },
   DOCTOR: {
@@ -64,7 +67,8 @@ export const ROLE_DEFAULTS = {
     viewPrescriptions: true, createPrescriptions: true,
     viewBilling: true,    createBilling: true,
     viewReports: true,    manageTemplates: true,
-    manageMasterData: true, manageSettings: true, manageUsers: false,
+    manageMasterData: true, loadDefaultMasterData: false,
+    manageSettings: true, manageUsers: false,
     viewDocuments: true,  createDocuments: true,
   },
   RECEPTIONIST: {
@@ -72,7 +76,8 @@ export const ROLE_DEFAULTS = {
     viewPrescriptions: false, createPrescriptions: false,
     viewBilling: true,    createBilling: true,
     viewReports: false,   manageTemplates: false,
-    manageMasterData: false, manageSettings: false, manageUsers: false,
+    manageMasterData: false, loadDefaultMasterData: false,
+    manageSettings: false, manageUsers: false,
     viewDocuments: false, createDocuments: false,
   },
 }

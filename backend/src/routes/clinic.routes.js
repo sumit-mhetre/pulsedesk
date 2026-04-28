@@ -55,6 +55,13 @@ router.post('/:clinicId/users',
 router.patch('/:clinicId/users/:id',
   authenticate, authorize('SUPER_ADMIN'), userCtrl.updateUser);
 
+// Super-admin: master data per clinic
+const mdCtrl = require('../controllers/masterdata.controller');
+router.get('/:clinicId/master-data-counts',
+  authenticate, authorize('SUPER_ADMIN'), mdCtrl.getMasterDataCounts);
+router.post('/:clinicId/seed-master-data',
+  authenticate, authorize('SUPER_ADMIN'), mdCtrl.seedMasterData);
+
 // Update any clinic by id
 router.put('/:id', authenticate, authorize('SUPER_ADMIN'), ctrl.updateClinic);
 
