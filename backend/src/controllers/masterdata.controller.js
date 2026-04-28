@@ -329,7 +329,42 @@ const complainCtrl    = masterController('complaint',    'nameEn');
 const diagnosisCtrl   = masterController('diagnosis',    'nameEn');
 const adviceCtrl      = masterController('adviceOption', 'nameEn');
 const medicineNoteCtrl= masterController('medicineNote', 'nameEn');
-const labTestCtrl     = masterController('labTest',      'name');
+
+// Lab tests get a custom wrapper to validate the JSON `expectedFields` shape on create/update.
+// Acceptable shape: array of { key, label, unit?, normalLow?, normalHigh? }
+function sanitizeExpectedFields(input) {
+  if (input === undefined) return undefined;        // not in body → leave field untouched
+  if (input === null) return null;                   // explicit clear
+  if (!Array.isArray(input)) return null;            // garbage → clear
+  const cleaned = input
+    .filter(f => f && typeof f === 'object' && f.key && f.label)
+    .map(f => ({
+      key:   String(f.key).trim(),
+      label: String(f.label).trim(),
+      unit:  f.unit ? String(f.unit).trim() : null,
+      normalLow:  typeof f.normalLow  === 'number' ? f.normalLow  : (f.normalLow  === null ? null : null),
+      normalHigh: typeof f.normalHigh === 'number' ? f.normalHigh : (f.normalHigh === null ? null : null),
+    }))
+    .filter(f => f.key.length && f.label.length);
+  return cleaned.length ? cleaned : null;
+}
+const labTestBase = masterController('labTest', 'name');
+const labTestCtrl = {
+  getAll: labTestBase.getAll,
+  remove: labTestBase.remove,
+  create: async (req, res) => {
+    if ('expectedFields' in req.body) {
+      req.body.expectedFields = sanitizeExpectedFields(req.body.expectedFields);
+    }
+    return labTestBase.create(req, res);
+  },
+  update: async (req, res) => {
+    if ('expectedFields' in req.body) {
+      req.body.expectedFields = sanitizeExpectedFields(req.body.expectedFields);
+    }
+    return labTestBase.update(req, res);
+  },
+};
 
 module.exports = {
   medicineCtrl, labTestCtrl, complainCtrl,

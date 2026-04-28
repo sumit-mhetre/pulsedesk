@@ -129,6 +129,7 @@ model Clinic {
   auditLogs        AuditLog[]
   medicalDocuments         MedicalDocument[]
   medicalDocumentTemplates MedicalDocumentTemplate[]
+  labResults       LabResult[]
 
   @@map("clinics")
 }
@@ -228,6 +229,7 @@ model Patient {
   bills             Bill[]
   vitalRecords      VitalRecord[]
   medicalDocuments  MedicalDocument[]
+  labResults        LabResult[]
 
   @@unique([clinicId, patientCode])
   @@map("patients")
@@ -306,12 +308,14 @@ model LabTest {
   clinicId  String
   name      String
   category  String?
+  expectedFields Json?  // Array of { key, label, unit, normalLow, normalHigh } — see lib/labTestFields.js
   usageCount Int     @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
   clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   prescriptionLabTests PrescriptionLabTest[]
+  labResults           LabResult[]
 
   @@unique([clinicId, name])
   @@map("lab_tests")
@@ -495,6 +499,7 @@ model Prescription {
   patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
   medicines    PrescriptionMedicine[]
   labTests     PrescriptionLabTest[]
+  labResults   LabResult[]
   bills        Bill[]
 
   @@unique([clinicId, rxNo])
@@ -535,6 +540,56 @@ model PrescriptionLabTest {
   labTest        LabTest      @relation(fields: [labTestId], references: [id])
 
   @@map("prescription_lab_tests")
+}
+
+// ─────────────────────────────────────────────
+// LAB RESULTS (Test Outcomes — recorded by doctor on a prescription)
+// Hybrid storage: anchored to prescription (so it prints with the Rx) AND keyed to patient
+// (so we can query historical trends across visits for charts).
+// ─────────────────────────────────────────────
+
+model LabResult {
+  id             String   @id @default(uuid())
+  clinicId       String
+  patientId      String
+  prescriptionId String?            // Null when recorded outside an Rx (future-proof)
+  labTestId      String?            // Null when test isn't in catalog (free-text)
+  testName       String             // Always denormalized for display
+  testCategory   String?            // e.g., "Haematology"
+  resultDate     DateTime           // The date the test was actually performed
+  freeTextResult String?            // Used when labTest has no expectedFields (simple tests)
+  notes          String?
+  recordedById   String?            // User who recorded (doctor)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  clinic         Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescription   Prescription? @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+  labTest        LabTest?      @relation(fields: [labTestId], references: [id], onDelete: SetNull)
+  values         LabResultValue[]
+
+  @@index([patientId, resultDate])
+  @@index([clinicId, resultDate])
+  @@index([prescriptionId])
+  @@map("lab_results")
+}
+
+model LabResultValue {
+  id          String   @id @default(uuid())
+  labResultId String
+  fieldKey    String   // matches LabTest.expectedFields[].key — e.g., "hemoglobin"
+  fieldLabel  String   // denormalized label e.g., "Hb"
+  fieldUnit   String?  // e.g., "g/dL"
+  value       String   // stored as string to support ranges, "Negative", numbers, etc.
+  normalLow   Float?   // copied from expectedFields at record time (so trend charts have ranges)
+  normalHigh  Float?
+
+  labResult   LabResult @relation(fields: [labResultId], references: [id], onDelete: Cascade)
+
+  @@index([labResultId])
+  @@index([fieldKey])
+  @@map("lab_result_values")
 }
 
 // ─────────────────────────────────────────────
