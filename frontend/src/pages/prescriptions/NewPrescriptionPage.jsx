@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import useAutosave from '../../hooks/useAutosave'
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom'
-import { Plus, Trash2, ArrowLeft, Save, Printer, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap, FlaskConical, Calendar } from 'lucide-react'
+import { Plus, Trash2, ArrowLeft, Save, Printer, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap, FlaskConical, Calendar, Search } from 'lucide-react'
 import { Button, Badge, Card, PageHeader, ConfirmDialog, Modal } from '../../components/ui'
 import AutosaveIndicator from '../../components/ui/AutosaveIndicator'
 import api from '../../lib/api'
@@ -886,6 +886,8 @@ export default function NewPrescriptionPage() {
   const [deletedLabResultIds, setDeletedLabResultIds] = useState([])  // IDs to DELETE on save
   const [outcomesOpen, setOutcomesOpen] = useState(false)             // full-screen Test Outcomes modal
   const [outcomesDate, setOutcomesDate] = useState(() => format(new Date(), 'yyyy-MM-dd')) // single date for all tests in this batch
+  const [outcomesSearchQuery, setOutcomesSearchQuery] = useState('')  // filter for inline categorized field search
+  const [openCategories, setOpenCategories] = useState({})            // category name → bool (manual expand state)
   const [nextVisit, setNextVisit] = useState('')
   const [printLang, setPrintLang] = useState('en')
   const [customRxNo,setCustomRxNo]= useState('')
@@ -1145,29 +1147,6 @@ export default function NewPrescriptionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outcomesOpen])
 
-  // Add a test outcome row from the searchable lab tests catalog. If the test has
-  // expectedFields, we snapshot them onto the row so display + save share one source.
-  // The new row inherits the top-level outcomes date (one date per batch — simpler UX).
-  const addTestOutcome = useCallback((labTestEntry) => {
-    if (!labTestEntry) return
-    const row = {
-      tempId:        'lr_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-      id:            null,
-      labTestId:     labTestEntry.id || null,
-      testName:      labTestEntry.name,
-      testCategory:  labTestEntry.category || null,
-      resultDate:    outcomesDate || format(new Date(), 'yyyy-MM-dd'),
-      expectedFields: Array.isArray(labTestEntry.expectedFields) && labTestEntry.expectedFields.length
-                       ? labTestEntry.expectedFields
-                       : null,
-      values:        {},
-      freeTextResult: '',
-      notes:         '',
-    }
-    setRxLabResults(prev => [...prev, row])
-    setDirty(true)
-  }, [outcomesDate])
-
   // Change the batch date — cascade to all existing rows so the whole modal
   // stays in sync with what the user sees in the header.
   const updateOutcomesDate = (newDate) => {
@@ -1177,19 +1156,159 @@ export default function NewPrescriptionPage() {
     setDirty(true)
   }
 
-  // Add a free-text test (no catalog entry) — for tests not in master data
-  const addFreeTextOutcome = useCallback((testName) => {
-    const trimmed = String(testName || '').trim()
-    if (!trimmed) return
-    addTestOutcome({ id: null, name: trimmed, category: null, expectedFields: null })
-  }, [addTestOutcome])
+  // ── Categorical field model ───────────────────────────────────────
+  // Flatten labTestList into category → array of "field rows" so the UI can
+  // render every individual test field with its own inline textbox. Multi-field
+  // tests (CBC, Lipid Profile) split into multiple rows. Tests without
+  // expectedFields collapse to one free-text row labeled by the test name.
+  const outcomesFieldsByCategory = useMemo(() => {
+    const map = new Map()
+    for (const t of (labTestList || [])) {
+      const cat = String(t.category || 'Other').trim() || 'Other'
+      if (!map.has(cat)) map.set(cat, [])
+      const bucket = map.get(cat)
+      if (Array.isArray(t.expectedFields) && t.expectedFields.length) {
+        for (const f of t.expectedFields) {
+          bucket.push({
+            labTestId:    t.id,
+            labTestName:  t.name,
+            fieldKey:     f.key,
+            label:        f.label,
+            unit:         f.unit || null,
+            normalLow:    typeof f.normalLow === 'number'  ? f.normalLow  : null,
+            normalHigh:   typeof f.normalHigh === 'number' ? f.normalHigh : null,
+            isFreeText:   false,
+            rowKey:       String(t.id) + '__' + f.key,
+          })
+        }
+      } else {
+        // No expectedFields → single free-text row, label is the test name itself
+        bucket.push({
+          labTestId:    t.id,
+          labTestName:  t.name,
+          fieldKey:     '__freetext__',
+          label:        t.name,
+          unit:         null,
+          normalLow:    null,
+          normalHigh:   null,
+          isFreeText:   true,
+          rowKey:       String(t.id) + '__freetext',
+        })
+      }
+    }
+    // Sort categories alphabetically. Within each category, preserve the field
+    // order coming from master data (which itself follows seedData ordering).
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  }, [labTestList])
 
-  const updateOutcomeField = (tempId, fieldKey, value) => {
-    setRxLabResults(prev => prev.map(r => r.tempId === tempId
-      ? { ...r, values: { ...(r.values || {}), [fieldKey]: value } }
-      : r))
+  // Search filter — matches by field label, test name, or category. When the
+  // category name itself matches, all rows under it pass through (broad match).
+  const outcomesFilteredCategories = useMemo(() => {
+    const q = outcomesSearchQuery.trim().toLowerCase()
+    if (!q) return outcomesFieldsByCategory
+    return outcomesFieldsByCategory
+      .map(([cat, rows]) => {
+        if (cat.toLowerCase().includes(q)) return [cat, rows]
+        const filtered = rows.filter(r =>
+          (r.label || '').toLowerCase().includes(q) ||
+          (r.labTestName || '').toLowerCase().includes(q)
+        )
+        return [cat, filtered]
+      })
+      .filter(([, rows]) => rows.length > 0)
+  }, [outcomesFieldsByCategory, outcomesSearchQuery])
+
+  // Orphan rows = saved values that don't map to current master (labTest deleted
+  // from Master Data, or older free-text outcomes from previous flow). We surface
+  // these in a separate "Custom (Saved)" section so users can review/remove them.
+  const outcomesOrphanRows = useMemo(() => {
+    const labIds = new Set((labTestList || []).map(t => t.id))
+    return rxLabResults.filter(r => !r.labTestId || !labIds.has(r.labTestId))
+  }, [rxLabResults, labTestList])
+
+  // Total fields with at least one filled value (for the footer count).
+  const outcomesFilledCount = useMemo(() => {
+    let n = 0
+    for (const r of rxLabResults) {
+      if (r.freeTextResult && String(r.freeTextResult).trim()) n++
+      else {
+        for (const v of Object.values(r.values || {})) {
+          if (v && String(v).trim()) { n++; break }
+        }
+      }
+    }
+    return n
+  }, [rxLabResults])
+
+  // Read the value for a given field row from rxLabResults state.
+  const getRowValue = (row) => {
+    const result = rxLabResults.find(r => r.labTestId === row.labTestId)
+    if (!result) return ''
+    if (row.isFreeText) return result.freeTextResult || ''
+    return result.values?.[row.fieldKey] ?? ''
+  }
+
+  // Write a value for a field row. Lazily creates a result row when the user
+  // types the first value, and removes the row entirely when all its fields are
+  // cleared (so empty rows never get persisted on save).
+  const setRowValue = (row, value) => {
+    const v = String(value ?? '')
+    setRxLabResults(prev => {
+      const idx = prev.findIndex(r => r.labTestId === row.labTestId)
+
+      if (idx === -1) {
+        // No row yet — only create when there's actually something to save
+        if (!v.trim()) return prev
+        const labTest = (labTestList || []).find(l => l.id === row.labTestId)
+        const expectedFields = Array.isArray(labTest?.expectedFields) && labTest.expectedFields.length
+          ? labTest.expectedFields
+          : null
+        const newRow = {
+          tempId:         'lr_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          id:             null,
+          labTestId:      row.labTestId,
+          testName:       row.labTestName,
+          testCategory:   labTest?.category || null,
+          resultDate:     outcomesDate || format(new Date(), 'yyyy-MM-dd'),
+          expectedFields,
+          values:         row.isFreeText ? {} : { [row.fieldKey]: v },
+          freeTextResult: row.isFreeText ? v : '',
+          notes:          '',
+        }
+        return [...prev, newRow]
+      }
+
+      // Update existing row
+      const existing = prev[idx]
+      let updated
+      if (row.isFreeText) {
+        updated = { ...existing, freeTextResult: v }
+      } else {
+        const newValues = { ...(existing.values || {}) }
+        if (v.trim()) newValues[row.fieldKey] = v
+        else          delete newValues[row.fieldKey]
+        updated = { ...existing, values: newValues }
+      }
+
+      // If the whole row is now empty, drop it (and queue deletion if it had a server id).
+      const hasAny = (
+        Object.values(updated.values || {}).some(x => x && String(x).trim()) ||
+        (updated.freeTextResult && String(updated.freeTextResult).trim())
+      )
+      if (!hasAny) {
+        if (existing.id) setDeletedLabResultIds(d => [...d, existing.id])
+        return prev.filter((_, i) => i !== idx)
+      }
+
+      const next = [...prev]
+      next[idx] = updated
+      return next
+    })
     setDirty(true)
   }
+
+  // Notes/free-text edit for orphan rows that aren't in current master. Kept
+  // because removing master entries shouldn't silently lose previously-saved data.
   const updateOutcomeMeta = (tempId, key, value) => {
     setRxLabResults(prev => prev.map(r => r.tempId === tempId ? { ...r, [key]: value } : r))
     setDirty(true)
@@ -1203,17 +1322,33 @@ export default function NewPrescriptionPage() {
     setDirty(true)
   }
 
-  // Category → color (Ocean Blue palette + accents). Used as left-edge stripe per outcome card.
+  // Category accordion controls
+  const toggleCategory = (cat) => setOpenCategories(prev => ({ ...prev, [cat]: !prev[cat] }))
+  const isCategoryOpen = (cat) => {
+    if (outcomesSearchQuery.trim()) return true   // auto-expand all matches when searching
+    return !!openCategories[cat]
+  }
+  const expandAllCategories = () => {
+    const next = {}
+    outcomesFieldsByCategory.forEach(([cat]) => { next[cat] = true })
+    setOpenCategories(next)
+  }
+  const collapseAllCategories = () => setOpenCategories({})
+
+  // Category → color (Ocean Blue palette + accents). Used as left-edge stripe.
   const categoryColor = (cat) => {
     const c = String(cat || '').toLowerCase()
     if (c.includes('haema') || c.includes('haemo'))   return 'bg-primary'         // blood-related → primary blue
     if (c.includes('biochem') || c.includes('bio chem')) return 'bg-accent'       // biochem → cyan
-    if (c.includes('endocrine'))                       return 'bg-purple-500'      // endocrine/thyroid
+    if (c.includes('endocrine') || c.includes('thyroid')) return 'bg-purple-500'  // endocrine/thyroid
     if (c.includes('urine') || c.includes('patho'))    return 'bg-warning'         // urine/path → orange
     if (c.includes('micro') || c.includes('serolog'))  return 'bg-secondary'       // serology/micro → secondary
     if (c.includes('radio'))                           return 'bg-purple-500'      // imaging → purple
     if (c.includes('cardio') || c.includes('cardiac')) return 'bg-danger'          // cardio → red
     if (c.includes('oncol'))                           return 'bg-pink-600'        // oncology
+    if (c.includes('lipid'))                           return 'bg-amber-500'       // lipid → amber
+    if (c.includes('kidney') || c.includes('kft'))     return 'bg-teal-500'        // kidney → teal
+    if (c.includes('liver')  || c.includes('lft'))     return 'bg-orange-500'      // liver → orange
     return 'bg-slate-400'                                                          // unknown → neutral
   }
 
@@ -1993,8 +2128,9 @@ export default function NewPrescriptionPage() {
         Lives inside the Rx form so state (rxLabResults) stays in one place — no routing,
         no draft sync, no data loss risk. Click left FAB to open. Outcomes auto-save when
         the parent Rx is saved (same flow as before).
-        Design: search-first. Pick a test from the dropdown → its values appear inline below.
-        Single date at the top applies to all tests in this batch (cascades on change). */}
+        Design: categorized accordion. Click a category → ALL its individual test fields
+        appear inline as rows with their own textbox + reference range hint. One date at top
+        applies to the whole batch (cascades on change). Search filters across all fields. */}
     {outcomesOpen && (
       <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-stretch justify-center p-3 sm:p-6 no-print print:hidden animate-in fade-in"
            onClick={(e) => { if (e.target === e.currentTarget) setOutcomesOpen(false) }}>
@@ -2037,130 +2173,165 @@ export default function NewPrescriptionPage() {
             </button>
           </div>
 
-          {/* Body — scrollable. Search-first: pick a test → it shows up below with inline value boxes. */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-            {/* Search — primary entry. Click to see all tests, type to filter, Enter to add custom. */}
-            <div>
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 block">
-                Add Lab Test
-              </label>
-              <TestOutcomeSearch
-                items={labTestList}
-                onPickExisting={addTestOutcome}
-                onPickCustom={addFreeTextOutcome}
-                alreadyAdded={rxLabResults.map(r => (r.testName || '').toLowerCase())}
-              />
-              <p className="text-xs text-slate-400 mt-1.5">
-                Click search to browse all tests, or type to filter. Press Enter to add a custom test.
-              </p>
+          {/* Sticky search + bulk controls — always visible above the accordion */}
+          <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-slate-200 bg-white flex-shrink-0">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"/>
+              <input
+                type="text"
+                className="form-input pl-9 text-sm py-1.5"
+                placeholder="Search test name or field (e.g. Hb, LDL, TSH)…"
+                value={outcomesSearchQuery}
+                onChange={(e) => setOutcomesSearchQuery(e.target.value)}/>
+              {outcomesSearchQuery && (
+                <button type="button"
+                  onClick={() => setOutcomesSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5"
+                  title="Clear search">
+                  <X className="w-3.5 h-3.5"/>
+                </button>
+              )}
             </div>
+            <button type="button"
+              onClick={expandAllCategories}
+              className="text-xs text-slate-600 hover:text-primary px-2 py-1 rounded hover:bg-blue-50 transition">
+              Expand all
+            </button>
+            <button type="button"
+              onClick={collapseAllCategories}
+              className="text-xs text-slate-600 hover:text-primary px-2 py-1 rounded hover:bg-blue-50 transition">
+              Collapse all
+            </button>
+          </div>
 
-            {/* Added tests list — appears immediately below search with inline value entry */}
-            {rxLabResults.length === 0 ? (
-              <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl py-10 text-center">
-                <FlaskConical className="w-10 h-10 text-slate-300 mx-auto mb-2"/>
-                <p className="text-sm text-slate-500">No tests added yet.</p>
-                <p className="text-xs text-slate-400 mt-1">Use the search box above to pick a test — values appear here for entry.</p>
+          {/* Body — scrollable. Categories listed; click to expand → field rows with inline textboxes. */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
+            {outcomesFilteredCategories.length === 0 && outcomesOrphanRows.length === 0 ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-center">
+                {(labTestList || []).length === 0
+                  ? <>No lab tests in master data yet. Ask your admin to <strong>Load Default Data</strong> in Master Data → Lab Tests.</>
+                  : <>No tests match <strong>"{outcomesSearchQuery}"</strong>. Try a shorter query.</>}
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                    Added ({rxLabResults.length})
-                  </h3>
-                  <span className="text-xs text-slate-400">all dated {outcomesDate}</span>
-                </div>
-                {rxLabResults.map((r) => {
-                  const hasFields = Array.isArray(r.expectedFields) && r.expectedFields.length > 0
-                  return (
-                    <div key={r.tempId} className="relative bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 transition">
-                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${categoryColor(r.testCategory)}`}/>
-                      <div className="pl-4 pr-3 py-3">
-                        <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span className="font-semibold text-slate-800 truncate">{r.testName}</span>
-                            {r.testCategory && <Badge variant="gray">{r.testCategory}</Badge>}
-                            {!hasFields && <Badge variant="warning">Free-text</Badge>}
-                          </div>
-                          <button type="button"
-                            onClick={() => removeOutcome(r.tempId)}
-                            className="text-slate-400 hover:text-danger transition p-1 flex-shrink-0"
-                            title="Remove">
-                            <X className="w-4 h-4"/>
-                          </button>
-                        </div>
-
-                        {hasFields ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
-                            {r.expectedFields.map((f) => {
-                              const v = r.values?.[f.key] ?? ''
-                              const flagged = flagOutOfRange && isValueOutOfRange(v, f.normalLow, f.normalHigh)
-                              return (
-                                <div key={f.key}>
-                                  <div className="flex items-baseline justify-between gap-1 mb-1">
-                                    <label className="text-xs font-medium text-slate-600 truncate flex items-center gap-1">
-                                      {f.label}
-                                      {flagged && <span className="w-1.5 h-1.5 rounded-full bg-danger inline-block" title="Out of normal range"/>}
-                                    </label>
-                                    {f.unit && <span className="text-xs text-slate-400 flex-shrink-0">{f.unit}</span>}
-                                  </div>
-                                  <input
-                                    type="text"
-                                    className={`form-input text-sm py-1.5 ${flagged ? 'bg-red-50 border-red-200 focus:border-red-400 focus:ring-red-200' : ''}`}
-                                    placeholder="—"
-                                    value={v}
-                                    onChange={(e) => updateOutcomeField(r.tempId, f.key, e.target.value)}/>
-                                  {(typeof f.normalLow === 'number' || typeof f.normalHigh === 'number') && (
-                                    <p className={`text-[10px] mt-0.5 ml-1 ${flagged ? 'text-danger font-medium' : 'text-slate-400'}`}>
-                                      {typeof f.normalLow === 'number' && typeof f.normalHigh === 'number'
-                                        ? `Normal: ${f.normalLow} – ${f.normalHigh}`
-                                        : typeof f.normalLow === 'number'
-                                          ? `Normal: ≥ ${f.normalLow}`
-                                          : `Normal: ≤ ${f.normalHigh}`}
-                                    </p>
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        ) : (
-                          <div>
-                            <label className="text-xs font-medium text-slate-600 mb-1 block">Result</label>
-                            <textarea
-                              className="form-input text-sm py-1.5"
-                              rows={2}
-                              placeholder="Enter test findings (e.g., 'Normal study', 'Reactive', specific values…)"
-                              value={r.freeTextResult || ''}
-                              onChange={(e) => updateOutcomeMeta(r.tempId, 'freeTextResult', e.target.value)}/>
-                          </div>
+              outcomesFilteredCategories.map(([cat, rows]) => {
+                const open = isCategoryOpen(cat)
+                // Count of rows in this category that have a non-empty value in current state
+                let filledInCat = 0
+                for (const row of rows) {
+                  const v = getRowValue(row)
+                  if (v && String(v).trim()) filledInCat++
+                }
+                return (
+                  <div key={cat} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <button type="button"
+                      onClick={() => toggleCategory(cat)}
+                      className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-slate-50 transition text-left">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-1.5 h-6 rounded-full flex-shrink-0 ${categoryColor(cat)}`}/>
+                        <span className="font-semibold text-sm text-slate-800 uppercase tracking-wide truncate">{cat}</span>
+                        <span className="text-xs text-slate-400 flex-shrink-0">({rows.length})</span>
+                        {filledInCat > 0 && (
+                          <span className="text-[10px] bg-success/10 text-success font-bold px-2 py-0.5 rounded-full flex-shrink-0">
+                            {filledInCat} filled
+                          </span>
                         )}
-
-                        <details className="mt-2 group">
-                          <summary className="text-xs text-slate-500 hover:text-primary cursor-pointer select-none inline-flex items-center gap-1">
-                            <ChevronDown className="w-3 h-3 group-open:rotate-180 transition"/>
-                            Add notes
-                          </summary>
-                          <textarea
-                            className="form-input text-xs py-1.5 mt-1"
-                            rows={2}
-                            placeholder="Clinical notes or interpretation…"
-                            value={r.notes || ''}
-                            onChange={(e) => updateOutcomeMeta(r.tempId, 'notes', e.target.value)}/>
-                        </details>
                       </div>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition ${open ? 'rotate-180' : ''}`}/>
+                    </button>
+                    {open && (
+                      <div className="border-t border-slate-100">
+                        {rows.map((row) => {
+                          const v = getRowValue(row)
+                          const flagged = !row.isFreeText && flagOutOfRange && isValueOutOfRange(v, row.normalLow, row.normalHigh)
+                          const hasRange = typeof row.normalLow === 'number' || typeof row.normalHigh === 'number'
+                          const rangeStr = hasRange
+                            ? (typeof row.normalLow === 'number' && typeof row.normalHigh === 'number'
+                                ? `${row.normalLow}–${row.normalHigh}`
+                                : typeof row.normalLow === 'number' ? `≥ ${row.normalLow}` : `≤ ${row.normalHigh}`)
+                            : null
+                          return (
+                            <div key={row.rowKey}
+                              className={`grid grid-cols-[1fr_auto] gap-x-3 sm:gap-x-4 items-center px-4 py-2 border-b border-slate-50 last:border-b-0 transition ${flagged ? 'bg-red-50/40' : 'hover:bg-blue-50/30'}`}>
+                              {/* Label — right-aligned, with optional range pill */}
+                              <div className="text-right text-sm text-slate-700 min-w-0 flex items-center justify-end gap-2">
+                                <span className="truncate">
+                                  {row.label}
+                                  {row.unit && <span className="text-slate-400 ml-1">({row.unit})</span>}
+                                </span>
+                                {rangeStr && (
+                                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 ${flagged ? 'bg-danger/15 text-danger' : 'bg-slate-100 text-slate-500'}`}
+                                        title="Normal reference range">
+                                    {rangeStr}
+                                  </span>
+                                )}
+                              </div>
+                              {/* Input — fixed-width on the right. Free-text gets a wider text input */}
+                              {row.isFreeText ? (
+                                <input
+                                  type="text"
+                                  className="form-input text-sm py-1 w-44 sm:w-64 flex-shrink-0"
+                                  placeholder="Result…"
+                                  value={v}
+                                  onChange={(e) => setRowValue(row, e.target.value)}/>
+                              ) : (
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  className={`form-input text-sm py-1 w-28 sm:w-32 text-right flex-shrink-0 ${flagged ? 'bg-red-50 border-red-300 text-danger font-semibold focus:border-red-400 focus:ring-red-200' : ''}`}
+                                  placeholder="—"
+                                  value={v}
+                                  onChange={(e) => setRowValue(row, e.target.value)}/>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+
+            {/* Orphan rows — saved values that don't map to current master data.
+                Surfaced separately so users can review/clean up legacy free-text outcomes. */}
+            {outcomesOrphanRows.length > 0 && (
+              <div className="bg-white border border-amber-200 rounded-xl overflow-hidden">
+                <div className="flex items-center gap-2.5 px-4 py-3 bg-amber-50">
+                  <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0"/>
+                  <span className="font-semibold text-sm text-slate-800 uppercase tracking-wide">Custom (Saved)</span>
+                  <span className="text-xs text-slate-400">({outcomesOrphanRows.length})</span>
+                  <span className="text-xs text-slate-500 hidden sm:inline">— legacy entries not in current master</span>
+                </div>
+                <div className="border-t border-amber-100">
+                  {outcomesOrphanRows.map((r) => (
+                    <div key={r.tempId}
+                      className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center px-4 py-2 border-b border-slate-50 last:border-b-0">
+                      <span className="text-sm text-right text-slate-700 truncate">{r.testName}</span>
+                      <input
+                        type="text"
+                        className="form-input text-sm py-1 w-44 sm:w-64 flex-shrink-0"
+                        placeholder="Result…"
+                        value={r.freeTextResult || ''}
+                        onChange={(e) => updateOutcomeMeta(r.tempId, 'freeTextResult', e.target.value)}/>
+                      <button type="button"
+                        onClick={() => removeOutcome(r.tempId)}
+                        className="text-slate-400 hover:text-danger p-1 flex-shrink-0"
+                        title="Remove">
+                        <X className="w-4 h-4"/>
+                      </button>
                     </div>
-                  )
-                })}
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Footer — info + Done button. Test outcomes save when the parent Rx is saved. */}
+          {/* Footer — count + Done button. Test outcomes save when the parent Rx is saved. */}
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-200 bg-white flex-shrink-0">
             <p className="text-xs text-slate-500 hidden sm:block">
-              {rxLabResults.length > 0
-                ? `${rxLabResults.length} test${rxLabResults.length > 1 ? 's' : ''} · ${outcomesDate} · saves with prescription`
-                : 'Add tests above. Outcomes save with the prescription.'}
+              {outcomesFilledCount > 0
+                ? `${outcomesFilledCount} field${outcomesFilledCount > 1 ? 's' : ''} filled · ${outcomesDate} · saves with prescription`
+                : 'Click a category, then enter values inline. Saves with the prescription.'}
             </p>
             <div className="flex gap-2 ml-auto">
               <Button variant="primary" onClick={() => setOutcomesOpen(false)} icon={<X className="w-4 h-4"/>}>
@@ -2193,127 +2364,6 @@ export default function NewPrescriptionPage() {
       </div>
     </Modal>
     </>
-  )
-}
-
-// ── TestOutcomeSearch ────────────────────────────────────────────────
-// Primary entry point for adding lab tests. Behavior:
-// • Click → dropdown shows ALL master tests, sorted by category then name.
-// • Type → live filters to matching names.
-// • Click a row → adds the test (uses expectedFields if defined). Dropdown stays open
-//   for rapid multi-add — clears query but keeps focus, doctor can pick next test immediately.
-// • Press Enter on a name not in catalog → adds as free-text outcome.
-function TestOutcomeSearch({ items, onPickExisting, onPickCustom, alreadyAdded }) {
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const inputRef = useRef(null)
-  const containerRef = useRef(null)
-
-  // Hide dropdown when clicking outside
-  useEffect(() => {
-    const handle = (e) => { if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [])
-
-  // Sort full master list by category then name — used both for "no query" and "filtered" display.
-  // Already-added tests stay in the list (visually dimmed) so doctor sees what's done.
-  const sortedAll = useMemo(() => {
-    const list = (items || []).slice()
-    list.sort((a, b) => {
-      const catA = String(a.category || 'zzz').toLowerCase()
-      const catB = String(b.category || 'zzz').toLowerCase()
-      if (catA !== catB) return catA.localeCompare(catB)
-      return String(a.name || '').localeCompare(String(b.name || ''))
-    })
-    return list
-  }, [items])
-
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return sortedAll                           // show full list on focus
-    return sortedAll.filter(t => t.name?.toLowerCase().includes(q))
-  }, [sortedAll, query])
-
-  const exactExisting = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return null
-    return (items || []).find(t => t.name?.toLowerCase() === q) || null
-  }, [items, query])
-
-  const handlePick = (item) => {
-    onPickExisting(item)
-    setQuery('')
-    // Keep dropdown OPEN after pick — doctor can immediately pick the next test
-    // without re-clicking the search box. Cuts clicks per test from 3 down to 1.
-    inputRef.current?.focus()
-  }
-
-  const handleEnter = () => {
-    const q = query.trim()
-    if (!q) return
-    if (exactExisting) handlePick(exactExisting)
-    else { onPickCustom(q); setQuery(''); inputRef.current?.focus() }
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <div className="relative">
-        <FlaskConical className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"/>
-        <input
-          ref={inputRef}
-          type="text"
-          className="form-input pl-9"
-          placeholder="Click to browse all tests, or type to search (e.g., CBC, Lipid, Sugar)…"
-          value={query}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleEnter() } }}/>
-      </div>
-      {open && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-96 overflow-y-auto">
-          {sortedAll.length === 0 && (
-            <div className="px-3 py-3 text-xs text-amber-800 bg-amber-50 border-b border-amber-200">
-              No lab tests in master data yet. Ask your admin to <strong>Load Default Data</strong> in Master Data → Lab Tests. You can still type a custom test name and press Enter.
-            </div>
-          )}
-          {matches.length === 0 && query.trim() && (
-            <button type="button" onClick={handleEnter}
-              className="w-full text-left px-3 py-2.5 hover:bg-slate-50 transition flex items-center gap-2 group">
-              <Plus className="w-4 h-4 text-success"/>
-              <span className="text-sm text-slate-700">Add <strong>"{query.trim()}"</strong> as free-text test</span>
-            </button>
-          )}
-          {matches.map((item) => {
-            const taken = (alreadyAdded || []).includes(item.name?.toLowerCase())
-            return (
-              <button key={item.id} type="button" disabled={taken}
-                onClick={() => !taken && handlePick(item)}
-                className={`w-full text-left px-3 py-2 transition flex items-center justify-between gap-2 border-b border-slate-50 last:border-b-0 ${taken ? 'opacity-40 cursor-not-allowed' : 'hover:bg-blue-50'}`}>
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <span className="text-sm font-medium text-slate-800 truncate">{item.name}</span>
-                  {item.category && <Badge variant="gray">{item.category}</Badge>}
-                  {Array.isArray(item.expectedFields) && item.expectedFields.length > 0 && (
-                    <Badge variant="success">{item.expectedFields.length} fields</Badge>
-                  )}
-                </div>
-                {taken
-                  ? <span className="text-xs text-slate-400 flex-shrink-0">added</span>
-                  : <Plus className="w-3.5 h-3.5 text-primary flex-shrink-0"/>
-                }
-              </button>
-            )
-          })}
-          {query.trim() && matches.length > 0 && !exactExisting && (
-            <button type="button" onClick={handleEnter}
-              className="w-full text-left px-3 py-2 bg-slate-50 hover:bg-blue-50 transition flex items-center gap-2 border-t border-slate-100 sticky bottom-0">
-              <Plus className="w-4 h-4 text-success"/>
-              <span className="text-xs text-slate-600">Or add <strong>"{query.trim()}"</strong> as custom (free-text)</span>
-            </button>
-          )}
-        </div>
-      )}
-    </div>
   )
 }
 
