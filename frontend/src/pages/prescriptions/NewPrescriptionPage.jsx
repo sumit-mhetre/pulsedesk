@@ -1150,15 +1150,34 @@ export default function NewPrescriptionPage() {
   }, [outcomesOpen])
 
   // ── Multi-date column management ──────────────────────────────────
-  // Add a new date column. No-op if already present (toast info instead).
+  // Add a new date column. If newDate is provided (e.g. from a date picker),
+  // use it. Otherwise auto-pick: prefer today, else step back day by day until
+  // we find a date not already in the list. Result: one click guaranteed to
+  // produce a visible new column. User can then click the date inside the new
+  // chip to change it to any specific date they want.
   const addDate = (newDate) => {
-    if (!newDate) return
+    let target = newDate
+    if (!target) {
+      const today = format(new Date(), 'yyyy-MM-dd')
+      if (!outcomesDates.includes(today)) {
+        target = today
+      } else {
+        // Step back day-by-day until a free slot is found (cap at 365 to be safe)
+        const d = new Date()
+        for (let i = 1; i < 365; i++) {
+          d.setDate(d.getDate() - 1)
+          const candidate = format(d, 'yyyy-MM-dd')
+          if (!outcomesDates.includes(candidate)) { target = candidate; break }
+        }
+      }
+    }
+    if (!target) return
     setOutcomesDates(prev => {
-      if (prev.includes(newDate)) {
+      if (prev.includes(target)) {
         toast('That date is already in your list', { icon: 'ℹ️' })
         return prev
       }
-      return [...prev, newDate].sort()
+      return [...prev, target].sort()
     })
   }
 
@@ -2236,22 +2255,15 @@ export default function NewPrescriptionPage() {
               </div>
             ))}
             {/* Native date input wrapped as button — reset value after pick so picking same date again still triggers */}
-            <label className="relative inline-flex items-center gap-1 bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-lg hover:bg-primary/90 transition cursor-pointer shadow-sm">
+            <button type="button"
+              onClick={() => addDate()}
+              className="inline-flex items-center gap-1 bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-lg hover:bg-primary/90 transition cursor-pointer shadow-sm"
+              title="Add a new date column. Click the date inside the chip to change it.">
               <Plus className="w-3.5 h-3.5"/>
               <span>Add Date</span>
-              <input
-                type="date"
-                className="absolute inset-0 opacity-0 cursor-pointer"
-                onChange={(e) => {
-                  if (e.target.value) {
-                    addDate(e.target.value)
-                    e.target.value = ''
-                  }
-                }}
-                aria-label="Add a new date column"/>
-            </label>
+            </button>
             <span className="text-[10px] text-slate-500 ml-auto hidden sm:inline">
-              {outcomesDates.length} column{outcomesDates.length > 1 ? 's' : ''} · enter values per date for trend tracking
+              {outcomesDates.length} column{outcomesDates.length > 1 ? 's' : ''} · click any date to change it
             </span>
           </div>
 
