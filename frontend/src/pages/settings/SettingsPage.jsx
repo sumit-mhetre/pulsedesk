@@ -230,6 +230,10 @@ export default function SettingsPage() {
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
 
+  // Doctor (current user) — read from authStore so the live preview can show
+  // the real signature, stamp, name, qualification, etc. when toggles enable them.
+  const { user } = useAuthStore()
+
   // Hook activates beforeunload listener when global dirty flag is set.
   // The page already calls setGlobalDirty(true/false) on field changes / saves,
   // so we just need this to be mounted. Existing dirty/clean calls keep working.
@@ -722,7 +726,7 @@ export default function SettingsPage() {
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5"/>Live Print Preview
                 </p>
-                <RxLivePreview cfg={rxPrint}/>
+                <RxLivePreview cfg={rxPrint} clinic={clinic} doctor={user}/>
                 <p className="text-[10px] text-slate-400 mt-2 italic">
                   Expand a section above and toggle 🖨 icons — preview updates instantly.
                 </p>
@@ -1436,112 +1440,183 @@ function TemplateEditor({ type, template, onClose, onSaved }) {
 // Used inside the merged "Prescription Form & Print" tab as a sticky sidebar so
 // the doctor sees instant feedback as they toggle visibility.
 //
-// Only depends on rxPrint — form-side toggles affect what the doctor RECORDS
-// (and hence what data exists), but the printed output is purely a function of
-// the print toggles. We render with sample data, so the preview shows what WOULD
-// print if the doctor entered values for every section.
-function RxLivePreview({ cfg }) {
-  const cfPrintMap = (cfg && typeof cfg.customFieldPrint === 'object' && cfg.customFieldPrint) || {}
+// MIRRORS the actual print page (ViewPrescriptionPage.jsx). Specifically:
+//   - Letterhead mode → letterhead image as full background, NO header text/banner
+//   - Header banner image (no letterhead) → render banner image
+//   - Text-based clinic header → only when no letterhead AND (no banner OR hideTextOnHeader=false)
+//   - Logo → only when no banner image (banner replaces logo)
+//   - Footer image when uploaded + showFooterImage toggle on
+//   - Doctor signature image / stamp image when uploaded
+//
+// Uses REAL clinic data (clinic.name, clinic.headerImageUrl, etc.) and REAL doctor
+// data (user.name, user.signature, user.stamp). Patient + medicine + body fields
+// are sample data — there's no patient/Rx context on the Settings page.
+function RxLivePreview({ cfg, clinic, doctor }) {
+  // Helper that mirrors the print page's `show()` — defaults to true if undefined.
+  const show = (k) => cfg && cfg[k] !== false
+
+  const hasLetterhead = clinic?.letterheadMode && clinic?.letterheadUrl
+  const hasHeaderBanner = !hasLetterhead && clinic?.headerImageUrl
+  const showTextHeader = !hasLetterhead && (!clinic?.headerImageUrl || !clinic?.hideTextOnHeader)
+
   return (
-    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden text-xs"
+    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden text-xs relative"
       style={{ fontFamily: cfg.fontFamily === 'serif' ? 'Georgia,serif' : cfg.fontFamily === 'mono' ? 'monospace' : 'inherit' }}>
 
-      {/* Header */}
-      <div className={`p-3 ${cfg.headerBorder !== false ? 'border-b-2' : ''}`}
-           style={{ borderColor: cfg.primaryColor || cfg.headerColor || '#1565C0' }}>
-        <div className="flex justify-between items-start gap-2">
-          <div className="min-w-0">
-            {cfg.showClinicName    && <p className="font-bold text-sm truncate" style={{ color: cfg.primaryColor || '#1565C0' }}>Sharma Medical Clinic</p>}
-            {cfg.showClinicTagline && <p className="text-[10px] text-slate-500 italic truncate">Your Health, Our Priority</p>}
-            {cfg.showClinicAddress && <p className="text-[10px] text-slate-400 truncate">123 Main Street, Pune</p>}
-            {cfg.showClinicPhone   && <p className="text-[10px] text-slate-400">Phone: 9876543210</p>}
-          </div>
-          <div className="text-right flex-shrink-0">
-            {cfg.showDoctorName  && <p className="font-bold text-[10px]">Dr. Rajesh Sharma</p>}
-            {cfg.showDoctorQual  && <p className="text-[10px] text-slate-500">MBBS, MD</p>}
-            {cfg.showDoctorSpec  && <p className="text-[10px] text-slate-500">General Physician</p>}
-            {cfg.showDoctorRegNo && <p className="text-[10px] text-slate-400">Reg: MH-12345</p>}
-          </div>
-        </div>
-      </div>
+      {/* Letterhead background — covers the entire preview, like on the print page */}
+      {hasLetterhead && (
+        <img src={clinic.letterheadUrl} alt="letterhead"
+             className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+             style={{ zIndex: 0 }}/>
+      )}
 
-      <div className="p-3 space-y-1.5">
-        {/* Patient row */}
-        <div className="border-b border-slate-100 pb-1.5 text-[11px] flex flex-wrap items-baseline gap-x-1.5">
-          {(cfg.showOPD ?? true) && <span className="font-bold tracking-wide">MH0001</span>}
-          {cfg.showPatient && (
-            <span className="font-semibold">
-              Mrs Dummy 15
-              {(cfg.showAge || cfg.showGender) && (
-                <span className="font-normal text-slate-700">
-                  {' '}({[cfg.showAge && '44 yrs', cfg.showGender && 'Female'].filter(Boolean).join(', ')})
-                </span>
-              )}
-              {(cfg.showPhone ?? true) && <span className="text-slate-700"> - 9876543210</span>}
-            </span>
-          )}
-          {cfg.showRxNo && <span className="ml-auto text-slate-400 font-mono" style={{ fontSize: '9px' }}>Rx: 0042</span>}
-        </div>
-        {(cfg.showEmail || cfg.showAddress || cfg.showBloodGroup) && (
-          <p className="text-[10px] text-slate-500">
-            {[cfg.showEmail && 'patient@email.com', cfg.showAddress && '123 Main St, Pune', cfg.showBloodGroup && 'B+'].filter(Boolean).join(' • ')}
-          </p>
+      <div className="relative" style={{ zIndex: 1 }}>
+
+        {/* Header banner image — shown when uploaded and not in letterhead mode */}
+        {hasHeaderBanner && (
+          <div className={`p-2 ${show('headerBorder') ? 'border-b-2' : ''}`}
+               style={{ borderColor: cfg.primaryColor || cfg.headerColor || '#1565C0' }}>
+            <img src={clinic.headerImageUrl} alt="header"
+                 className="w-full object-contain"
+                 style={{ maxHeight: 80 }}/>
+          </div>
         )}
-        {cfg.showAllergy && <p className="text-[10px]"><span className="font-semibold text-danger">⚠ Allergy:</span> Penicillin</p>}
-        {cfg.showChronicConditions && <p className="text-[10px]"><span className="font-semibold">Chronic:</span> Hypertension, Diabetes</p>}
 
-        {/* Body sections */}
-        {cfg.showComplaint && <p className="text-[11px]"><span className="font-semibold">Chief Complaint:</span> Headache, mild fever</p>}
-        {cfg.showDiagnosis && <p className="text-[11px]"><span className="font-semibold">Diagnosis:</span> Viral fever</p>}
-        {cfg.showVitals    && <p className="text-[11px]"><span className="font-semibold">Vitals:</span> BP 120/80 • Pulse 78 • Temp 99°F</p>}
-
-        {cfg.showMedicines !== false && (
-          <div className="pt-1">
-            <div className="flex items-center gap-1 mb-1">
-              {cfg.showRxSymbol && <span className="text-base font-bold italic" style={{ color: cfg.primaryColor || '#1565C0' }}>℞</span>}
-              <span className="text-[10px] font-bold text-slate-700">MEDICINES</span>
+        {/* Text-based header — only when conditions met (matches print page exactly) */}
+        {showTextHeader && (
+          <div className={`p-3 ${show('headerBorder') ? 'border-b-2' : ''}`}
+               style={{ borderColor: cfg.primaryColor || cfg.headerColor || '#1565C0' }}>
+            <div className="flex justify-between items-start gap-2">
+              <div className="flex items-start gap-2 min-w-0 flex-1">
+                {/* Logo — only when no banner image (banner takes its place) */}
+                {show('showLogo') && clinic?.logo && !clinic?.headerImageUrl && (
+                  <img src={clinic.logo} alt="logo" className="w-8 h-8 object-contain flex-shrink-0"/>
+                )}
+                <div className="min-w-0">
+                  {show('showClinicName') && (
+                    <p className="font-bold text-sm truncate" style={{ color: cfg.primaryColor || '#1565C0' }}>
+                      {clinic?.name || 'Clinic Name'}
+                    </p>
+                  )}
+                  {show('showClinicTagline') && clinic?.tagline && (
+                    <p className="text-[10px] text-slate-500 italic truncate">{clinic.tagline}</p>
+                  )}
+                  {show('showClinicAddress') && clinic?.address && (
+                    <p className="text-[10px] text-slate-500 truncate">{clinic.address}</p>
+                  )}
+                  {show('showClinicPhone') && (clinic?.mobile || clinic?.phone) && (
+                    <p className="text-[10px] text-slate-500">Phone: {clinic?.mobile || clinic?.phone}</p>
+                  )}
+                </div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                {show('showDoctorName')  && doctor?.name           && <p className="font-bold text-[10px]">{doctor.name}</p>}
+                {show('showDoctorQual')  && doctor?.qualification  && <p className="text-[10px] text-slate-500">{doctor.qualification}</p>}
+                {show('showDoctorSpec')  && doctor?.specialization && <p className="text-[10px] text-slate-500">{doctor.specialization}</p>}
+                {show('showDoctorRegNo') && doctor?.regNo          && <p className="text-[10px] text-slate-400">Reg: {doctor.regNo}</p>}
+              </div>
             </div>
-            <table className="w-full text-[10px] border-collapse">
-              <thead>
-                <tr className="border-b border-slate-300 text-slate-600">
-                  <th className="text-left py-0.5 pr-1">Medicine</th>
-                  {cfg.showDosage && <th className="text-center px-1">Dosage</th>}
-                  {cfg.showWhen   && <th className="text-center px-1">Timing</th>}
-                  {cfg.showDays   && <th className="text-center px-1">Days</th>}
-                  {cfg.showQty    && <th className="text-center px-1">Qty</th>}
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-slate-100">
-                  <td className={`py-0.5 pr-1 ${cfg.medicineNameBold ? 'font-bold' : ''}`}>Paracetamol 500mg</td>
-                  {cfg.showDosage && <td className="text-center">1-0-1</td>}
-                  {cfg.showWhen   && <td className="text-center">A/F</td>}
-                  {cfg.showDays   && <td className="text-center">3</td>}
-                  {cfg.showQty    && <td className="text-center">9</td>}
-                </tr>
-                <tr>
-                  <td className={`py-0.5 pr-1 ${cfg.medicineNameBold ? 'font-bold' : ''}`}>Cetirizine 10mg</td>
-                  {cfg.showDosage && <td className="text-center">0-0-1</td>}
-                  {cfg.showWhen   && <td className="text-center">A/F</td>}
-                  {cfg.showDays   && <td className="text-center">5</td>}
-                  {cfg.showQty    && <td className="text-center">5</td>}
-                </tr>
-              </tbody>
-            </table>
           </div>
         )}
 
-        {cfg.showLabTests   && <p className="text-[11px]"><span className="font-semibold">Lab Tests:</span> CBC, Lipid Profile</p>}
-        {cfg.showLabResults && <p className="text-[11px]"><span className="font-semibold">Test Outcomes:</span> Hb 13.5, Glucose 110</p>}
-        {cfg.showAdvice     && <p className="text-[11px]"><span className="font-semibold">Advice:</span> Rest, drink fluids</p>}
-        {cfg.showNextVisit  && <p className="text-[11px]"><span className="font-semibold">Next Visit:</span> Monday 04 May 2026</p>}
-
-        {/* Footer */}
-        <div className="border-t border-slate-100 pt-2 flex justify-between items-end text-[10px]">
-          <div>
-            {cfg.showSignature && <span className="text-slate-400">_______________<br/>Signature</span>}
+        <div className="p-3 space-y-1.5">
+          {/* Patient row — sample data (no real patient context on settings page) */}
+          <div className="border-b border-slate-100 pb-1.5 text-[11px] flex flex-wrap items-baseline gap-x-1.5">
+            {show('showOPD') && <span className="font-bold tracking-wide">{(clinic?.opdSeriesPrefix || 'SHA') + '0001'}</span>}
+            {show('showPatient') && (
+              <span className="font-semibold">
+                Sample Patient
+                {(show('showAge') || show('showGender')) && (
+                  <span className="font-normal text-slate-700">
+                    {' '}({[show('showAge') && '44 yrs', show('showGender') && 'Female'].filter(Boolean).join(', ')})
+                  </span>
+                )}
+                {show('showPhone') && <span className="text-slate-700"> - 9876543210</span>}
+              </span>
+            )}
+            {show('showRxNo') && <span className="ml-auto text-slate-400 font-mono" style={{ fontSize: '9px' }}>Rx: 0042</span>}
           </div>
-          <span className="text-slate-300 italic">Generated by SimpleRx EMR</span>
+          {(show('showEmail') || show('showAddress') || show('showBloodGroup')) && (
+            <p className="text-[10px] text-slate-500">
+              {[show('showEmail') && 'patient@email.com', show('showAddress') && '123 Main St', show('showBloodGroup') && 'B+'].filter(Boolean).join(' • ')}
+            </p>
+          )}
+          {show('showAllergy')          && <p className="text-[10px]"><span className="font-semibold text-danger">⚠ Allergy:</span> Sample allergen</p>}
+          {show('showChronicConditions') && <p className="text-[10px]"><span className="font-semibold">Chronic:</span> Sample condition</p>}
+
+          {/* Body sections */}
+          {show('showComplaint') && <p className="text-[11px]"><span className="font-semibold">Chief Complaint:</span> Sample complaint</p>}
+          {show('showDiagnosis') && <p className="text-[11px]"><span className="font-semibold">Diagnosis:</span> Sample diagnosis</p>}
+          {show('showVitals')    && <p className="text-[11px]"><span className="font-semibold">Vitals:</span> BP 120/80 • Pulse 78</p>}
+
+          {show('showMedicines') && (
+            <div className="pt-1">
+              <div className="flex items-center gap-1 mb-1">
+                {show('showRxSymbol') && <span className="text-base font-bold italic" style={{ color: cfg.primaryColor || '#1565C0' }}>℞</span>}
+                <span className="text-[10px] font-bold text-slate-700">MEDICINES</span>
+              </div>
+              <table className="w-full text-[10px] border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-300 text-slate-600">
+                    <th className="text-left py-0.5 pr-1">Medicine</th>
+                    {show('showDosage') && <th className="text-center px-1">Dosage</th>}
+                    {show('showWhen')   && <th className="text-center px-1">Timing</th>}
+                    {show('showDays')   && <th className="text-center px-1">Days</th>}
+                    {show('showQty')    && <th className="text-center px-1">Qty</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className={`py-0.5 pr-1 ${cfg.medicineNameBold ? 'font-bold' : ''}`}>Sample Medicine 1</td>
+                    {show('showDosage') && <td className="text-center">1-0-1</td>}
+                    {show('showWhen')   && <td className="text-center">A/F</td>}
+                    {show('showDays')   && <td className="text-center">3</td>}
+                    {show('showQty')    && <td className="text-center">9</td>}
+                  </tr>
+                  <tr>
+                    <td className={`py-0.5 pr-1 ${cfg.medicineNameBold ? 'font-bold' : ''}`}>Sample Medicine 2</td>
+                    {show('showDosage') && <td className="text-center">0-0-1</td>}
+                    {show('showWhen')   && <td className="text-center">A/F</td>}
+                    {show('showDays')   && <td className="text-center">5</td>}
+                    {show('showQty')    && <td className="text-center">5</td>}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {show('showLabTests')   && <p className="text-[11px]"><span className="font-semibold">Lab Tests:</span> Sample tests</p>}
+          {show('showLabResults') && <p className="text-[11px]"><span className="font-semibold">Test Outcomes:</span> Sample values</p>}
+          {show('showAdvice')     && <p className="text-[11px]"><span className="font-semibold">Advice:</span> Sample advice</p>}
+          {show('showNextVisit')  && <p className="text-[11px]"><span className="font-semibold">Next Visit:</span> 04 May 2026</p>}
+
+          {/* Footer image — uploaded clinic banner */}
+          {show('showFooterImage') && clinic?.footerImageUrl && (
+            <div className="border-t border-slate-100 pt-2 mt-2 flex justify-center">
+              <img src={clinic.footerImageUrl} alt="footer"
+                   className="max-h-10 object-contain" style={{ maxWidth: '90%' }}/>
+            </div>
+          )}
+
+          {/* Footer signature row — mirrors print page */}
+          <div className="border-t border-slate-100 pt-2 mt-2 flex justify-between items-end text-[10px]">
+            <span className="text-slate-400 italic">Generated by SimpleRx EMR</span>
+            <div className="text-right flex items-end gap-2">
+              {show('showStampImage') && doctor?.stamp && (
+                <img src={doctor.stamp} alt="stamp" className="h-8 w-8 object-contain"/>
+              )}
+              <div>
+                {show('showSignatureImage') && doctor?.signature ? (
+                  <img src={doctor.signature} alt="sig" className="h-6 ml-auto object-contain mb-0.5" style={{ maxWidth: 80 }}/>
+                ) : (
+                  <div className="w-20 border-b border-slate-300 mb-0.5 h-3"></div>
+                )}
+                {show('showSignature') && doctor?.name && (
+                  <p className="text-[9px] text-slate-500">{doctor.name}<br/>Signature</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
