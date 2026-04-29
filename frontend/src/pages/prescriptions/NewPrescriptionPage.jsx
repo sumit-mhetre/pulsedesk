@@ -885,7 +885,7 @@ export default function NewPrescriptionPage() {
   const [rxLabResults, setRxLabResults] = useState([])
   const [deletedLabResultIds, setDeletedLabResultIds] = useState([])  // IDs to DELETE on save
   const [outcomesOpen, setOutcomesOpen] = useState(false)             // full-screen Test Outcomes modal
-  const [outcomesDate, setOutcomesDate] = useState(() => format(new Date(), 'yyyy-MM-dd')) // single date for all tests in this batch
+  const [outcomesDates, setOutcomesDates] = useState(() => [format(new Date(), 'yyyy-MM-dd')]) // multi-date columns
   const [outcomesSearchQuery, setOutcomesSearchQuery] = useState('')  // filter for inline categorized field search
   const [openCategories, setOpenCategories] = useState({})            // category name → bool (manual expand state)
   const [nextVisit, setNextVisit] = useState('')
@@ -1136,23 +1136,61 @@ export default function NewPrescriptionPage() {
   }, [rxMeds])
 
   // ── Lab Results / Test Outcomes helpers ───────────────────────────
-  // Sync the top-level outcomes date when modal opens. If existing rows are loaded
-  // (e.g. editing an Rx), pick up the first row's date so it doesn't look stale.
-  // If no rows yet, default to today.
+  // On modal open, hydrate outcomesDates from existing rows (so editing an Rx
+  // shows the dates it already has). If no rows yet, default to a single column
+  // for today. Dates always sorted ascending so charts read left→right (old→new).
   useEffect(() => {
     if (!outcomesOpen) return
-    const firstRow = rxLabResults[0]
-    setOutcomesDate(firstRow?.resultDate || format(new Date(), 'yyyy-MM-dd'))
+    const existing = Array.from(new Set(
+      rxLabResults.map(r => r.resultDate).filter(Boolean)
+    )).sort()
+    setOutcomesDates(existing.length > 0 ? existing : [format(new Date(), 'yyyy-MM-dd')])
     // intentionally only depend on outcomesOpen — we sync once per modal open
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outcomesOpen])
 
-  // Change the batch date — cascade to all existing rows so the whole modal
-  // stays in sync with what the user sees in the header.
-  const updateOutcomesDate = (newDate) => {
+  // ── Multi-date column management ──────────────────────────────────
+  // Add a new date column. No-op if already present (toast info instead).
+  const addDate = (newDate) => {
     if (!newDate) return
-    setOutcomesDate(newDate)
-    setRxLabResults(prev => prev.map(r => ({ ...r, resultDate: newDate })))
+    setOutcomesDates(prev => {
+      if (prev.includes(newDate)) {
+        toast('That date is already in your list', { icon: 'ℹ️' })
+        return prev
+      }
+      return [...prev, newDate].sort()
+    })
+  }
+
+  // Remove a date column. If values exist for that date, confirm first; on
+  // confirm we drop the column AND delete those rows (queueing server-side
+  // deletion if they had ids). Always keep at least one column.
+  const removeDate = (date) => {
+    if (outcomesDates.length <= 1) {
+      toast('At least one date is required', { icon: 'ℹ️' })
+      return
+    }
+    const rowsForDate = rxLabResults.filter(r => r.resultDate === date)
+    if (rowsForDate.length > 0) {
+      if (!window.confirm(`Remove ${date} and the ${rowsForDate.length} value(s) recorded for it?`)) return
+      rowsForDate.forEach(r => { if (r.id) setDeletedLabResultIds(d => [...d, r.id]) })
+      setRxLabResults(prev => prev.filter(r => r.resultDate !== date))
+      setDirty(true)
+    }
+    setOutcomesDates(prev => prev.filter(d => d !== date))
+  }
+
+  // Change one of the date columns to a new date. All rows with the old date
+  // are migrated to the new date (preserves entered values). Refuses to merge
+  // into an existing column to avoid silent data loss.
+  const changeDate = (oldDate, newDate) => {
+    if (!newDate || newDate === oldDate) return
+    if (outcomesDates.includes(newDate)) {
+      toast('That date is already in your list', { icon: 'ℹ️' })
+      return
+    }
+    setRxLabResults(prev => prev.map(r => r.resultDate === oldDate ? { ...r, resultDate: newDate } : r))
+    setOutcomesDates(prev => prev.map(d => d === oldDate ? newDate : d).sort())
     setDirty(true)
   }
 
@@ -1226,35 +1264,41 @@ export default function NewPrescriptionPage() {
     return rxLabResults.filter(r => !r.labTestId || !labIds.has(r.labTestId))
   }, [rxLabResults, labTestList])
 
-  // Total fields with at least one filled value (for the footer count).
+  // Total filled value cells across all (test × date × field) combinations.
+  // With multi-date, every individual cell counts — so 3 dates × 2 fields all
+  // filled = 6, not 1. Useful as a "you have X data points" cue.
   const outcomesFilledCount = useMemo(() => {
     let n = 0
     for (const r of rxLabResults) {
       if (r.freeTextResult && String(r.freeTextResult).trim()) n++
       else {
         for (const v of Object.values(r.values || {})) {
-          if (v && String(v).trim()) { n++; break }
+          if (v && String(v).trim()) n++
         }
       }
     }
     return n
   }, [rxLabResults])
 
-  // Read the value for a given field row from rxLabResults state.
-  const getRowValue = (row) => {
-    const result = rxLabResults.find(r => r.labTestId === row.labTestId)
+  // Read the value for a given field row at a specific date from rxLabResults.
+  // Each (labTestId, resultDate) tuple maps to at most one row, so the lookup is
+  // unique. If no row exists for that date yet, returns ''.
+  const getRowValue = (row, date) => {
+    const result = rxLabResults.find(r => r.labTestId === row.labTestId && r.resultDate === date)
     if (!result) return ''
     if (row.isFreeText) return result.freeTextResult || ''
     return result.values?.[row.fieldKey] ?? ''
   }
 
-  // Write a value for a field row. Lazily creates a result row when the user
-  // types the first value, and removes the row entirely when all its fields are
-  // cleared (so empty rows never get persisted on save).
-  const setRowValue = (row, value) => {
+  // Write a value for a field row at a specific date. Lazily creates a result
+  // row when the user types the first value, and removes the row entirely when
+  // all its fields are cleared (so empty rows never get persisted on save).
+  // Each date column has its own row in rxLabResults — keeps history clean for
+  // longitudinal charts (HbA1c trend, BP progression, etc).
+  const setRowValue = (row, date, value) => {
     const v = String(value ?? '')
     setRxLabResults(prev => {
-      const idx = prev.findIndex(r => r.labTestId === row.labTestId)
+      const idx = prev.findIndex(r => r.labTestId === row.labTestId && r.resultDate === date)
 
       if (idx === -1) {
         // No row yet — only create when there's actually something to save
@@ -1269,7 +1313,7 @@ export default function NewPrescriptionPage() {
           labTestId:      row.labTestId,
           testName:       row.labTestName,
           testCategory:   labTest?.category || null,
-          resultDate:     outcomesDate || format(new Date(), 'yyyy-MM-dd'),
+          resultDate:     date,
           expectedFields,
           values:         row.isFreeText ? {} : { [row.fieldKey]: v },
           freeTextResult: row.isFreeText ? v : '',
@@ -1278,7 +1322,7 @@ export default function NewPrescriptionPage() {
         return [...prev, newRow]
       }
 
-      // Update existing row
+      // Update existing row at this (labTest, date)
       const existing = prev[idx]
       let updated
       if (row.isFreeText) {
@@ -2135,7 +2179,7 @@ export default function NewPrescriptionPage() {
       <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-stretch justify-center p-3 sm:p-6 no-print print:hidden animate-in fade-in"
            onClick={(e) => { if (e.target === e.currentTarget) setOutcomesOpen(false) }}>
         <div className="bg-background w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4">
-          {/* Header — patient context + batch date + close */}
+          {/* Header — patient context + close */}
           <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 bg-white flex-shrink-0">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
@@ -2152,17 +2196,6 @@ export default function NewPrescriptionPage() {
                 )}
               </div>
             </div>
-            {/* Batch date picker — applies to all tests in this modal. Changing cascades. */}
-            <div className="flex items-center gap-2 flex-shrink-0 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5 hover:bg-blue-100 transition"
-                 title="Date applies to all tests in this batch">
-              <Calendar className="w-4 h-4 text-primary flex-shrink-0"/>
-              <input
-                type="date"
-                className="bg-transparent border-0 text-sm font-medium text-slate-700 focus:outline-none focus:ring-0 p-0 cursor-pointer"
-                value={outcomesDate}
-                onChange={(e) => updateOutcomesDate(e.target.value)}
-                aria-label="Test date"/>
-            </div>
             <button
               type="button"
               onClick={() => setOutcomesOpen(false)}
@@ -2171,6 +2204,55 @@ export default function NewPrescriptionPage() {
               aria-label="Close">
               <X className="w-5 h-5"/>
             </button>
+          </div>
+
+          {/* Recording dates — multi-column input. Each chip is one column in the
+              grid below. Click the date inside a chip to change it (rows migrate
+              automatically). The "+ Add Date" button opens a native date picker
+              that adds a new column when a date is chosen. */}
+          <div className="flex items-center gap-2 flex-wrap px-5 py-3 border-b border-slate-200 bg-blue-50/40 flex-shrink-0">
+            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex-shrink-0">
+              Dates:
+            </span>
+            {outcomesDates.map((date) => (
+              <div key={date}
+                className="inline-flex items-center gap-1 bg-white border border-blue-200 rounded-lg pl-2 pr-0.5 py-0.5 hover:border-blue-300 transition shadow-sm">
+                <Calendar className="w-3.5 h-3.5 text-primary flex-shrink-0"/>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => changeDate(date, e.target.value)}
+                  className="bg-transparent border-0 text-xs font-medium text-slate-700 focus:outline-none focus:ring-0 p-0 cursor-pointer"
+                  aria-label="Edit date"/>
+                {outcomesDates.length > 1 && (
+                  <button type="button"
+                    onClick={() => removeDate(date)}
+                    className="text-slate-300 hover:text-danger hover:bg-danger/10 rounded p-0.5 transition flex-shrink-0"
+                    title={`Remove ${date}`}
+                    aria-label={`Remove ${date}`}>
+                    <X className="w-3 h-3"/>
+                  </button>
+                )}
+              </div>
+            ))}
+            {/* Native date input wrapped as button — reset value after pick so picking same date again still triggers */}
+            <label className="relative inline-flex items-center gap-1 bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-lg hover:bg-primary/90 transition cursor-pointer shadow-sm">
+              <Plus className="w-3.5 h-3.5"/>
+              <span>Add Date</span>
+              <input
+                type="date"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    addDate(e.target.value)
+                    e.target.value = ''
+                  }
+                }}
+                aria-label="Add a new date column"/>
+            </label>
+            <span className="text-[10px] text-slate-500 ml-auto hidden sm:inline">
+              {outcomesDates.length} column{outcomesDates.length > 1 ? 's' : ''} · enter values per date for trend tracking
+            </span>
           </div>
 
           {/* Sticky search + bulk controls — always visible above the accordion */}
@@ -2215,12 +2297,17 @@ export default function NewPrescriptionPage() {
             ) : (
               outcomesFilteredCategories.map(([cat, rows]) => {
                 const open = isCategoryOpen(cat)
-                // Count of rows in this category that have a non-empty value in current state
+                // Count cells (per row × per date) that have a non-empty value
                 let filledInCat = 0
                 for (const row of rows) {
-                  const v = getRowValue(row)
-                  if (v && String(v).trim()) filledInCat++
+                  for (const d of outcomesDates) {
+                    const v = getRowValue(row, d)
+                    if (v && String(v).trim()) filledInCat++
+                  }
                 }
+                // CSS grid template — label column (flexible) + N fixed-width input columns
+                const colWidth = '6.5rem'
+                const gridTemplate = `minmax(0, 1fr) ${outcomesDates.map(() => colWidth).join(' ')}`
                 return (
                   <div key={cat} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                     <button type="button"
@@ -2239,49 +2326,76 @@ export default function NewPrescriptionPage() {
                       <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 transition ${open ? 'rotate-180' : ''}`}/>
                     </button>
                     {open && (
-                      <div className="border-t border-slate-100">
+                      <div className="border-t border-slate-100 overflow-x-auto">
+                        {/* Date column header — only when 2+ date columns. Aligned with input columns below. */}
+                        {outcomesDates.length > 1 && (
+                          <div className="grid items-center gap-x-3 px-4 py-1.5 bg-slate-50/60 border-b border-slate-100"
+                               style={{ gridTemplateColumns: gridTemplate }}>
+                            <span/>{/* spacer for label column */}
+                            {outcomesDates.map(d => (
+                              <span key={d} className="text-[10px] font-bold text-slate-500 uppercase text-center tracking-wide">
+                                {(() => { try { return format(new Date(d), 'd MMM') } catch { return d } })()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         {rows.map((row) => {
-                          const v = getRowValue(row)
-                          const flagged = !row.isFreeText && flagOutOfRange && isValueOutOfRange(v, row.normalLow, row.normalHigh)
                           const hasRange = typeof row.normalLow === 'number' || typeof row.normalHigh === 'number'
                           const rangeStr = hasRange
                             ? (typeof row.normalLow === 'number' && typeof row.normalHigh === 'number'
                                 ? `${row.normalLow}–${row.normalHigh}`
                                 : typeof row.normalLow === 'number' ? `≥ ${row.normalLow}` : `≤ ${row.normalHigh}`)
                             : null
+                          // Row is "any-flagged" if at least one date's value is out of range
+                          const anyFlagged = !row.isFreeText && flagOutOfRange && outcomesDates.some(d => {
+                            const v = getRowValue(row, d)
+                            return isValueOutOfRange(v, row.normalLow, row.normalHigh)
+                          })
                           return (
                             <div key={row.rowKey}
-                              className={`grid grid-cols-[1fr_auto] gap-x-3 sm:gap-x-4 items-center px-4 py-2 border-b border-slate-50 last:border-b-0 transition ${flagged ? 'bg-red-50/40' : 'hover:bg-blue-50/30'}`}>
-                              {/* Label — right-aligned, with optional range pill */}
+                              className={`grid items-center gap-x-3 px-4 py-2 border-b border-slate-50 last:border-b-0 transition ${anyFlagged ? 'bg-red-50/30' : 'hover:bg-blue-50/30'}`}
+                              style={{ gridTemplateColumns: gridTemplate }}>
+                              {/* Label cell — right-aligned, with reference range pill */}
                               <div className="text-right text-sm text-slate-700 min-w-0 flex items-center justify-end gap-2">
                                 <span className="truncate">
                                   {row.label}
                                   {row.unit && <span className="text-slate-400 ml-1">({row.unit})</span>}
                                 </span>
                                 {rangeStr && (
-                                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 ${flagged ? 'bg-danger/15 text-danger' : 'bg-slate-100 text-slate-500'}`}
+                                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 ${anyFlagged ? 'bg-danger/15 text-danger' : 'bg-slate-100 text-slate-500'}`}
                                         title="Normal reference range">
                                     {rangeStr}
                                   </span>
                                 )}
                               </div>
-                              {/* Input — fixed-width on the right. Free-text gets a wider text input */}
-                              {row.isFreeText ? (
-                                <input
-                                  type="text"
-                                  className="form-input text-sm py-1 w-44 sm:w-64 flex-shrink-0"
-                                  placeholder="Result…"
-                                  value={v}
-                                  onChange={(e) => setRowValue(row, e.target.value)}/>
-                              ) : (
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  className={`form-input text-sm py-1 w-28 sm:w-32 text-right flex-shrink-0 ${flagged ? 'bg-red-50 border-red-300 text-danger font-semibold focus:border-red-400 focus:ring-red-200' : ''}`}
-                                  placeholder="—"
-                                  value={v}
-                                  onChange={(e) => setRowValue(row, e.target.value)}/>
-                              )}
+                              {/* One input per date column */}
+                              {outcomesDates.map(d => {
+                                const v = getRowValue(row, d)
+                                const flagged = !row.isFreeText && flagOutOfRange && isValueOutOfRange(v, row.normalLow, row.normalHigh)
+                                if (row.isFreeText) {
+                                  return (
+                                    <input
+                                      key={d}
+                                      type="text"
+                                      className="form-input text-sm py-1 px-2 w-full"
+                                      placeholder="—"
+                                      value={v}
+                                      onChange={(e) => setRowValue(row, d, e.target.value)}
+                                      title={`Result on ${d}`}/>
+                                  )
+                                }
+                                return (
+                                  <input
+                                    key={d}
+                                    type="text"
+                                    inputMode="decimal"
+                                    className={`form-input text-sm py-1 px-2 w-full text-right ${flagged ? 'bg-red-50 border-red-300 text-danger font-semibold focus:border-red-400 focus:ring-red-200' : ''}`}
+                                    placeholder="—"
+                                    value={v}
+                                    onChange={(e) => setRowValue(row, d, e.target.value)}
+                                    title={flagged ? `Out of normal range on ${d}` : `Value on ${d}`}/>
+                                )
+                              })}
                             </div>
                           )
                         })}
@@ -2293,7 +2407,9 @@ export default function NewPrescriptionPage() {
             )}
 
             {/* Orphan rows — saved values that don't map to current master data.
-                Surfaced separately so users can review/clean up legacy free-text outcomes. */}
+                Surfaced separately so users can review/clean up legacy free-text outcomes.
+                Each orphan keeps its own resultDate displayed since it may not align
+                with the current dates list. */}
             {outcomesOrphanRows.length > 0 && (
               <div className="bg-white border border-amber-200 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2.5 px-4 py-3 bg-amber-50">
@@ -2305,11 +2421,14 @@ export default function NewPrescriptionPage() {
                 <div className="border-t border-amber-100">
                   {outcomesOrphanRows.map((r) => (
                     <div key={r.tempId}
-                      className="grid grid-cols-[1fr_auto_auto] gap-x-3 items-center px-4 py-2 border-b border-slate-50 last:border-b-0">
+                      className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-2 border-b border-slate-50 last:border-b-0">
                       <span className="text-sm text-right text-slate-700 truncate">{r.testName}</span>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 flex-shrink-0">
+                        {r.resultDate}
+                      </span>
                       <input
                         type="text"
-                        className="form-input text-sm py-1 w-44 sm:w-64 flex-shrink-0"
+                        className="form-input text-sm py-1 w-40 sm:w-56 flex-shrink-0"
                         placeholder="Result…"
                         value={r.freeTextResult || ''}
                         onChange={(e) => updateOutcomeMeta(r.tempId, 'freeTextResult', e.target.value)}/>
@@ -2330,8 +2449,8 @@ export default function NewPrescriptionPage() {
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-200 bg-white flex-shrink-0">
             <p className="text-xs text-slate-500 hidden sm:block">
               {outcomesFilledCount > 0
-                ? `${outcomesFilledCount} field${outcomesFilledCount > 1 ? 's' : ''} filled · ${outcomesDate} · saves with prescription`
-                : 'Click a category, then enter values inline. Saves with the prescription.'}
+                ? `${outcomesFilledCount} value${outcomesFilledCount > 1 ? 's' : ''} entered across ${outcomesDates.length} date${outcomesDates.length > 1 ? 's' : ''} · saves with prescription`
+                : 'Pick a category, enter values per date column. Saves with the prescription.'}
             </p>
             <div className="flex gap-2 ml-auto">
               <Button variant="primary" onClick={() => setOutcomesOpen(false)} icon={<X className="w-4 h-4"/>}>
