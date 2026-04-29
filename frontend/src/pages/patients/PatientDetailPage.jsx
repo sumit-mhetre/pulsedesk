@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, Receipt, Activity, Plus, Pill, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, FileText, Receipt, Activity, Plus, Pill, AlertTriangle, FlaskConical, TrendingUp, Filter, X } from 'lucide-react'
 import { Card, Button, Badge } from '../../components/ui'
 import api from '../../lib/api'
 import { format } from 'date-fns'
 import toast from 'react-hot-toast'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceArea } from 'recharts'
 
 export default function PatientDetailPage() {
   const { id }      = useParams()
@@ -128,6 +129,7 @@ export default function PatientDetailPage() {
         {[
           { key: 'timeline',      label: 'Timeline' },
           { key: 'prescriptions', label: 'Prescriptions' },
+          { key: 'labResults',    label: 'Lab Results' },
           { key: 'documents',     label: 'Certificates' },
           { key: 'vitals',        label: 'Vitals' },
           { key: 'bills',         label: 'Bills' },
@@ -234,6 +236,11 @@ export default function PatientDetailPage() {
       {/* ── Documents (fitness, medical leave, referrals) ── */}
       {tab === 'documents' && (
         <PatientDocumentsTab patientId={id}/>
+      )}
+
+      {/* ── Lab Results ── */}
+      {tab === 'labResults' && (
+        <PatientLabResultsTab patientId={id}/>
       )}
 
       {/* ── Vitals ── */}
@@ -378,6 +385,399 @@ function PatientDocumentsTab({ patientId }) {
             </div>
           )
         })
+      )}
+    </div>
+  )
+}
+// ── Lab Results tab content ───────────────────────────────────────────────
+// Shows a patient's lab values over time across ALL their prescriptions, with
+// trend charts for tests that have 2+ data points and a master table at the
+// bottom. Filters: which test(s) to focus on, and a time range.
+//
+// Data source: /lab-results/patient/:id (existing endpoint, returns up to 500
+// most-recent results with values + prescription metadata). Grouping/charting
+// is done client-side so the doctor can re-filter without extra API calls.
+function PatientLabResultsTab({ patientId }) {
+  const [results,    setResults]    = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [testFilter, setTestFilter] = useState('all')   // 'all' or a labTestId/testName key
+  const [rangeFilter, setRangeFilter] = useState('all') // 'all' | '3m' | '6m' | '1y'
+
+  useEffect(() => {
+    if (!patientId) return
+    setLoading(true)
+    api.get(`/lab-results/patient/${patientId}`).then(({ data }) => {
+      setResults(data.data || [])
+    }).catch(() => {
+      toast.error('Could not load lab results')
+      setResults([])
+    }).finally(() => setLoading(false))
+  }, [patientId])
+
+  // Apply time-range filter (does NOT mutate `results` so resetting is instant).
+  const filteredByRange = (() => {
+    if (rangeFilter === 'all') return results
+    const cutoff = new Date()
+    if (rangeFilter === '3m') cutoff.setMonth(cutoff.getMonth() - 3)
+    if (rangeFilter === '6m') cutoff.setMonth(cutoff.getMonth() - 6)
+    if (rangeFilter === '1y') cutoff.setFullYear(cutoff.getFullYear() - 1)
+    return results.filter(r => new Date(r.resultDate) >= cutoff)
+  })()
+
+  // Group: Map<testKey, { testName, category, rows: LabResult[] }>. testKey uses
+  // labTestId when present so two records of the same test (across different Rx)
+  // group together; falls back to testName for free-text catalog gaps.
+  const testGroups = (() => {
+    const groups = new Map()
+    for (const r of filteredByRange) {
+      const key = r.labTestId || `name:${r.testName}`
+      if (!groups.has(key)) {
+        groups.set(key, { testName: r.testName, category: r.testCategory || 'Other', rows: [] })
+      }
+      groups.get(key).rows.push(r)
+    }
+    return groups
+  })()
+
+  // Tests visible after applying the test filter — used by both charts and the table.
+  const visibleTestKeys = (() => {
+    if (testFilter === 'all') return Array.from(testGroups.keys())
+    return testGroups.has(testFilter) ? [testFilter] : []
+  })()
+
+  // Helper: numeric out-of-range check (skips non-numeric strings like "Negative").
+  const isOutOfRange = (value, low, high) => {
+    if (value == null || value === '') return false
+    const n = parseFloat(value)
+    if (Number.isNaN(n)) return false
+    if (typeof low  === 'number' && n < low)  return true
+    if (typeof high === 'number' && n > high) return true
+    return false
+  }
+
+  // For ONE test, build per-field chart series. Each field becomes its own chart
+  // because units (g/dL vs cells/µL vs %) make a single multi-line chart unreadable.
+  // Free-text outcomes are skipped (no numeric trend possible).
+  const buildChartsForTest = (group) => {
+    const fieldMap = new Map()  // fieldKey → { label, unit, normalLow, normalHigh, points: [{ date, value }] }
+    for (const r of group.rows) {
+      for (const v of (r.values || [])) {
+        if (!fieldMap.has(v.fieldKey)) {
+          fieldMap.set(v.fieldKey, {
+            fieldKey:   v.fieldKey,
+            label:      v.fieldLabel,
+            unit:       v.fieldUnit,
+            normalLow:  v.normalLow,
+            normalHigh: v.normalHigh,
+            points:     [],
+          })
+        }
+        const numeric = parseFloat(v.value)
+        if (!Number.isNaN(numeric)) {
+          fieldMap.get(v.fieldKey).points.push({
+            date:    r.resultDate,
+            dateMs:  new Date(r.resultDate).getTime(),
+            display: format(new Date(r.resultDate), 'd MMM'),
+            value:   numeric,
+          })
+        }
+      }
+    }
+    // Sort each field's points oldest-first so the line draws left-to-right by time
+    for (const f of fieldMap.values()) f.points.sort((a, b) => a.dateMs - b.dateMs)
+    // Only fields with 2+ points qualify as a trend
+    return Array.from(fieldMap.values()).filter(f => f.points.length >= 2)
+  }
+
+  // Master table data: unique resultDates DESC across all visible tests, then for
+  // each (test × field × date) the value. Rendered as an HTML table below charts.
+  const buildTableData = () => {
+    const rowsForTable = []   // [{ category, testName, fieldLabel, fieldUnit, normalLow, normalHigh, valuesByDate: {date: string} }]
+    const allDates = new Set()
+    for (const key of visibleTestKeys) {
+      const g = testGroups.get(key); if (!g) continue
+      // Collect all field metas for this test
+      const fieldMap = new Map()
+      let anyFreeText = false
+      for (const r of g.rows) {
+        allDates.add(r.resultDate)
+        if (r.freeTextResult && String(r.freeTextResult).trim()) anyFreeText = true
+        for (const v of (r.values || [])) {
+          if (!fieldMap.has(v.fieldKey)) {
+            fieldMap.set(v.fieldKey, { label: v.fieldLabel, unit: v.fieldUnit, normalLow: v.normalLow, normalHigh: v.normalHigh })
+          }
+        }
+      }
+      const testHasMultipleFields = fieldMap.size > 1
+      for (const [fieldKey, meta] of fieldMap.entries()) {
+        const valuesByDate = {}
+        for (const r of g.rows) {
+          const v = (r.values || []).find(x => x.fieldKey === fieldKey)
+          if (v) valuesByDate[r.resultDate] = v.value
+        }
+        rowsForTable.push({
+          category:   g.category,
+          testName:   g.testName,
+          showTestSubHeader: testHasMultipleFields,
+          fieldLabel: meta.label,
+          fieldUnit:  meta.unit,
+          normalLow:  meta.normalLow,
+          normalHigh: meta.normalHigh,
+          valuesByDate,
+        })
+      }
+      if (anyFreeText) {
+        const valuesByDate = {}
+        for (const r of g.rows) {
+          if (r.freeTextResult) valuesByDate[r.resultDate] = r.freeTextResult
+        }
+        rowsForTable.push({
+          category:   g.category,
+          testName:   g.testName,
+          showTestSubHeader: false,
+          fieldLabel: g.testName,
+          fieldUnit:  null,
+          normalLow:  null,
+          normalHigh: null,
+          valuesByDate,
+        })
+      }
+    }
+    const sortedDates = Array.from(allDates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())  // newest first
+    // Group by category for rendering
+    const byCategory = new Map()
+    for (const row of rowsForTable) {
+      if (!byCategory.has(row.category)) byCategory.set(row.category, [])
+      byCategory.get(row.category).push(row)
+    }
+    return { dates: sortedDates, byCategory }
+  }
+
+  const tableData = buildTableData()
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="spinner text-primary w-8 h-8"/></div>
+  }
+
+  if (results.length === 0) {
+    return (
+      <Card className="p-12 text-center">
+        <FlaskConical className="w-14 h-14 text-slate-300 mx-auto mb-4"/>
+        <h3 className="text-lg font-semibold text-slate-700 mb-2">No lab results yet</h3>
+        <p className="text-sm text-slate-500 max-w-md mx-auto">
+          Test outcomes recorded on this patient's prescriptions will appear here as charts and a values table over time.
+        </p>
+      </Card>
+    )
+  }
+
+  // For the test filter dropdown — sorted by category, then test name
+  const allTestsSorted = Array.from(testGroups.entries()).sort((a, b) => {
+    const c = (a[1].category || '').localeCompare(b[1].category || '')
+    return c !== 0 ? c : (a[1].testName || '').localeCompare(b[1].testName || '')
+  })
+
+  // Quick stats for the header strip
+  const totalDates = new Set(filteredByRange.map(r => r.resultDate)).size
+  const flagCount = (() => {
+    let n = 0
+    for (const r of filteredByRange) {
+      for (const v of (r.values || [])) {
+        if (isOutOfRange(v.value, v.normalLow, v.normalHigh)) n++
+      }
+    }
+    return n
+  })()
+
+  return (
+    <div className="space-y-5">
+      {/* Filter strip */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Filter className="w-4 h-4 text-slate-400"/>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Test:</label>
+            <select className="form-select text-sm py-1.5 px-2 min-w-[180px]"
+              value={testFilter}
+              onChange={(e) => setTestFilter(e.target.value)}>
+              <option value="all">All tests ({testGroups.size})</option>
+              {allTestsSorted.map(([key, g]) => (
+                <option key={key} value={key}>{g.category} · {g.testName}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Period:</label>
+            <select className="form-select text-sm py-1.5 px-2"
+              value={rangeFilter}
+              onChange={(e) => setRangeFilter(e.target.value)}>
+              <option value="all">All time</option>
+              <option value="1y">Last 1 year</option>
+              <option value="6m">Last 6 months</option>
+              <option value="3m">Last 3 months</option>
+            </select>
+          </div>
+          {(testFilter !== 'all' || rangeFilter !== 'all') && (
+            <button type="button"
+              onClick={() => { setTestFilter('all'); setRangeFilter('all') }}
+              className="text-xs text-slate-500 hover:text-danger inline-flex items-center gap-1">
+              <X className="w-3 h-3"/> Clear filters
+            </button>
+          )}
+          <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
+            <span><strong className="text-slate-700">{totalDates}</strong> recording{totalDates !== 1 ? 's' : ''}</span>
+            {flagCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-danger">
+                <AlertTriangle className="w-3.5 h-3.5"/> <strong>{flagCount}</strong> out of range
+              </span>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* Charts — one per (test × field) with 2+ data points */}
+      {visibleTestKeys.length > 0 && (() => {
+        const chartCards = []
+        for (const key of visibleTestKeys) {
+          const g = testGroups.get(key); if (!g) continue
+          const charts = buildChartsForTest(g)
+          for (const f of charts) {
+            chartCards.push({ testKey: key, group: g, field: f })
+          }
+        }
+        if (chartCards.length === 0) {
+          return (
+            <Card className="p-8 text-center">
+              <TrendingUp className="w-10 h-10 text-slate-300 mx-auto mb-3"/>
+              <p className="text-sm text-slate-500">
+                No trend charts to show — at least 2 numeric values per test are needed.
+                <br/>The full values table is below.
+              </p>
+            </Card>
+          )
+        }
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {chartCards.map(({ testKey, group, field }) => {
+              const hasRange = typeof field.normalLow === 'number' || typeof field.normalHigh === 'number'
+              const yMin = (() => {
+                const vals = field.points.map(p => p.value)
+                const dataMin = Math.min(...vals)
+                const refMin  = typeof field.normalLow === 'number' ? field.normalLow : dataMin
+                return Math.floor(Math.min(dataMin, refMin) * 0.9)
+              })()
+              const yMax = (() => {
+                const vals = field.points.map(p => p.value)
+                const dataMax = Math.max(...vals)
+                const refMax  = typeof field.normalHigh === 'number' ? field.normalHigh : dataMax
+                return Math.ceil(Math.max(dataMax, refMax) * 1.1)
+              })()
+              return (
+                <Card key={`${testKey}-${field.fieldKey}`} className="p-4">
+                  <div className="flex items-baseline justify-between mb-3">
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-slate-800 text-sm truncate">{field.label}</h4>
+                      <p className="text-xs text-slate-500 truncate">
+                        {group.testName} · {group.category}
+                        {field.unit && <span className="ml-1">({field.unit})</span>}
+                      </p>
+                    </div>
+                    {hasRange && (
+                      <span className="text-[10px] bg-success/10 text-success font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
+                        Normal: {field.normalLow ?? '—'}{typeof field.normalHigh === 'number' ? `–${field.normalHigh}` : '+'}
+                      </span>
+                    )}
+                  </div>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={field.points} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
+                      <XAxis dataKey="display" tick={{ fontSize: 11 }} stroke="#94a3b8"/>
+                      <YAxis domain={[yMin, yMax]} tick={{ fontSize: 11 }} stroke="#94a3b8"/>
+                      {hasRange && (
+                        <ReferenceArea
+                          y1={typeof field.normalLow === 'number' ? field.normalLow : yMin}
+                          y2={typeof field.normalHigh === 'number' ? field.normalHigh : yMax}
+                          fill="#43A047" fillOpacity={0.08} stroke="none"/>
+                      )}
+                      <Tooltip
+                        formatter={(value) => [`${value}${field.unit ? ' ' + field.unit : ''}`, field.label]}
+                        labelFormatter={(label, payload) => {
+                          const p = payload?.[0]?.payload
+                          return p ? format(new Date(p.date), 'd MMM yyyy') : label
+                        }}
+                        contentStyle={{ fontSize: 12, borderRadius: 8 }}/>
+                      <Line type="monotone" dataKey="value" stroke="#1565C0" strokeWidth={2}
+                        dot={(props) => {
+                          const flag = isOutOfRange(props.payload.value, field.normalLow, field.normalHigh)
+                          return <circle key={props.index} cx={props.cx} cy={props.cy} r={4}
+                            fill={flag ? '#E53935' : '#1565C0'}
+                            stroke="#fff" strokeWidth={2}/>
+                        }}
+                        activeDot={{ r: 6 }}/>
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Card>
+              )
+            })}
+          </div>
+        )
+      })()}
+
+      {/* Master table — every test × every date with values */}
+      {tableData.dates.length > 0 && (
+        <Card className="p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h4 className="font-semibold text-slate-800 text-sm">All Recorded Values</h4>
+            <span className="text-xs text-slate-500">
+              {tableData.dates.length} date{tableData.dates.length !== 1 ? 's' : ''} · newest first
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left py-2 px-3 font-semibold text-slate-700 sticky left-0 bg-slate-50 z-10 min-w-[200px]">Test</th>
+                  {tableData.dates.map(d => (
+                    <th key={d} className="text-center py-2 px-3 font-semibold text-slate-700 whitespace-nowrap min-w-[80px]">
+                      {format(new Date(d), 'd MMM yyyy')}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from(tableData.byCategory.entries()).map(([cat, rows]) => (
+                  <Fragment key={cat}>
+                    <tr className="bg-blue-50/40">
+                      <td colSpan={tableData.dates.length + 1} className="py-1.5 px-3 font-bold text-slate-700 uppercase text-[10px] tracking-wide sticky left-0 bg-blue-50/40">
+                        {cat}
+                      </td>
+                    </tr>
+                    {rows.map((row, idx) => (
+                      <tr key={`${row.testName}-${row.fieldLabel}-${idx}`} className="border-t border-slate-100 hover:bg-slate-50/50">
+                        <td className={`py-1.5 px-3 sticky left-0 bg-white ${row.showTestSubHeader ? 'pl-6' : 'pl-3'}`}>
+                          {row.showTestSubHeader && (
+                            <span className="text-[10px] text-slate-400 block leading-tight">{row.testName}</span>
+                          )}
+                          <span className="text-slate-800">{row.fieldLabel}</span>
+                          {row.fieldUnit && <span className="text-slate-400 ml-1">({row.fieldUnit})</span>}
+                        </td>
+                        {tableData.dates.map(d => {
+                          const v = row.valuesByDate[d]
+                          const flag = isOutOfRange(v, row.normalLow, row.normalHigh)
+                          return (
+                            <td key={d} className={`py-1.5 px-3 text-center whitespace-nowrap ${flag ? 'font-bold text-danger bg-red-50/50' : 'text-slate-800'}`}>
+                              {v != null && v !== '' ? v : <span className="text-slate-300">—</span>}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   )
