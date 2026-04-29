@@ -400,7 +400,7 @@ function PatientDocumentsTab({ patientId }) {
 function PatientLabResultsTab({ patientId }) {
   const [results,    setResults]    = useState([])
   const [loading,    setLoading]    = useState(true)
-  const [testFilter, setTestFilter] = useState('all')   // 'all' or a labTestId/testName key
+  const [categoryFilter, setCategoryFilter] = useState('all')   // 'all' or a category name
   const [rangeFilter, setRangeFilter] = useState('all') // 'all' | '3m' | '6m' | '1y'
 
   useEffect(() => {
@@ -439,10 +439,12 @@ function PatientLabResultsTab({ patientId }) {
     return groups
   })()
 
-  // Tests visible after applying the test filter — used by both charts and the table.
+  // Tests visible after applying the category filter — used by both charts and the table.
+  // 'all' = all categories, otherwise only tests whose category matches.
   const visibleTestKeys = (() => {
-    if (testFilter === 'all') return Array.from(testGroups.keys())
-    return testGroups.has(testFilter) ? [testFilter] : []
+    const all = Array.from(testGroups.entries())
+    if (categoryFilter === 'all') return all.map(([k]) => k)
+    return all.filter(([, g]) => g.category === categoryFilter).map(([k]) => k)
   })()
 
   // Helper: numeric out-of-range check (skips non-numeric strings like "Negative").
@@ -457,10 +459,13 @@ function PatientLabResultsTab({ patientId }) {
 
   // For ONE test, build per-field chart series. Each field becomes its own chart
   // because units (g/dL vs cells/µL vs %) make a single multi-line chart unreadable.
-  // Free-text outcomes are skipped (no numeric trend possible).
+  // We chart structured `values` AND numeric `freeTextResult` — many simple tests
+  // (KFT, single-marker biochem) save the value as freeTextResult, and skipping
+  // those would silently hide trends the doctor expects to see.
   const buildChartsForTest = (group) => {
     const fieldMap = new Map()  // fieldKey → { label, unit, normalLow, normalHigh, points: [{ date, value }] }
     for (const r of group.rows) {
+      // Structured field values — preferred path for multi-field tests like CBC.
       for (const v of (r.values || [])) {
         if (!fieldMap.has(v.fieldKey)) {
           fieldMap.set(v.fieldKey, {
@@ -475,6 +480,30 @@ function PatientLabResultsTab({ patientId }) {
         const numeric = parseFloat(v.value)
         if (!Number.isNaN(numeric)) {
           fieldMap.get(v.fieldKey).points.push({
+            date:    r.resultDate,
+            dateMs:  new Date(r.resultDate).getTime(),
+            display: format(new Date(r.resultDate), 'd MMM'),
+            value:   numeric,
+          })
+        }
+      }
+      // Free-text fallback — if the doctor entered a numeric reading directly
+      // (no fieldKey), graph it under a synthetic "__freetext__" field so it
+      // still appears as a trend. Skips truly textual results like "Negative".
+      if (r.freeTextResult && String(r.freeTextResult).trim()) {
+        const numeric = parseFloat(r.freeTextResult)
+        if (!Number.isNaN(numeric)) {
+          if (!fieldMap.has('__freetext__')) {
+            fieldMap.set('__freetext__', {
+              fieldKey:   '__freetext__',
+              label:      group.testName,   // chart label = test name (no separate field)
+              unit:       null,
+              normalLow:  null,
+              normalHigh: null,
+              points:     [],
+            })
+          }
+          fieldMap.get('__freetext__').points.push({
             date:    r.resultDate,
             dateMs:  new Date(r.resultDate).getTime(),
             display: format(new Date(r.resultDate), 'd MMM'),
@@ -571,11 +600,14 @@ function PatientLabResultsTab({ patientId }) {
     )
   }
 
-  // For the test filter dropdown — sorted by category, then test name
-  const allTestsSorted = Array.from(testGroups.entries()).sort((a, b) => {
-    const c = (a[1].category || '').localeCompare(b[1].category || '')
-    return c !== 0 ? c : (a[1].testName || '').localeCompare(b[1].testName || '')
-  })
+  // For the category filter dropdown — sorted by category name with test counts
+  const categoryCounts = (() => {
+    const counts = new Map()
+    for (const g of testGroups.values()) {
+      counts.set(g.category, (counts.get(g.category) || 0) + 1)
+    }
+    return Array.from(counts.entries()).sort(([a], [b]) => a.localeCompare(b))
+  })()
 
   // Quick stats for the header strip
   const totalDates = new Set(filteredByRange.map(r => r.resultDate)).size
@@ -596,13 +628,13 @@ function PatientLabResultsTab({ patientId }) {
         <div className="flex flex-wrap items-center gap-3">
           <Filter className="w-4 h-4 text-slate-400"/>
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Test:</label>
+            <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Category:</label>
             <select className="form-select text-sm py-1.5 px-2 min-w-[180px]"
-              value={testFilter}
-              onChange={(e) => setTestFilter(e.target.value)}>
-              <option value="all">All tests ({testGroups.size})</option>
-              {allTestsSorted.map(([key, g]) => (
-                <option key={key} value={key}>{g.category} · {g.testName}</option>
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}>
+              <option value="all">All categories ({categoryCounts.length})</option>
+              {categoryCounts.map(([cat, count]) => (
+                <option key={cat} value={cat}>{cat} ({count} test{count !== 1 ? 's' : ''})</option>
               ))}
             </select>
           </div>
@@ -617,9 +649,9 @@ function PatientLabResultsTab({ patientId }) {
               <option value="3m">Last 3 months</option>
             </select>
           </div>
-          {(testFilter !== 'all' || rangeFilter !== 'all') && (
+          {(categoryFilter !== 'all' || rangeFilter !== 'all') && (
             <button type="button"
-              onClick={() => { setTestFilter('all'); setRangeFilter('all') }}
+              onClick={() => { setCategoryFilter('all'); setRangeFilter('all') }}
               className="text-xs text-slate-500 hover:text-danger inline-flex items-center gap-1">
               <X className="w-3 h-3"/> Clear filters
             </button>
@@ -674,16 +706,27 @@ function PatientLabResultsTab({ patientId }) {
               })()
               return (
                 <Card key={`${testKey}-${field.fieldKey}`} className="p-4">
-                  <div className="flex items-baseline justify-between mb-3">
+                  <div className="flex items-baseline justify-between mb-3 gap-2">
                     <div className="min-w-0">
-                      <h4 className="font-semibold text-slate-800 text-sm truncate">{field.label}</h4>
-                      <p className="text-xs text-slate-500 truncate">
-                        {group.testName} · {group.category}
+                      {/* Test name takes primary visual weight — that's what the
+                          doctor scans for. Field name (e.g. "Hemoglobin" inside CBC)
+                          drops to a secondary label below. For free-text-charted
+                          tests we hide the duplicate field label since it equals
+                          the test name. */}
+                      <h4 className="font-semibold text-slate-800 text-sm truncate">{group.testName}</h4>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">
+                        <span className="text-primary font-medium">{group.category}</span>
+                        {field.fieldKey !== '__freetext__' && (
+                          <>
+                            <span className="mx-1.5">·</span>
+                            <span>{field.label}</span>
+                          </>
+                        )}
                         {field.unit && <span className="ml-1">({field.unit})</span>}
                       </p>
                     </div>
                     {hasRange && (
-                      <span className="text-[10px] bg-success/10 text-success font-semibold px-2 py-0.5 rounded-full whitespace-nowrap">
+                      <span className="text-[10px] bg-success/10 text-success font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
                         Normal: {field.normalLow ?? '—'}{typeof field.normalHigh === 'number' ? `–${field.normalHigh}` : '+'}
                       </span>
                     )}
