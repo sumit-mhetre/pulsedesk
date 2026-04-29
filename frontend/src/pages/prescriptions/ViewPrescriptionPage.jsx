@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Printer, Edit, Receipt } from 'lucide-react'
 import { Button, Badge } from '../../components/ui'
@@ -379,6 +379,138 @@ export default function ViewPrescriptionPage() {
         {show('showLabTests') && rx.labTests?.length > 0 && (
           <p className="mb-1.5 text-sm"><span className="font-bold text-slate-900">Lab Tests:</span> <span className="text-slate-800">{rx.labTests.map(lt => lt.labTestName).join(', ')}</span></p>
         )}
+
+        {/* Test Outcomes — recorded lab values rendered as a table with date columns.
+            Each (testName × resultDate) is one stored row; values may be a structured
+            list (CBC sub-fields) or a single freeTextResult (Peripheral Smear, etc.).
+            Out-of-range values are bolded so paper prints stay readable in B/W.
+            Hidden when no results recorded — gating flag won't show an empty section. */}
+        {show('showLabResults') && rx.labResults?.length > 0 && (() => {
+          // Unique result dates, newest-first (matches the entry modal's column order)
+          const dates = Array.from(new Set(rx.labResults.map(r => r.resultDate)))
+            .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+
+          // Group results by category → labTest. Use labTestId when present,
+          // otherwise fall back to testName so free-text outcomes still group cleanly.
+          const groups = new Map()
+          for (const r of rx.labResults) {
+            const cat = r.testCategory || 'Other'
+            const testKey = r.labTestId || `name:${r.testName}`
+            if (!groups.has(cat)) groups.set(cat, new Map())
+            const testsInCat = groups.get(cat)
+            if (!testsInCat.has(testKey)) {
+              testsInCat.set(testKey, { testName: r.testName, rowsByDate: {} })
+            }
+            testsInCat.get(testKey).rowsByDate[r.resultDate] = r
+          }
+
+          // For a single test, collect the unique field metadata across all its dates.
+          // (Different visits may record different sub-fields — union them all.)
+          const collectFields = (test) => {
+            const fieldMap = new Map()
+            let hasFreeText = false
+            for (const date of Object.keys(test.rowsByDate)) {
+              const row = test.rowsByDate[date]
+              if (row.freeTextResult && String(row.freeTextResult).trim()) hasFreeText = true
+              for (const v of (row.values || [])) {
+                if (!fieldMap.has(v.fieldKey)) {
+                  fieldMap.set(v.fieldKey, {
+                    label: v.fieldLabel,
+                    unit:  v.fieldUnit,
+                    normalLow:  v.normalLow,
+                    normalHigh: v.normalHigh,
+                  })
+                }
+              }
+            }
+            return { fields: Array.from(fieldMap.entries()), hasFreeText }
+          }
+
+          // Treat numeric values outside [normalLow, normalHigh] as out of range. Non-numeric
+          // values (e.g. "Negative", "Reactive") are skipped — no false-positive bolding.
+          const isOutOfRange = (value, low, high) => {
+            if (value == null || value === '') return false
+            const n = parseFloat(value)
+            if (Number.isNaN(n)) return false
+            if (typeof low  === 'number' && n < low)  return true
+            if (typeof high === 'number' && n > high) return true
+            return false
+          }
+
+          return (
+            <div className="mb-3 text-sm">
+              <p className="font-bold text-slate-900 mb-1.5">{t.labTests === 'LAB TESTS' ? 'TEST OUTCOMES' : 'Test Outcomes'}</p>
+              <table className="w-full border-collapse text-xs" style={{ pageBreakInside: 'auto' }}>
+                <thead>
+                  <tr className="border-b-2 border-slate-400">
+                    <th className="text-left py-1 px-2 font-semibold text-slate-700"></th>
+                    {dates.map(d => (
+                      <th key={d} className="text-center py-1 px-2 font-semibold text-slate-700 whitespace-nowrap" style={{ width: `${Math.max(60, Math.floor(180 / dates.length))}px` }}>
+                        {format(new Date(d), 'd MMM yyyy')}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from(groups.entries()).map(([cat, testsMap]) => (
+                    <Fragment key={cat}>
+                      <tr className="bg-slate-50 print:bg-slate-100">
+                        <td colSpan={dates.length + 1} className="py-1 px-2 font-bold text-slate-800 uppercase text-[10px] tracking-wide">
+                          {cat}
+                        </td>
+                      </tr>
+                      {Array.from(testsMap.entries()).map(([testKey, test]) => {
+                        const { fields, hasFreeText } = collectFields(test)
+                        const showTestSubHeader = fields.length > 1
+                        return (
+                          <Fragment key={testKey}>
+                            {showTestSubHeader && (
+                              <tr>
+                                <td colSpan={dates.length + 1} className="py-0.5 pl-3 pr-2 italic text-slate-600 text-[11px]">
+                                  {test.testName}
+                                </td>
+                              </tr>
+                            )}
+                            {fields.map(([fieldKey, meta]) => (
+                              <tr key={fieldKey} className="border-b border-slate-100">
+                                <td className={`py-1 ${showTestSubHeader ? 'pl-5' : 'pl-3'} pr-2 text-slate-800`}>
+                                  {meta.label}
+                                  {meta.unit && <span className="text-slate-500 ml-1">({meta.unit})</span>}
+                                </td>
+                                {dates.map(d => {
+                                  const row = test.rowsByDate[d]
+                                  const v   = row?.values?.find(x => x.fieldKey === fieldKey)?.value
+                                  const flag = isOutOfRange(v, meta.normalLow, meta.normalHigh)
+                                  return (
+                                    <td key={d} className={`py-1 px-2 text-center text-slate-800 ${flag ? 'font-bold' : ''}`}>
+                                      {v != null && v !== '' ? v : '—'}
+                                    </td>
+                                  )
+                                })}
+                              </tr>
+                            ))}
+                            {hasFreeText && (
+                              <tr className="border-b border-slate-100">
+                                <td className={`py-1 ${showTestSubHeader ? 'pl-5' : 'pl-3'} pr-2 text-slate-800`}>
+                                  {showTestSubHeader ? 'Result' : test.testName}
+                                </td>
+                                {dates.map(d => (
+                                  <td key={d} className="py-1 px-2 text-center text-slate-800">
+                                    {test.rowsByDate[d]?.freeTextResult || '—'}
+                                  </td>
+                                ))}
+                              </tr>
+                            )}
+                          </Fragment>
+                        )
+                      })}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        })()}
 
         {show('showAdvice') && adviceList.length > 0 && (
           <div className="mb-3 text-sm">

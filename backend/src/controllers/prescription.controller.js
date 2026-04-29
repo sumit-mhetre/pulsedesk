@@ -82,6 +82,9 @@ async function getPrescription(req, res) {
         doctor:  { select: { id: true, name: true, qualification: true, specialization: true, regNo: true, signature: true, stamp: true } },
         medicines: { orderBy: { sortOrder: 'asc' } },
         labTests:  true,
+        // Include recorded lab results so the print page can render the test outcomes
+        // table. Sorted DESC so newest dates appear in the leftmost column on print.
+        labResults: { include: { values: true }, orderBy: { resultDate: 'desc' } },
       },
     });
     if (!rx) return errorResponse(res, 'Prescription not found', 404);

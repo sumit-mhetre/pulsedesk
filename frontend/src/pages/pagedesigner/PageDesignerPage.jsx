@@ -95,7 +95,7 @@ const DEFAULT_RX = {
   showDoctorRegNo:true, headerBorder:true, headerColor:'#1565C0',
   showPatient:true, showAge:true, showGender:true, showAllergy:true,
   showComplaint:true, showDiagnosis:true, showMedicines:true, showLabTests:true,
-  showAdvice:true, showNextVisit:true, showVitals:false,
+  showLabResults:true, showAdvice:true, showNextVisit:true, showVitals:false,
   showDosage:true, showWhen:true, showDays:true, showQty:true, showNotes:true,
   fontFamily:'default', baseFontSize:'md', medicineNameBold:true,
   showSignature:true, showGeneratedBy:true, showRxSymbol:true,
@@ -223,6 +223,7 @@ export default function PageDesignerPage() {
                 <Toggle checked={cfg.showVitals}     onChange={v=>set('showVitals',v)}     label="Vitals" sub="BP, Sugar, Weight etc."/>
                 <Toggle checked={cfg.showMedicines}  onChange={v=>set('showMedicines',v)}  label="Medicines Table"/>
                 <Toggle checked={cfg.showLabTests}   onChange={v=>set('showLabTests',v)}   label="Lab Tests"/>
+                <Toggle checked={cfg.showLabResults} onChange={v=>set('showLabResults',v)} label="Test Outcomes" sub="Recorded values for ordered tests, with date columns"/>
                 <Toggle checked={cfg.showAdvice}     onChange={v=>set('showAdvice',v)}     label="Advice & Precautions"/>
                 <Toggle checked={cfg.showNextVisit}  onChange={v=>set('showNextVisit',v)}  label="Next Visit Date"/>
               </Section>
