@@ -42,7 +42,7 @@ async function getTemplate(req, res) {
 // ── Create template ───────────────────────────────────────
 async function createTemplate(req, res) {
   try {
-    const { name, complaint, diagnosis, advice, nextVisit, labTests = [], medicines = [] } = req.body;
+    const { name, complaint, diagnosis, advice, nextVisit, labTests = [], medicines = [], customData } = req.body;
 
     if (!name) return errorResponse(res, 'Template name is required', 400);
 
@@ -61,6 +61,11 @@ async function createTemplate(req, res) {
           advice:    advice    || null,
           nextVisit: nextVisit ? parseInt(nextVisit) : null,
           labTests:  labTests,
+          // Custom field values — only persist if the client sent a non-empty object.
+          // Same {[cfId]: string[]} shape as Prescription.customData.
+          customData: customData && typeof customData === 'object' && Object.keys(customData).length > 0
+            ? customData
+            : null,
         },
       });
 
@@ -100,7 +105,7 @@ async function updateTemplate(req, res) {
     });
     if (!existing) return errorResponse(res, 'Template not found', 404);
 
-    const { name, complaint, diagnosis, advice, nextVisit, labTests, medicines } = req.body;
+    const { name, complaint, diagnosis, advice, nextVisit, labTests, medicines, customData } = req.body;
 
     const updated = await prisma.$transaction(async (tx) => {
       await tx.prescriptionTemplate.update({
@@ -112,6 +117,12 @@ async function updateTemplate(req, res) {
           ...(advice    !== undefined && { advice }),
           ...(nextVisit !== undefined && { nextVisit: nextVisit ? parseInt(nextVisit) : null }),
           ...(labTests  !== undefined && { labTests }),
+          // customData is set/cleared explicitly. Pass {} or null to clear.
+          ...(customData !== undefined && {
+            customData: customData && typeof customData === 'object' && Object.keys(customData).length > 0
+              ? customData
+              : null,
+          }),
         },
       });
 
@@ -225,8 +236,13 @@ async function useTemplate(req, res) {
 // ── Save current prescription as template ─────────────────
 async function saveAsTemplate(req, res) {
   try {
-    const { name, complaint, diagnosis, advice, nextVisit, labTests = [], medicines = [] } = req.body;
+    const { name, complaint, diagnosis, advice, nextVisit, labTests = [], medicines = [], customData } = req.body;
     if (!name) return errorResponse(res, 'Template name is required', 400);
+
+    // Normalize customData once for both branches
+    const cleanCustomData = customData && typeof customData === 'object' && Object.keys(customData).length > 0
+      ? customData
+      : null;
 
     // Check if name exists and update, or create new
     const existing = await prisma.prescriptionTemplate.findFirst({
@@ -239,7 +255,7 @@ async function saveAsTemplate(req, res) {
         await tx.templateMedicine.deleteMany({ where: { templateId: existing.id } });
         await tx.prescriptionTemplate.update({
           where: { id: existing.id },
-          data: { complaint, diagnosis, advice, nextVisit: nextVisit ? parseInt(nextVisit) : null, labTests, version: { increment: 1 } },
+          data: { complaint, diagnosis, advice, nextVisit: nextVisit ? parseInt(nextVisit) : null, labTests, customData: cleanCustomData, version: { increment: 1 } },
         });
         if (medicines.length > 0) {
           await tx.templateMedicine.createMany({
@@ -258,7 +274,7 @@ async function saveAsTemplate(req, res) {
     // Create new
     await prisma.$transaction(async (tx) => {
       const t = await tx.prescriptionTemplate.create({
-        data: { clinicId: req.clinicId, name, complaint, diagnosis, advice, nextVisit: nextVisit?parseInt(nextVisit):null, labTests },
+        data: { clinicId: req.clinicId, name, complaint, diagnosis, advice, nextVisit: nextVisit?parseInt(nextVisit):null, labTests, customData: cleanCustomData },
       });
       if (medicines.length > 0) {
         await tx.templateMedicine.createMany({

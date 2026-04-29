@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Save, RotateCcw, Eye, Check, ChevronDown, ChevronUp,
   Building2, FileText, Printer, Receipt, Palette, ImageIcon, FileCheck,
-  Plus, Trash2, Star, X, Edit3, Stethoscope,
+  Plus, Trash2, Star, X, Edit3, Stethoscope, GripVertical,
 } from 'lucide-react'
 import { Card, Button, PageHeader } from '../../components/ui'
 import ImageUploader from '../../components/branding/ImageUploader'
@@ -1314,45 +1314,128 @@ function SectionOrderCard({ rxForm, setRxForm }) {
 
   const isCustom = (key) => !BUILTIN_LABELS[key]
 
+  // Persist a reordered list. Used by both drag-drop and the ↑↓ buttons.
+  const commit = (next) => {
+    setRxForm(f => ({ ...f, fieldOrder: next }))
+    setGlobalDirty(true)
+  }
+
   const move = (idx, delta) => {
     const next = [...order]
     const target = idx + delta
     if (target < 0 || target >= next.length) return
     ;[next[idx], next[target]] = [next[target], next[idx]]
-    setRxForm(f => ({ ...f, fieldOrder: next }))
-    setGlobalDirty(true)
+    commit(next)
+  }
+
+  // ── Drag-and-drop state ────────────────────────────────────
+  // dragKey = the section being dragged. dropKey = the row currently being hovered
+  // over (used to draw the blue insertion line). We track keys (not indices) so we
+  // don't break when a user drags faster than React re-renders.
+  const [dragKey, setDragKey] = useState(null)
+  const [dropKey, setDropKey] = useState(null)
+  // Where the drop indicator goes: above (before) or below (after) the dropKey row.
+  const [dropPos, setDropPos] = useState(null)
+
+  const onDragStart = (e, key) => {
+    setDragKey(key)
+    // dataTransfer is required on Firefox to start a drag at all. The data is unused.
+    try { e.dataTransfer.setData('text/plain', key) } catch {}
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const onDragOver = (e, key) => {
+    if (!dragKey || dragKey === key) return
+    e.preventDefault()  // required to allow drop
+    e.dataTransfer.dropEffect = 'move'
+    // Decide above-or-below based on cursor position within the row.
+    const rect = e.currentTarget.getBoundingClientRect()
+    const mid = rect.top + rect.height / 2
+    setDropKey(key)
+    setDropPos(e.clientY < mid ? 'above' : 'below')
+  }
+
+  const onDragLeave = (e, key) => {
+    // Only clear if we're really leaving (not entering a child)
+    if (e.currentTarget.contains(e.relatedTarget)) return
+    if (dropKey === key) { setDropKey(null); setDropPos(null) }
+  }
+
+  const onDrop = (e, key) => {
+    e.preventDefault()
+    if (!dragKey || dragKey === key) {
+      setDragKey(null); setDropKey(null); setDropPos(null)
+      return
+    }
+    const fromIdx = order.indexOf(dragKey)
+    const toIdxRaw = order.indexOf(key)
+    if (fromIdx < 0 || toIdxRaw < 0) {
+      setDragKey(null); setDropKey(null); setDropPos(null)
+      return
+    }
+    // Build the new order. Remove the dragged item, then insert at the target slot
+    // adjusting for whether we removed something that came before our target.
+    const without = order.filter(k => k !== dragKey)
+    const targetSlot = without.indexOf(key) + (dropPos === 'below' ? 1 : 0)
+    const next = [...without.slice(0, targetSlot), dragKey, ...without.slice(targetSlot)]
+    commit(next)
+    setDragKey(null); setDropKey(null); setDropPos(null)
+  }
+
+  const onDragEnd = () => {
+    setDragKey(null); setDropKey(null); setDropPos(null)
   }
 
   return (
-    <Card title="Section Order" subtitle="Arrange sections in the order you want them on the writing form and the printed Rx. Use ↑ ↓ buttons to move. Custom fields can be moved too.">
+    <Card title="Section Order" subtitle="Drag rows to reorder sections on the writing form and the printed Rx. Or use the ↑ ↓ buttons. Custom fields can be moved too.">
       <div className="space-y-1.5">
-        {order.map((key, idx) => (
-          <div key={key} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
-            <span className="text-xs font-mono text-slate-400 w-6 text-right">{idx + 1}.</span>
-            <span className="flex-1 text-sm text-slate-700 truncate">
-              {labelFor(key)}
-              {isCustom(key) && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded">Custom</span>}
-            </span>
-            <button
-              type="button"
-              onClick={() => move(idx, -1)}
-              disabled={idx === 0}
-              className="text-slate-500 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed p-1 rounded hover:bg-white transition"
-              title="Move up"
-              aria-label="Move up">
-              <ChevronUp className="w-4 h-4"/>
-            </button>
-            <button
-              type="button"
-              onClick={() => move(idx, 1)}
-              disabled={idx === order.length - 1}
-              className="text-slate-500 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed p-1 rounded hover:bg-white transition"
-              title="Move down"
-              aria-label="Move down">
-              <ChevronDown className="w-4 h-4"/>
-            </button>
-          </div>
-        ))}
+        {order.map((key, idx) => {
+          const isDragging = dragKey === key
+          const showLineAbove = dropKey === key && dropPos === 'above'
+          const showLineBelow = dropKey === key && dropPos === 'below'
+          return (
+            <div key={key} className="relative">
+              {showLineAbove && <div className="absolute left-0 right-0 -top-1 h-0.5 bg-primary rounded-full" aria-hidden/>}
+              <div
+                draggable
+                onDragStart={(e) => onDragStart(e, key)}
+                onDragOver={(e) => onDragOver(e, key)}
+                onDragLeave={(e) => onDragLeave(e, key)}
+                onDrop={(e) => onDrop(e, key)}
+                onDragEnd={onDragEnd}
+                className={[
+                  'flex items-center gap-2 rounded-lg px-3 py-2 transition select-none',
+                  isDragging ? 'opacity-40 bg-blue-50' : 'bg-slate-50 hover:bg-slate-100',
+                ].join(' ')}>
+                <GripVertical className="w-4 h-4 text-slate-300 cursor-grab active:cursor-grabbing" aria-hidden/>
+                <span className="text-xs font-mono text-slate-400 w-6 text-right">{idx + 1}.</span>
+                <span className="flex-1 text-sm text-slate-700 truncate">
+                  {labelFor(key)}
+                  {isCustom(key) && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded">Custom</span>}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => move(idx, -1)}
+                  disabled={idx === 0}
+                  className="text-slate-500 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed p-1 rounded hover:bg-white transition"
+                  title="Move up"
+                  aria-label="Move up">
+                  <ChevronUp className="w-4 h-4"/>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => move(idx, 1)}
+                  disabled={idx === order.length - 1}
+                  className="text-slate-500 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed p-1 rounded hover:bg-white transition"
+                  title="Move down"
+                  aria-label="Move down">
+                  <ChevronDown className="w-4 h-4"/>
+                </button>
+              </div>
+              {showLineBelow && <div className="absolute left-0 right-0 -bottom-1 h-0.5 bg-primary rounded-full" aria-hidden/>}
+            </div>
+          )
+        })}
       </div>
     </Card>
   )

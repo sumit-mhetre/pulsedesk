@@ -162,6 +162,19 @@ const normalizeDays = (d) => {
   return s                                   // already has a unit (days/weeks/months/years)
 }
 
+// Shift any Sunday to Monday — clinics are closed Sundays, so the Next Visit date
+// should never land on one. Applied to every value we put into the next-visit field
+// (auto-set from medicines, manual pick, template load, draft restore). Accepts a
+// 'yyyy-MM-dd' string and returns a 'yyyy-MM-dd' string; passes through empty/invalid.
+const shiftSundayToMonday = (yyyyMmDd) => {
+  if (!yyyyMmDd) return yyyyMmDd
+  // Parse explicitly without timezone — same trick used elsewhere in this file.
+  const d = new Date(yyyyMmDd + 'T00:00:00')
+  if (isNaN(d.getTime())) return yyyyMmDd
+  if (d.getDay() === 0) return format(addDays(d, 1), 'yyyy-MM-dd')
+  return yyyyMmDd
+}
+
 // ── Fixed position portal dropdown ───────────────────────
 function PortalDrop({ anchorRef, open, options, value, onSelect, onClose }) {
   const [pos, setPos] = useState({ top:0, left:0, width:0 })
@@ -891,7 +904,18 @@ export default function NewPrescriptionPage() {
   const [openCategories, setOpenCategories] = useState({})            // category name → bool (manual collapse state)
   const [showAllCategories, setShowAllCategories] = useState(false)   // when true, render all categories; otherwise only added/filled
   const [addedLabTestIds, setAddedLabTestIds] = useState(() => new Set()) // tests user explicitly picked from the search dropdown
-  const [nextVisit, setNextVisit] = useState('')
+  const [nextVisit, _setNextVisitRaw] = useState('')
+  // Wrapper that auto-shifts Sunday → Monday before storing. Every place in this
+  // component that sets next-visit goes through here (auto-set from medicines,
+  // manual date input, template load, draft restore, edit-load). Clinics are
+  // closed Sundays so we never want that day persisted.
+  const setNextVisit = useCallback((value) => {
+    if (typeof value === 'function') {
+      _setNextVisitRaw(prev => shiftSundayToMonday(value(prev)))
+    } else {
+      _setNextVisitRaw(shiftSundayToMonday(value))
+    }
+  }, [])
   const [printLang, setPrintLang] = useState('en')
   const [customRxNo,setCustomRxNo]= useState('')
   const [saving,    setSaving]    = useState(false)
@@ -1778,6 +1802,19 @@ export default function NewPrescriptionPage() {
       if (t.medicines?.length>0) setRxMeds([...t.medicines,{...emptyMed}])
       if (t.labTests?.length>0)  setRxTests(t.labTests.map((name,i)=>({id:'tlab_'+i,name})))
       if (t.advice)              setRxAdvice(t.advice.split('\n').filter(Boolean).map((a,i)=>({id:'adv_'+i,name:a})))
+      // Custom field values from template — normalize to multi-tag arrays.
+      // Old templates may have stored single strings; wrap them so the form's
+      // TagInput sees a consistent {[cfId]: string[]} shape.
+      if (t.customData && typeof t.customData === 'object') {
+        const normalized = {}
+        for (const [k, v] of Object.entries(t.customData)) {
+          if (Array.isArray(v))      normalized[k] = v.filter(x => x != null && String(x).trim() !== '')
+          else if (v == null)        normalized[k] = []
+          else if (String(v).trim()) normalized[k] = [String(v)]
+          else                       normalized[k] = []
+        }
+        setCustomData(prev => ({ ...prev, ...normalized }))
+      }
       toast.success(`Template "${t.name}" loaded!`)
     }).catch(()=>toast.error('Failed to load template'))
   }
@@ -1787,6 +1824,18 @@ export default function NewPrescriptionPage() {
     const templateName = window.prompt('Template name:', complaintTags[0] || diagnosisTags[0] || '')
     if (!templateName?.trim()) return
     try {
+      // Same cleanup we apply on Rx save: strip custom fields not in the current
+      // config and trim/filter empty array entries. A template should never carry
+      // values for a field that no longer exists.
+      const cfIds = new Set(customFieldsConfig.map(cf => cf.id))
+      const cleanCustomData = {}
+      for (const [k, v] of Object.entries(customData || {})) {
+        if (!cfIds.has(k)) continue
+        const arr = Array.isArray(v)
+          ? v.map(x => String(x ?? '').trim()).filter(Boolean)
+          : (v != null && String(v).trim() ? [String(v).trim()] : [])
+        if (arr.length > 0) cleanCustomData[k] = arr
+      }
       await api.post('/templates/save-as', {
         name:       templateName.trim(),
         complaint:  complaintTags.join(' || '),
@@ -1794,6 +1843,7 @@ export default function NewPrescriptionPage() {
         advice:     rxAdvice.map(a=>a.name).join('\n'),
         labTests:   rxTests.filter(t=>!t.isNew).map(t=>t.name),
         medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({ medicineId:m.medicineId, medicineName:m.medicineName, medicineType:m.medicineType, dosage:m.dosage, days: normalizeDays(m.days), timing:m.timing, frequency:m.frequency||'DAILY', qty:m.qty||null, notesEn:m.notesEn })),
+        customData: Object.keys(cleanCustomData).length > 0 ? cleanCustomData : null,
       })
       toast.success(`Template "${templateName}" saved!`)
     } catch { toast.error('Failed to save template') }

@@ -445,6 +445,10 @@ model PrescriptionTemplate {
   advice      String?
   nextVisit   Int?
   labTests    String[] @default([])
+  // Stores custom field values captured when the doctor saved this template.
+  // Same shape as Prescription.customData: { [cfId]: string[] }. Loaded back into
+  // the form when the template is applied, so custom fields round-trip via templates.
+  customData  Json?
   usageCount  Int      @default(0)
   version     Int      @default(1)
   isActive    Boolean  @default(true)

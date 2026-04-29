@@ -160,6 +160,19 @@ export default function ViewPrescriptionPage() {
     nextVisitLabel: 'Next Visit:',
   }
 
+  // Day-of-week names per print language. Index 0 = Sunday (matches Date.getDay()).
+  // We surface the day name on the printed Next Visit so doctors can call it out
+  // verbally when handing the Rx to the patient. Months stay English for now.
+  const DAY_NAMES = {
+    en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    hi: ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'],
+    mr: ['रविवार', 'सोमवार', 'मंगळवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'],
+  }
+  const dayNameFor = (date, lng) => {
+    const names = DAY_NAMES[lng] || DAY_NAMES.en
+    return names[date.getDay()]
+  }
+
   return (
     <div className="fade-in">
       {/* Action bar */}
@@ -554,9 +567,17 @@ export default function ViewPrescriptionPage() {
           </div>
         )}
 
-        {show('showNextVisit') && rx.nextVisit && (
-          <p className="mb-3 text-sm" style={{ order: rxOrderMap.nextVisit }}><span className="font-bold text-slate-900">Next Visit:</span> <span className="text-slate-800">{format(new Date(rx.nextVisit),'dd MMMM yyyy')}</span></p>
-        )}
+        {show('showNextVisit') && rx.nextVisit && (() => {
+          const d = new Date(rx.nextVisit)
+          const dayName = dayNameFor(d, lang)
+          const datePart = format(d, 'dd MMMM yyyy')  // e.g. "03 May 2026"
+          return (
+            <p className="mb-3 text-sm" style={{ order: rxOrderMap.nextVisit }}>
+              <span className="font-bold text-slate-900">Next Visit:</span>{' '}
+              <span className="text-slate-800">{dayName} {datePart}</span>
+            </p>
+          )
+        })()}
 
         {/* Custom fields — only those that have a value entered AND are still
             configured by the clinic. Hidden globally if showCustomFields is OFF.
