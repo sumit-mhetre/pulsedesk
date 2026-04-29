@@ -1,29 +1,39 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Users, UserCheck, FileText, Receipt, TrendingUp, Calendar, ArrowRight, BarChart3, Pill, ClipboardList } from 'lucide-react'
+import { Users, UserCheck, FileText, Calendar } from 'lucide-react'
 import { StatCard, Card, PageHeader, Badge } from '../../components/ui'
 import useAuthStore from '../../store/authStore'
+import { can } from '../../lib/permissions'
 import api from '../../lib/api'
 import { format } from 'date-fns'
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
-  const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [daily, setDaily] = useState(null)
+
+  // Permission check — used to gate the daily-report fetch and the Today's Summary
+  // panel below. Receptionists don't have viewReports, so they shouldn't trigger
+  // the call (which 403s and leaks "viewReports" into a toast via the global axios
+  // interceptor). The Clinic Overview cards still load via /clinics/me.
+  const canViewReports = can(user, 'viewReports')
 
   useEffect(() => {
     fetchStats()
   }, [])
 
-  const [daily, setDaily] = useState(null)
-
   const fetchStats = async (attempt = 1) => {
     try {
       const clinic = await api.get('/clinics/me')
       setStats(clinic.data.data)
-      // Load daily report separately so clinic shows even if report fails
-      api.get('/reports/daily').then(r => setDaily(r.data.data)).catch(()=>{})
+
+      // Daily report — only fetched for users who actually have permission.
+      // Without this guard, Receptionist hits a 403 on every dashboard load.
+      if (canViewReports) {
+        api.get('/reports/daily')
+          .then(r => setDaily(r.data.data))
+          .catch(() => { /* swallow — clinic stats already showing */ })
+      }
     } catch (err) {
       // Retry once after 3 seconds (Render cold start)
       if (attempt === 1) {
@@ -132,8 +142,9 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Today's Summary */}
-      {daily && (
+      {/* Today's Summary — gated by viewReports permission. Receptionists won't see
+          this panel since they don't have access to revenue/today's-Rx data. */}
+      {canViewReports && daily && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
           {[
             { label: "Today's Queue",       value: daily.queueCount,    color: 'text-primary',  bg: 'bg-blue-50',   icon: '🏥' },
@@ -154,28 +165,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <Card className="mt-6" title="Quick Actions">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { label: 'New Patient',      icon: '👤', to: '/patients',           color: 'bg-blue-50   text-primary',  desc: 'Register' },
-            { label: 'Queue',            icon: '🏥', to: '/queue',              color: 'bg-cyan-50   text-accent',   desc: 'Today' },
-            { label: 'New Prescription', icon: '💊', to: '/prescriptions/new',  color: 'bg-purple-50 text-purple-600', desc: 'Write Rx' },
-            { label: 'New Bill',         icon: '🧾', to: '/billing/new',        color: 'bg-green-50  text-success',  desc: 'Billing' },
-            { label: 'Reports',          icon: '📊', to: '/reports',            color: 'bg-orange-50 text-warning',  desc: 'Analytics' },
-            { label: 'Master Data',      icon: '🗄️', to: '/master-data',        color: 'bg-slate-50  text-slate-600', desc: 'Setup' },
-          ].map(({ label, icon, to, color, desc }) => (
-            <button key={label} onClick={() => navigate(to)}
-              className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-background border border-blue-50 hover:border-primary hover:shadow-card transition-all group">
-              <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center text-2xl group-hover:scale-110 transition-transform`}>
-                {icon}
-              </div>
-              <span className="text-xs font-semibold text-slate-700">{label}</span>
-              <span className="text-xs text-slate-400">{desc}</span>
-            </button>
-          ))}
-        </div>
-      </Card>
+      {/* Quick Actions block — REMOVED per user request.
+          The same actions are reachable from the sidebar nav. */}
     </div>
   )
 }
