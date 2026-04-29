@@ -689,7 +689,7 @@ function PatientLabResultsTab({ patientId }) {
           )
         }
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {chartCards.map(({ testKey, group, field }) => {
               const hasRange = typeof field.normalLow === 'number' || typeof field.normalHigh === 'number'
               const yMin = (() => {
@@ -705,37 +705,33 @@ function PatientLabResultsTab({ patientId }) {
                 return Math.ceil(Math.max(dataMax, refMax) * 1.1)
               })()
               return (
-                <Card key={`${testKey}-${field.fieldKey}`} className="p-4">
-                  <div className="flex items-baseline justify-between mb-3 gap-2">
-                    <div className="min-w-0">
-                      {/* Test name takes primary visual weight — that's what the
-                          doctor scans for. Field name (e.g. "Hemoglobin" inside CBC)
-                          drops to a secondary label below. For free-text-charted
-                          tests we hide the duplicate field label since it equals
-                          the test name. */}
-                      <h4 className="font-semibold text-slate-800 text-sm truncate">{group.testName}</h4>
-                      <p className="text-xs text-slate-500 truncate mt-0.5">
-                        <span className="text-primary font-medium">{group.category}</span>
-                        {field.fieldKey !== '__freetext__' && (
-                          <>
-                            <span className="mx-1.5">·</span>
-                            <span>{field.label}</span>
-                          </>
-                        )}
-                        {field.unit && <span className="ml-1">({field.unit})</span>}
-                      </p>
-                    </div>
+                <Card key={`${testKey}-${field.fieldKey}`} className="p-3">
+                  {/* Header — single line where possible. Test name + range pill on one row,
+                      category/field/unit on a second tiny row. Keeps chart-to-chart vertical
+                      spacing tight when there are many tests. */}
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <h4 className="font-semibold text-slate-800 text-sm truncate flex-1 min-w-0">{group.testName}</h4>
                     {hasRange && (
-                      <span className="text-[10px] bg-success/10 text-success font-semibold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
-                        Normal: {field.normalLow ?? '—'}{typeof field.normalHigh === 'number' ? `–${field.normalHigh}` : '+'}
+                      <span className="text-[10px] bg-success/10 text-success font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
+                        {field.normalLow ?? '—'}{typeof field.normalHigh === 'number' ? `–${field.normalHigh}` : '+'}
                       </span>
                     )}
                   </div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart data={field.points} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                  <p className="text-[11px] text-slate-500 truncate mb-2">
+                    <span className="text-primary font-medium">{group.category}</span>
+                    {field.fieldKey !== '__freetext__' && (
+                      <>
+                        <span className="mx-1">·</span>
+                        <span>{field.label}</span>
+                      </>
+                    )}
+                    {field.unit && <span className="ml-1">({field.unit})</span>}
+                  </p>
+                  <ResponsiveContainer width="100%" height={140}>
+                    <LineChart data={field.points} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
-                      <XAxis dataKey="display" tick={{ fontSize: 11 }} stroke="#94a3b8"/>
-                      <YAxis domain={[yMin, yMax]} tick={{ fontSize: 11 }} stroke="#94a3b8"/>
+                      <XAxis dataKey="display" tick={{ fontSize: 10 }} stroke="#94a3b8"/>
+                      <YAxis domain={[yMin, yMax]} tick={{ fontSize: 10 }} stroke="#94a3b8" width={32}/>
                       {hasRange && (
                         <ReferenceArea
                           y1={typeof field.normalLow === 'number' ? field.normalLow : yMin}
@@ -748,15 +744,15 @@ function PatientLabResultsTab({ patientId }) {
                           const p = payload?.[0]?.payload
                           return p ? format(new Date(p.date), 'd MMM yyyy') : label
                         }}
-                        contentStyle={{ fontSize: 12, borderRadius: 8 }}/>
+                        contentStyle={{ fontSize: 11, borderRadius: 8, padding: '4px 8px' }}/>
                       <Line type="monotone" dataKey="value" stroke="#1565C0" strokeWidth={2}
                         dot={(props) => {
                           const flag = isOutOfRange(props.payload.value, field.normalLow, field.normalHigh)
-                          return <circle key={props.index} cx={props.cx} cy={props.cy} r={4}
+                          return <circle key={props.index} cx={props.cx} cy={props.cy} r={3.5}
                             fill={flag ? '#E53935' : '#1565C0'}
                             stroke="#fff" strokeWidth={2}/>
                         }}
-                        activeDot={{ r: 6 }}/>
+                        activeDot={{ r: 5 }}/>
                     </LineChart>
                   </ResponsiveContainer>
                 </Card>
