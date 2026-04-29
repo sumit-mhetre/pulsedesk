@@ -1146,7 +1146,7 @@ export default function NewPrescriptionPage() {
     if (!outcomesOpen) return
     const existing = Array.from(new Set(
       rxLabResults.map(r => r.resultDate).filter(Boolean)
-    )).sort()
+    )).sort((a, b) => b.localeCompare(a))   // descending — newest first / leftmost
     setOutcomesDates(existing.length > 0 ? existing : [format(new Date(), 'yyyy-MM-dd')])
     // Hydrate added set from any rows that already have a labTestId — both the
     // explicit-pick set and the implicit-via-values set unify here, so the body
@@ -1188,7 +1188,7 @@ export default function NewPrescriptionPage() {
         toast('That date is already in your list', { icon: 'ℹ️' })
         return prev
       }
-      return [...prev, target].sort()
+      return [...prev, target].sort((a, b) => b.localeCompare(a))   // newest first
     })
   }
 
@@ -1220,7 +1220,7 @@ export default function NewPrescriptionPage() {
       return
     }
     setRxLabResults(prev => prev.map(r => r.resultDate === oldDate ? { ...r, resultDate: newDate } : r))
-    setOutcomesDates(prev => prev.map(d => d === oldDate ? newDate : d).sort())
+    setOutcomesDates(prev => prev.map(d => d === oldDate ? newDate : d).sort((a, b) => b.localeCompare(a)))
     setDirty(true)
   }
 
@@ -1479,8 +1479,19 @@ export default function NewPrescriptionPage() {
 
   // Remove a test from the body — drops it from the added set AND deletes any
   // value rows it has across all dates (queueing server-side deletion if those
-  // rows were already saved). Doctor-friendly: one click clears the whole test.
+  // rows were already saved). Confirms before destroying any entered values.
   const removeAddedLabTest = (labTestId) => {
+    if (!labTestId) return
+    const targets = rxLabResults.filter(r => r.labTestId === labTestId)
+    const hasAnyValue = targets.some(r =>
+      (r.freeTextResult && String(r.freeTextResult).trim()) ||
+      Object.values(r.values || {}).some(v => v && String(v).trim())
+    )
+    if (hasAnyValue) {
+      const labTest = (labTestList || []).find(t => t.id === labTestId)
+      const name = labTest?.name || 'this test'
+      if (!window.confirm(`Remove ${name} and all entered values?`)) return
+    }
     setAddedLabTestIds(prev => {
       if (!prev.has(labTestId)) return prev
       const next = new Set(prev)
@@ -1488,8 +1499,8 @@ export default function NewPrescriptionPage() {
       return next
     })
     setRxLabResults(prev => {
-      const targets = prev.filter(r => r.labTestId === labTestId)
-      targets.forEach(r => { if (r.id) setDeletedLabResultIds(d => [...d, r.id]) })
+      const toRemove = prev.filter(r => r.labTestId === labTestId)
+      toRemove.forEach(r => { if (r.id) setDeletedLabResultIds(d => [...d, r.id]) })
       return prev.filter(r => r.labTestId !== labTestId)
     })
     setDirty(true)
@@ -2292,8 +2303,9 @@ export default function NewPrescriptionPage() {
         appear inline as rows with their own textbox + reference range hint. One date at top
         applies to the whole batch (cascades on change). Search filters across all fields. */}
     {outcomesOpen && (
-      <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-stretch justify-center p-3 sm:p-6 no-print print:hidden animate-in fade-in"
-           onClick={(e) => { if (e.target === e.currentTarget) setOutcomesOpen(false) }}>
+      <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-stretch justify-center p-3 sm:p-6 no-print print:hidden animate-in fade-in">
+        {/* Modal stays open until user explicitly clicks X or Done — clicking on the
+            backdrop while filling forms used to close it accidentally. */}
         <div className="bg-background w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4">
           {/* Header — patient context + close */}
           <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 bg-white flex-shrink-0">
@@ -2505,12 +2517,13 @@ export default function NewPrescriptionPage() {
                 const testsInCat = testGroups.size
                 // CSS grid template — label column (flexible) + N fixed-width input columns
                 const colWidth = '6.5rem'
-                const gridTemplate = `minmax(0, 1fr) ${outcomesDates.map(() => colWidth).join(' ')}`
+                // Grid template — label column (flexible) + N fixed-width input columns + 1 trailing column for ✕
+                const gridTemplate = `minmax(0, 1fr) ${outcomesDates.map(() => colWidth).join(' ')} 1.25rem`
                 return (
                   <div key={cat} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                     <button type="button"
                       onClick={() => toggleCategory(cat)}
-                      className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-slate-50 transition text-left">
+                      className="w-full flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-slate-50 transition text-left">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className={`w-1.5 h-6 rounded-full flex-shrink-0 ${categoryColor(cat)}`}/>
                         <span className="font-semibold text-sm text-slate-800 uppercase tracking-wide truncate">{cat}</span>
@@ -2527,7 +2540,7 @@ export default function NewPrescriptionPage() {
                       <div className="border-t border-slate-100 overflow-x-auto">
                         {/* Date column header — only when 2+ date columns. Aligned with input columns below. */}
                         {outcomesDates.length > 1 && (
-                          <div className="grid items-center gap-x-3 px-4 py-1.5 bg-slate-50/60 border-b border-slate-100"
+                          <div className="grid items-center gap-x-3 px-4 py-1 bg-slate-50/60 border-b border-slate-100"
                                style={{ gridTemplateColumns: gridTemplate }}>
                             <span/>{/* spacer for label column */}
                             {outcomesDates.map(d => (
@@ -2535,24 +2548,32 @@ export default function NewPrescriptionPage() {
                                 {(() => { try { return format(new Date(d), 'd MMM') } catch { return d } })()}
                               </span>
                             ))}
+                            <span/>{/* spacer for trailing ✕ column */}
                           </div>
                         )}
-                        {Array.from(testGroups.entries()).map(([labTestId, group], groupIdx) => (
+                        {Array.from(testGroups.entries()).map(([labTestId, group], groupIdx) => {
+                          // For single-field tests we skip the per-test header and put a tiny ✕ on
+                          // the row itself — saves a whole line of vertical space per test, which
+                          // adds up fast for biochemistry-style panels with 10+ entries.
+                          // Multi-field tests (CBC, Lipid Profile) keep the header so the test name
+                          // is unambiguous when several fields stack underneath.
+                          const isSingle = group.rows.length === 1
+                          return (
                           <div key={labTestId || `freetext-${groupIdx}`} className={groupIdx > 0 ? 'border-t border-slate-100' : ''}>
-                            {/* Per-test sub-header — test name + remove ✕. Always shown so the
-                                ✕ is always discoverable, even for single-field tests. */}
-                            <div className="flex items-center justify-between gap-2 px-4 py-1.5 bg-slate-50/40">
-                              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide truncate">{group.labTestName}</span>
-                              {labTestId && (
-                                <button type="button"
-                                  onClick={() => removeAddedLabTest(labTestId)}
-                                  className="text-slate-300 hover:text-danger hover:bg-danger/10 rounded p-0.5 transition flex-shrink-0"
-                                  title={`Remove ${group.labTestName}`}
-                                  aria-label={`Remove ${group.labTestName}`}>
-                                  <X className="w-3 h-3"/>
-                                </button>
-                              )}
-                            </div>
+                            {!isSingle && (
+                              <div className="flex items-center justify-between gap-2 px-4 py-1 bg-slate-50/40">
+                                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide truncate">{group.labTestName}</span>
+                                {labTestId && (
+                                  <button type="button"
+                                    onClick={() => removeAddedLabTest(labTestId)}
+                                    className="text-slate-300 hover:text-danger hover:bg-danger/10 rounded p-0.5 transition flex-shrink-0"
+                                    title={`Remove ${group.labTestName}`}
+                                    aria-label={`Remove ${group.labTestName}`}>
+                                    <X className="w-3 h-3"/>
+                                  </button>
+                                )}
+                              </div>
+                            )}
                             {group.rows.map((row) => {
                               const hasRange = typeof row.normalLow === 'number' || typeof row.normalHigh === 'number'
                               const rangeStr = hasRange
@@ -2567,7 +2588,7 @@ export default function NewPrescriptionPage() {
                               })
                               return (
                                 <div key={row.rowKey}
-                                  className={`grid items-center gap-x-3 px-4 py-2 border-t border-slate-50 transition ${anyFlagged ? 'bg-red-50/30' : 'hover:bg-blue-50/30'}`}
+                                  className={`grid items-center gap-x-3 px-4 py-1 border-t border-slate-50 transition ${anyFlagged ? 'bg-red-50/30' : 'hover:bg-blue-50/30'}`}
                                   style={{ gridTemplateColumns: gridTemplate }}>
                                   {/* Label cell — right-aligned, with reference range pill */}
                                   <div className="text-right text-sm text-slate-700 min-w-0 flex items-center justify-end gap-2">
@@ -2610,11 +2631,23 @@ export default function NewPrescriptionPage() {
                                         title={flagged ? `Out of normal range on ${d}` : `Value on ${d}`}/>
                                     )
                                   })}
+                                  {/* Trailing ✕ — single-field tests use this to remove themselves;
+                                      multi-field tests render an empty span to keep grid alignment. */}
+                                  {isSingle && labTestId ? (
+                                    <button type="button"
+                                      onClick={() => removeAddedLabTest(labTestId)}
+                                      className="text-slate-300 hover:text-danger transition flex items-center justify-center"
+                                      title={`Remove ${group.labTestName}`}
+                                      aria-label={`Remove ${group.labTestName}`}>
+                                      <X className="w-3.5 h-3.5"/>
+                                    </button>
+                                  ) : <span/>}
                                 </div>
                               )
                             })}
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>
