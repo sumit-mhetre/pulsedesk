@@ -2501,9 +2501,9 @@ export default function NewPrescriptionPage() {
                   }
                 }
                 const testsInCat = testGroups.size
-                // CSS grid template — label column (flexible) + N fixed-width input columns
-                const colWidth = '6.5rem'
                 // Grid template — label column (flexible) + N fixed-width input columns + 1 trailing column for ✕
+                // colWidth = 9rem so the date chip ([📅 04/29/2026 ✕]) fits cleanly above its input column
+                const colWidth = '9rem'
                 const gridTemplate = `minmax(0, 1fr) ${outcomesDates.map(() => colWidth).join(' ')} 1.25rem`
                 return (
                   <div key={cat} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -2524,15 +2524,17 @@ export default function NewPrescriptionPage() {
                     </button>
                     {open && (
                       <div className="border-t border-slate-100 overflow-x-auto">
-                        {/* Date chips strip — global dates rendered inside each expanded
-                            category so the doctor can edit, remove, or add dates in context
-                            with the test rows below. Same dates show in every category since
-                            they're shared across all tests in the modal. */}
-                        <div className="flex items-center gap-1.5 flex-wrap px-4 py-2 bg-blue-50/30 border-b border-slate-100">
-                          <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide flex-shrink-0">DATES:</span>
+                        {/* Date chips row — uses the SAME grid template as the input rows below
+                            so each chip sits directly above its input column. Chip = column.
+                            Edit the date inside a chip to change that whole column; click ✕ to
+                            remove it (always confirms). Adding a date is handled exclusively by
+                            the picker at the top of the modal. */}
+                        <div className="grid items-center gap-x-3 px-4 py-2 bg-blue-50/30 border-b border-slate-100"
+                             style={{ gridTemplateColumns: gridTemplate }}>
+                          <span/>{/* spacer for the test-label column */}
                           {outcomesDates.map((date) => (
                             <div key={date}
-                              className="inline-flex items-center gap-0.5 bg-white border border-blue-200 rounded-lg pl-2 pr-0.5 py-0.5 hover:border-blue-300 transition shadow-sm">
+                              className="inline-flex items-center justify-self-center gap-0.5 bg-white border border-blue-200 rounded-lg pl-1.5 pr-0.5 py-0.5 hover:border-blue-300 transition shadow-sm">
                               <Calendar className="w-3 h-3 text-primary flex-shrink-0"/>
                               <input
                                 type="date"
@@ -2551,13 +2553,7 @@ export default function NewPrescriptionPage() {
                               )}
                             </div>
                           ))}
-                          <button type="button"
-                            onClick={() => addDate()}
-                            className="inline-flex items-center gap-0.5 bg-primary text-white text-[11px] font-semibold px-2 py-0.5 rounded-lg hover:bg-primary/90 transition shadow-sm flex-shrink-0"
-                            title="Add a new date column">
-                            <Plus className="w-3 h-3"/>
-                            <span>Add</span>
-                          </button>
+                          <span/>{/* trailing spacer to align with row's per-test ✕ column */}
                         </div>
                         {Array.from(testGroups.entries()).map(([labTestId, group], groupIdx) => {
                           // For single-field tests we skip the per-test header and put a tiny ✕ on
