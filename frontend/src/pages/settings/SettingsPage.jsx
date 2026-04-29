@@ -149,7 +149,7 @@ const TABS = [
   { key: 'branding',   label: 'Branding',           icon: Palette   },
   { key: 'clinical',   label: 'Clinical',           icon: Stethoscope },
   { key: 'rxform',     label: 'Prescription Form & Print',  icon: FileText  },
-  { key: 'rxprint',    label: 'Prescription Print',         icon: Printer   },
+  { key: 'rxprint',    label: 'Print Style',                 icon: Printer   },
   { key: 'billprint',  label: 'Bill / Receipt',     icon: Receipt   },
   { key: 'doctemplates', label: 'Cert Templates',  icon: FileCheck },
 ]
@@ -520,27 +520,76 @@ export default function SettingsPage() {
       {/*  Tab — Prescription Form & Print                          */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'rxform' && (
-        <div className="max-w-2xl space-y-5">
-          <SectionsCard rxForm={rxForm} setRxForm={setRxForm} rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+        <div className="max-w-6xl space-y-5">
+          {/* 2-column grid for the toggle groups. Collapses to 1 col on small screens. */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="space-y-5">
+              <SectionGroupCard
+                title="Clinic Header"
+                subtitle="Print only — appears at the top of every Rx"
+                rows={CLINIC_HEADER_ROWS}
+                rxForm={rxForm} setRxForm={setRxForm}
+                rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+              <SectionGroupCard
+                title="Doctor Information"
+                subtitle="Print only"
+                rows={DOCTOR_INFO_ROWS}
+                rxForm={rxForm} setRxForm={setRxForm}
+                rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+              <SectionGroupCard
+                title="Patient Details"
+                subtitle="Print only"
+                rows={PATIENT_DETAIL_ROWS}
+                rxForm={rxForm} setRxForm={setRxForm}
+                rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+            </div>
+            <div className="space-y-5">
+              <SectionGroupCard
+                title="Sections"
+                subtitle="Tap 👁 to show on the writing form, 🖨 to print on the Rx"
+                rows={BODY_SECTION_ROWS}
+                rxForm={rxForm} setRxForm={setRxForm}
+                rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+              <SectionGroupCard
+                title="Medicine Table Columns"
+                subtitle="Print only — controls what appears in the medicines table"
+                rows={MEDICINE_COL_ROWS}
+                rxForm={rxForm} setRxForm={setRxForm}
+                rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+              <SectionGroupCard
+                title="Footer"
+                subtitle="Print only"
+                rows={FOOTER_ROWS}
+                rxForm={rxForm} setRxForm={setRxForm}
+                rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+            </div>
+          </div>
 
+          {/* Vitals Fields card — only relevant when Vitals form-side is enabled,
+              and it only affects the writing form (which sub-fields appear there). */}
           {rxForm.showVitals && (
-            <Card title="Vitals Fields" subtitle="Choose which vital parameters to record">
-              <Toggle checked={rxForm.vitalBP     ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalBP: v }));     setGlobalDirty(true) }} label="Blood Pressure" sub="Systolic / Diastolic"/>
-              <Toggle checked={rxForm.vitalSugar  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSugar: v }));  setGlobalDirty(true) }} label="Blood Sugar"    sub="mg/dL"/>
-              <Toggle checked={rxForm.vitalWeight ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalWeight: v })); setGlobalDirty(true) }} label="Weight"         sub="kg"/>
-              <Toggle checked={rxForm.vitalTemp   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalTemp: v }));   setGlobalDirty(true) }} label="Temperature"    sub="°F"/>
-              <Toggle checked={rxForm.vitalSpo2   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSpo2: v }));   setGlobalDirty(true) }} label="SpO2"           sub="Oxygen saturation %"/>
-              <Toggle checked={rxForm.vitalPulse  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalPulse: v }));  setGlobalDirty(true) }} label="Pulse Rate"     sub="bpm"/>
-              <Toggle checked={rxForm.vitalHeight ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalHeight: v })); setGlobalDirty(true) }} label="Height"         sub="cm"/>
-              <Toggle checked={rxForm.vitalBMI    ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalBMI: v }));    setGlobalDirty(true) }} label="BMI"            sub="Auto-calculated"/>
+            <Card title="Vitals Fields" subtitle="Choose which vital parameters to record on the writing form">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                <Toggle checked={rxForm.vitalBP     ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalBP: v }));     setGlobalDirty(true) }} label="Blood Pressure" sub="Systolic / Diastolic"/>
+                <Toggle checked={rxForm.vitalSugar  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSugar: v }));  setGlobalDirty(true) }} label="Blood Sugar"    sub="mg/dL"/>
+                <Toggle checked={rxForm.vitalWeight ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalWeight: v })); setGlobalDirty(true) }} label="Weight"         sub="kg"/>
+                <Toggle checked={rxForm.vitalTemp   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalTemp: v }));   setGlobalDirty(true) }} label="Temperature"    sub="°F"/>
+                <Toggle checked={rxForm.vitalSpo2   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSpo2: v }));   setGlobalDirty(true) }} label="SpO2"           sub="Oxygen saturation %"/>
+                <Toggle checked={rxForm.vitalPulse  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalPulse: v }));  setGlobalDirty(true) }} label="Pulse Rate"     sub="bpm"/>
+                <Toggle checked={rxForm.vitalHeight ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalHeight: v })); setGlobalDirty(true) }} label="Height"         sub="cm"/>
+                <Toggle checked={rxForm.vitalBMI    ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalBMI: v }));    setGlobalDirty(true) }} label="BMI"            sub="Auto-calculated"/>
+              </div>
             </Card>
           )}
 
-          <CustomFieldsCard rxForm={rxForm} setRxForm={setRxForm}/>
+          {/* Custom Fields manager + Section Order — full-width below the 2-col grid */}
+          <CustomFieldsCard rxForm={rxForm} setRxForm={setRxForm} rxPrint={rxPrint} setRxPrint={setRxPrint}/>
           <SectionOrderCard rxForm={rxForm} setRxForm={setRxForm}/>
 
           <div className="flex justify-between items-center">
-            <p className="text-xs text-slate-400">These control both the <strong>writing form</strong> and the <strong>printed prescription</strong>. The Prescription Print tab still has detailed layout/header controls.</p>
+            <p className="text-xs text-slate-400">
+              All sections, columns, and visibility live here. Visual styling (colors, fonts, paper size, padding) is on the <strong>Print Style</strong> tab.
+            </p>
             <Button variant="primary" loading={saving}
               icon={saved ? <Check className="w-4 h-4"/> : <Save className="w-4 h-4"/>}
               onClick={saveFormAndPrint}>
@@ -551,7 +600,9 @@ export default function SettingsPage() {
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/*  Tab 3 — Prescription Print                            */}
+      {/*  Tab — Print Style (visual styling only — visibility    */}
+      {/*  toggles live on the merged "Prescription Form & Print" */}
+      {/*  tab now). Bill / Receipt tab keeps the full panel.     */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'rxprint' && (
         <PrintDesignPanel
@@ -560,6 +611,7 @@ export default function SettingsPage() {
           onSave={() => savePrintDesign('prescription')}
           onReset={() => resetPrintDesign('prescription')}
           saving={saving} saved={saved}
+          styleOnly={true}
         />
       )}
 
@@ -587,7 +639,12 @@ export default function SettingsPage() {
 // ═══════════════════════════════════════════════════════════
 //  PrintDesignPanel — shared UI for Rx Print & Bill Print
 // ═══════════════════════════════════════════════════════════
-function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved }) {
+// PrintDesignPanel — original "everything in one panel" view used by Bill / Receipt.
+// For Prescription, the parent now passes styleOnly=true which strips out all the
+// visibility toggle CollapsibleSections (those moved to the Form&Print merged tab).
+// What remains for prescription: Paper & Typography, Spacing & Layout, and the live
+// Preview. Bill mode is unchanged.
+function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, styleOnly = false }) {
   const set = (key, val) => { setCfg(p => ({ ...p, [key]: val })); setGlobalDirty(true) }
   const isRx = type === 'prescription'
 
@@ -609,6 +666,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
         </CollapsibleSection>
 
         {/* Clinic header */}
+        {!styleOnly && (
         <CollapsibleSection title="Clinic Header">
           <Toggle checked={cfg.showLogo ?? true}  onChange={v => set('showLogo', v)}     label="Clinic Logo"        sub="Upload via Branding tab"/>
           <Toggle checked={cfg.showClinicName}    onChange={v => set('showClinicName', v)}    label="Clinic Name"/>
@@ -617,9 +675,10 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
           <Toggle checked={cfg.showClinicPhone}   onChange={v => set('showClinicPhone', v)}   label="Phone Number"/>
           {isRx && <Toggle checked={cfg.headerBorder} onChange={v => set('headerBorder', v)} label="Header Border Line"/>}
         </CollapsibleSection>
+        )}
 
         {/* Doctor info */}
-        {isRx && (
+        {!styleOnly && isRx && (
           <CollapsibleSection title="Doctor Information">
             <Toggle checked={cfg.showDoctorName}  onChange={v => set('showDoctorName', v)}  label="Doctor Name"/>
             <Toggle checked={cfg.showDoctorQual}  onChange={v => set('showDoctorQual', v)}  label="Qualification" sub="e.g. MBBS, MD"/>
@@ -629,6 +688,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
         )}
 
         {/* Patient section */}
+        {!styleOnly && (
         <CollapsibleSection title="Patient Details">
           <Toggle checked={cfg.showOPD ?? true}    onChange={v => set('showOPD', v)}    label="OPD / Patient Code"  sub="e.g. MH0001 — printed in bold"/>
           <Toggle checked={cfg.showPatient}        onChange={v => set('showPatient', v)} label="Patient Name"/>
@@ -644,9 +704,10 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
             <Toggle checked={cfg.showRxNo}    onChange={v => set('showRxNo', v)}    label="Rx Number"/>
           </>}
         </CollapsibleSection>
+        )}
 
         {/* Prescription-only sections */}
-        {isRx && (
+        {!styleOnly && isRx && (
           <>
             <CollapsibleSection title="Print — Prescription Sections">
               <p className="text-xs text-slate-400 mb-3 bg-blue-50 px-3 py-2 rounded-lg">
@@ -762,6 +823,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
         </CollapsibleSection>
 
         {/* Footer */}
+        {!styleOnly && (
         <CollapsibleSection title="Footer">
           {isRx && <Toggle checked={cfg.showSignatureImage ?? true}  onChange={v => set('showSignatureImage', v)} label="Doctor Signature Image"  sub="Use uploaded signature instead of blank line"/>}
           {isRx && <Toggle checked={cfg.showStampImage ?? true}      onChange={v => set('showStampImage', v)}     label="Doctor Stamp / Seal"     sub="Uploaded via Branding tab"/>}
@@ -769,6 +831,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
           <Toggle checked={cfg.showSignature}   onChange={v => set('showSignature', v)}   label="Doctor Signature Line"  sub="Blank line for handwritten signature"/>
           <Toggle checked={true} onChange={()=>{}} locked label="Generated by SimpleRx EMR" sub="Footer timestamp — always shown"/>
         </CollapsibleSection>
+        )}
 
         {/* Action buttons */}
         <div className="flex justify-between items-center pt-2 pb-8">
@@ -1217,35 +1280,22 @@ function TemplateEditor({ type, template, onClose, onSaved }) {
 // that show up on every new Rx form and on the printed prescription. Only the
 // `name` is editable for v1; type is fixed to 'text' (radio/dropdown/checkbox in v2).
 // ─────────────────────────────────────────────
-// MERGED SECTIONS CARD — controls Form & Print visibility together
+// SECTION GROUP CARD — generic Form/Print toggle table
 // ─────────────────────────────────────────────
-// One row per built-in section, with two icon toggles per row:
-//   👁 Eye  → form-side visibility (writes to rxForm.showXxx)
-//   🖨 Printer → print-side visibility (writes to rxPrint.showXxx)
+// One reusable card that renders a titled group of toggle rows. Each row has:
+//   - label, optional sub-text
+//   - formKey (writes to rxForm.showXxx) — omit if the row is print-only
+//   - printKey (writes to rxPrint.showXxx) — omit if the row is form-only
+//   - locked flag — disables both toggles, shows a "LOCKED" badge
 //
-// Dark/colored icon = section is enabled in that mode. Light/gray = disabled.
-// Medicines is locked-on in both modes (Rx is meaningless without medicines).
-// Test Outcomes is one row but the two toggles hit different keys under the hood:
-// form-side controls the flask FAB; print-side controls whether saved results print.
-// Custom fields are NOT in this card — they live in the Custom Fields card and the
-// Section Order card. Print-side master switch for custom fields stays on the
-// Prescription Print tab (showCustomFields).
-function SectionsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
-  // Each row: { label, sub, formKey, printKey, locked? }.
-  // formKey/printKey may be the SAME string (most cases) or different (testOutcomes).
-  const rows = [
-    { label: 'Vitals',               sub: 'BP, Sugar, Weight, Temp, SpO2, Pulse', formKey: 'showVitals',       printKey: 'showVitals' },
-    { label: 'Chief Complaint',      sub: "Patient's main complaints",            formKey: 'showComplaint',    printKey: 'showComplaint' },
-    { label: 'Diagnosis',            sub: 'Clinical diagnosis',                   formKey: 'showDiagnosis',    printKey: 'showDiagnosis' },
-    { label: 'Medicines',            sub: 'Prescription medicines table',         formKey: 'showMedicines',    printKey: null, locked: true },
-    { label: 'Lab Tests',            sub: 'Diagnostic tests requested',           formKey: 'showLabTests',     printKey: 'showLabTests' },
-    { label: 'Test Outcomes',        sub: 'Lab values entered after testing',     formKey: 'showTestOutcomes', printKey: 'showLabResults' },
-    { label: 'Advice & Precautions', sub: 'Instructions to patient',              formKey: 'showAdvice',       printKey: 'showAdvice' },
-    { label: 'Next Visit',           sub: 'Follow-up date',                       formKey: 'showNextVisit',    printKey: 'showNextVisit' },
-  ]
-
-  const isFormOn  = (key) => key == null ? true : rxForm[key]  !== false
-  const isPrintOn = (key) => key == null ? true : rxPrint[key] !== false
+// Eye icon (👁) is shown only when formKey is provided. Printer icon (🖨) only when
+// printKey is provided. Dark blue = enabled in that mode, faded gray = disabled.
+//
+// Used for: Clinic Header, Doctor Info, Patient Details, Sections (body), Medicine
+// Columns, Footer. Each group passes its own row list — see merged tab below.
+function SectionGroupCard({ title, subtitle, rows, rxForm, setRxForm, rxPrint, setRxPrint }) {
+  const isFormOn  = (key) => key == null ? null : rxForm[key]  !== false
+  const isPrintOn = (key) => key == null ? null : rxPrint[key] !== false
 
   const toggleForm = (key, locked) => {
     if (locked || !key) return
@@ -1260,54 +1310,63 @@ function SectionsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
   }
 
   return (
-    <Card title="Sections" subtitle="Each row: tap 👁 to show on the writing form, tap 🖨 to print on the Rx. Dark = on, faded = off.">
+    <Card title={title} subtitle={subtitle}>
       <div className="space-y-1">
-        {rows.map((row) => {
+        {rows.map((row, idx) => {
           const formOn  = isFormOn(row.formKey)
           const printOn = isPrintOn(row.printKey)
+          const hasForm  = row.formKey  != null
+          const hasPrint = row.printKey != null
           return (
-            <div key={row.label}
-                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition">
+            <div key={row.label + '_' + idx}
+                 className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50 transition">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                  {row.label}
+                  <span className="truncate">{row.label}</span>
                   {row.locked && (
-                    <span className="text-[10px] uppercase tracking-wide bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">Locked</span>
+                    <span className="text-[9px] uppercase tracking-wide bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded flex-shrink-0">Locked</span>
                   )}
                 </div>
-                <div className="text-xs text-slate-400">{row.sub}</div>
+                {row.sub && <div className="text-xs text-slate-400 truncate">{row.sub}</div>}
               </div>
-              <button
-                type="button"
-                onClick={() => toggleForm(row.formKey, row.locked)}
-                disabled={!!row.locked}
-                title={row.locked ? 'Always shown on form' : (formOn ? 'Showing on form — click to hide' : 'Hidden on form — click to show')}
-                aria-label={`Toggle ${row.label} on writing form`}
-                className={[
-                  'p-2 rounded-lg transition',
-                  row.locked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white',
-                  formOn ? 'text-primary' : 'text-slate-300',
-                ].join(' ')}>
-                <Eye className="w-5 h-5"/>
-              </button>
-              <button
-                type="button"
-                onClick={() => togglePrint(row.printKey, row.locked)}
-                disabled={!!row.locked || row.printKey == null}
-                title={
-                  row.locked          ? 'Always printed' :
-                  row.printKey == null ? 'Not configurable for print' :
-                  printOn              ? 'Printing — click to hide on print' :
-                                         'Hidden on print — click to print'
-                }
-                aria-label={`Toggle ${row.label} on printed Rx`}
-                className={[
-                  'p-2 rounded-lg transition',
-                  (row.locked || row.printKey == null) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white',
-                  printOn ? 'text-primary' : 'text-slate-300',
-                ].join(' ')}>
-                <Printer className="w-5 h-5"/>
-              </button>
+
+              {/* Eye / Form toggle — rendered only if this row applies to the form. */}
+              {hasForm ? (
+                <button
+                  type="button"
+                  onClick={() => toggleForm(row.formKey, row.locked)}
+                  disabled={!!row.locked}
+                  title={row.locked ? 'Always shown on form' : (formOn ? 'Showing on form — click to hide' : 'Hidden on form — click to show')}
+                  aria-label={`Toggle ${row.label} on writing form`}
+                  className={[
+                    'p-1.5 rounded-lg transition flex-shrink-0',
+                    row.locked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white',
+                    formOn ? 'text-primary' : 'text-slate-300',
+                  ].join(' ')}>
+                  <Eye className="w-5 h-5"/>
+                </button>
+              ) : (
+                <span className="w-8 flex-shrink-0" aria-hidden/>
+              )}
+
+              {/* Printer / Print toggle — rendered only if this row applies to print. */}
+              {hasPrint ? (
+                <button
+                  type="button"
+                  onClick={() => togglePrint(row.printKey, row.locked)}
+                  disabled={!!row.locked}
+                  title={row.locked ? 'Always printed' : (printOn ? 'Printing — click to hide on print' : 'Hidden on print — click to print')}
+                  aria-label={`Toggle ${row.label} on printed Rx`}
+                  className={[
+                    'p-1.5 rounded-lg transition flex-shrink-0',
+                    row.locked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white',
+                    printOn ? 'text-primary' : 'text-slate-300',
+                  ].join(' ')}>
+                  <Printer className="w-5 h-5"/>
+                </button>
+              ) : (
+                <span className="w-8 flex-shrink-0" aria-hidden/>
+              )}
             </div>
           )
         })}
@@ -1316,8 +1375,90 @@ function SectionsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
   )
 }
 
-function CustomFieldsCard({ rxForm, setRxForm }) {
+// ─────────────────────────────────────────────
+// Row catalogs for each group on the merged tab.
+// ─────────────────────────────────────────────
+// Defined at module scope so they're stable references — no re-creation on render.
+// Each row: { label, sub?, formKey?, printKey?, locked? }
+// Print-only rows omit formKey; the card renders an empty placeholder slot for the
+// missing icon so all rows align vertically. Locked rows show a badge and disable
+// the toggles; the underlying value is treated as always-on regardless.
+
+const CLINIC_HEADER_ROWS = [
+  { label: 'Clinic Logo',         sub: 'Upload via Branding tab', printKey: 'showLogo' },
+  { label: 'Clinic Name',         printKey: 'showClinicName' },
+  { label: 'Tagline / Motto',     printKey: 'showClinicTagline' },
+  { label: 'Address',             printKey: 'showClinicAddress' },
+  { label: 'Phone Number',        printKey: 'showClinicPhone' },
+  { label: 'Header Border Line',  printKey: 'headerBorder' },
+]
+
+const DOCTOR_INFO_ROWS = [
+  { label: 'Doctor Name',         printKey: 'showDoctorName' },
+  { label: 'Qualification',       sub: 'e.g. MBBS, MD',     printKey: 'showDoctorQual' },
+  { label: 'Specialization',      printKey: 'showDoctorSpec' },
+  { label: 'Registration Number', printKey: 'showDoctorRegNo' },
+]
+
+const PATIENT_DETAIL_ROWS = [
+  { label: 'OPD / Patient Code', sub: 'e.g. MH0001 — printed in bold', printKey: 'showOPD' },
+  { label: 'Patient Name',       printKey: 'showPatient' },
+  { label: 'Age',                printKey: 'showAge' },
+  { label: 'Gender',             printKey: 'showGender' },
+  { label: 'Mobile Number',      sub: 'Printed after dash on patient line', printKey: 'showPhone' },
+  { label: 'Email Address',      printKey: 'showEmail' },
+  { label: 'Address',            printKey: 'showAddress' },
+  { label: 'Blood Group',        printKey: 'showBloodGroup' },
+  { label: 'Allergy Warning',    printKey: 'showAllergy' },
+  { label: 'Chronic Conditions', printKey: 'showChronicConditions' },
+  { label: 'Rx Number',          printKey: 'showRxNo' },
+]
+
+// Body sections — these appear on BOTH the writing form and the printed Rx, so they
+// get both eye and printer icons. Test Outcomes is a special case where the form
+// flag (showTestOutcomes) controls flask FAB visibility while the print flag
+// (showLabResults) controls printed table — different keys, same conceptual row.
+const BODY_SECTION_ROWS = [
+  { label: 'Vitals',               sub: 'BP, Sugar, Weight, Temp, SpO2, Pulse', formKey: 'showVitals',       printKey: 'showVitals' },
+  { label: 'Chief Complaint',      sub: "Patient's main complaints",            formKey: 'showComplaint',    printKey: 'showComplaint' },
+  { label: 'Diagnosis',            sub: 'Clinical diagnosis',                   formKey: 'showDiagnosis',    printKey: 'showDiagnosis' },
+  { label: 'Medicines',            sub: 'Always shown — Rx is meaningless without medicines', formKey: 'showMedicines', printKey: 'showMedicines', locked: true },
+  { label: 'Lab Tests',            sub: 'Diagnostic tests requested',           formKey: 'showLabTests',     printKey: 'showLabTests' },
+  { label: 'Test Outcomes',        sub: 'Recorded values for ordered tests',    formKey: 'showTestOutcomes', printKey: 'showLabResults' },
+  { label: 'Advice & Precautions', sub: 'Instructions to patient',              formKey: 'showAdvice',       printKey: 'showAdvice' },
+  { label: 'Next Visit',           sub: 'Follow-up date',                       formKey: 'showNextVisit',    printKey: 'showNextVisit' },
+]
+
+const MEDICINE_COL_ROWS = [
+  { label: 'Compact Columns',     sub: 'Combine Timing • Freq • Duration into one column', printKey: 'compactPrint' },
+  { label: 'Dosage',              sub: 'e.g. 1-0-1',           printKey: 'showDosage' },
+  { label: 'When / Timing',       sub: 'After Food, Before Food etc.', printKey: 'showWhen' },
+  { label: 'Frequency',           sub: 'Daily, Alternate Days, Weekly', printKey: 'showFrequency' },
+  { label: 'Duration',            printKey: 'showDays' },
+  { label: 'Quantity',            printKey: 'showQty' },
+  { label: 'Notes',               sub: 'Instructions below medicine name', printKey: 'showNotes' },
+  { label: 'Generic Name',        sub: 'Active ingredient below brand',  printKey: 'showGeneric' },
+  { label: '℞ Symbol',            printKey: 'showRxSymbol' },
+  { label: 'Bold Medicine Names', printKey: 'medicineNameBold' },
+]
+
+const FOOTER_ROWS = [
+  { label: 'Doctor Signature Image', sub: 'Use uploaded signature image',  printKey: 'showSignatureImage' },
+  { label: 'Doctor Stamp / Seal',    sub: 'Uploaded via Branding tab',     printKey: 'showStampImage' },
+  { label: 'Footer Image',           sub: 'Banner via Branding tab',       printKey: 'showFooterImage' },
+  { label: 'Doctor Signature Line',  sub: 'Blank line for handwritten sign', printKey: 'showSignature' },
+  { label: 'Generated by SimpleRx EMR', sub: 'Footer timestamp', printKey: 'showGeneratedBy', locked: true },
+]
+
+function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
   const fields = Array.isArray(rxForm.customFields) ? rxForm.customFields : []
+
+  // Per-cf print visibility is stored in rxPrint.customFieldPrint as a {[cfId]: bool}
+  // map. Default to TRUE if a field has no entry (so newly added fields print).
+  // The legacy single `showCustomFields` master toggle is now a fallback only —
+  // if it's explicitly false, no custom fields print regardless of per-cf flags.
+  const cfPrintMap = (rxPrint && typeof rxPrint.customFieldPrint === 'object' && rxPrint.customFieldPrint) || {}
+  const isPrintOn  = (id) => cfPrintMap[id] !== false
 
   // Add a new row with a fresh id. Names start blank — doctor types it in.
   const addField = () => {
@@ -1327,6 +1468,11 @@ function CustomFieldsCard({ rxForm, setRxForm }) {
       customFields: [...(Array.isArray(f.customFields) ? f.customFields : []), { id, name: '', type: 'text' }],
       // New custom fields go to the end of the order so the doctor can immediately reorder them
       fieldOrder: [...(Array.isArray(f.fieldOrder) ? f.fieldOrder : []), id],
+    }))
+    // Default new field to "prints" so doctors don't have to opt in for every new one.
+    setRxPrint(p => ({
+      ...p,
+      customFieldPrint: { ...(p.customFieldPrint || {}), [id]: true },
     }))
     setGlobalDirty(true)
   }
@@ -1339,7 +1485,16 @@ function CustomFieldsCard({ rxForm, setRxForm }) {
     setGlobalDirty(true)
   }
 
-  // Removing also drops the field from the section order array — keeps state consistent.
+  const togglePrint = (id) => {
+    setRxPrint(p => {
+      const cur = (p.customFieldPrint && typeof p.customFieldPrint === 'object') ? p.customFieldPrint : {}
+      return { ...p, customFieldPrint: { ...cur, [id]: !(cur[id] !== false) } }
+    })
+    setGlobalDirty(true)
+  }
+
+  // Removing also drops the field from the section order array AND its print flag —
+  // keeps state consistent and avoids leaving orphan flags accumulating in JSON.
   const removeField = (id) => {
     if (!window.confirm('Remove this custom field? Any saved values for it will remain on existing prescriptions but will no longer appear on new ones.')) return
     setRxForm(f => ({
@@ -1347,11 +1502,16 @@ function CustomFieldsCard({ rxForm, setRxForm }) {
       customFields: (f.customFields || []).filter(cf => cf.id !== id),
       fieldOrder:   (f.fieldOrder   || []).filter(k  => k  !== id),
     }))
+    setRxPrint(p => {
+      const cur = { ...(p.customFieldPrint || {}) }
+      delete cur[id]
+      return { ...p, customFieldPrint: cur }
+    })
     setGlobalDirty(true)
   }
 
   return (
-    <Card title="Custom Fields" subtitle="Add extra fields to capture on every prescription. Each renders as a text input on the Rx form and prints with the Rx.">
+    <Card title="Custom Fields" subtitle="Extra fields captured on every prescription. Tap 🖨 to control whether each one prints — they always show on the writing form.">
       {fields.length === 0 ? (
         <div className="py-4 text-center">
           <p className="text-sm text-slate-500 mb-3">No custom fields yet.</p>
@@ -1361,24 +1521,38 @@ function CustomFieldsCard({ rxForm, setRxForm }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {fields.map(cf => (
-            <div key={cf.id} className="flex items-center gap-2">
-              <input
-                type="text"
-                className="form-input flex-1"
-                placeholder="Field name (e.g. Allergy Notes)"
-                value={cf.name || ''}
-                onChange={(e) => renameField(cf.id, e.target.value)}/>
-              <span className="text-[10px] text-slate-400 uppercase tracking-wide whitespace-nowrap">Text</span>
-              <button
-                type="button"
-                onClick={() => removeField(cf.id)}
-                title="Remove field"
-                className="text-slate-400 hover:text-danger hover:bg-danger/10 rounded p-1.5 transition flex-shrink-0">
-                <Trash2 className="w-4 h-4"/>
-              </button>
-            </div>
-          ))}
+          {fields.map(cf => {
+            const printOn = isPrintOn(cf.id)
+            return (
+              <div key={cf.id} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className="form-input flex-1"
+                  placeholder="Field name (e.g. Allergy Notes)"
+                  value={cf.name || ''}
+                  onChange={(e) => renameField(cf.id, e.target.value)}/>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wide whitespace-nowrap">Text</span>
+                <button
+                  type="button"
+                  onClick={() => togglePrint(cf.id)}
+                  title={printOn ? 'Printing — click to hide on print' : 'Hidden on print — click to print'}
+                  aria-label={`Toggle print for ${cf.name || 'field'}`}
+                  className={[
+                    'p-1.5 rounded transition flex-shrink-0',
+                    printOn ? 'text-primary hover:bg-primary/10' : 'text-slate-300 hover:bg-slate-100',
+                  ].join(' ')}>
+                  <Printer className="w-4 h-4"/>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeField(cf.id)}
+                  title="Remove field"
+                  className="text-slate-400 hover:text-danger hover:bg-danger/10 rounded p-1.5 transition flex-shrink-0">
+                  <Trash2 className="w-4 h-4"/>
+                </button>
+              </div>
+            )
+          })}
           <div className="pt-2">
             <Button variant="secondary" icon={<Plus className="w-4 h-4"/>} onClick={addField}>
               Add Another

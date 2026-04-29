@@ -611,11 +611,16 @@ export default function ViewPrescriptionPage() {
           )
         })()}
 
-        {/* Custom fields — only those that have a value entered AND are still
-            configured by the clinic. Hidden globally if showCustomFields is OFF.
-            Each gets its own `order:` matching its cf_* id position in fieldOrder
-            so it lands wherever the doctor placed it (could be between sections). */}
+        {/* Custom fields — only those that (a) have a value, (b) are still configured
+            by the clinic, AND (c) have their per-field 🖨 print toggle on. The legacy
+            master `showCustomFields` toggle still acts as a global kill-switch — if
+            it's explicitly false, no custom fields print regardless of per-field flags.
+            Per-field flags live in cfg.customFieldPrint = {[cfId]: bool}; default true. */}
         {show('showCustomFields') && rxCustomFields.map(cf => {
+          // Per-cf print toggle — defaults to true if not set.
+          const cfPrintMap = (cfg && typeof cfg.customFieldPrint === 'object' && cfg.customFieldPrint) || {}
+          if (cfPrintMap[cf.id] === false) return null
+
           const raw = rxCustomData[cf.id]
           // Multi-tag custom fields store arrays. Older Rxs may have a single string
           // from before the upgrade — render either gracefully.
