@@ -127,6 +127,7 @@ model Clinic {
   dosageOptions    DosageOption[]
   timingOptions    TimingOption[]
   pageDesigns      PageDesign[]
+  customFieldValues CustomFieldValue[]
   auditLogs        AuditLog[]
   medicalDocuments         MedicalDocument[]
   medicalDocumentTemplates MedicalDocumentTemplate[]
@@ -492,9 +493,9 @@ model Prescription {
   nextVisit    DateTime?
   templateUsed String?
   printLang    String   @default("en")
-  // Custom field values keyed by the customField id from the clinic's rxForm config.
-  // Example: { "cf_a1b2c3": "PCM 500", "cf_x9y8z7": "No known allergies" }
-  // Storing as Json keeps the doctor's freedom to add/rename fields without migrations.
+  // Stores clinic-defined custom field values for this Rx.
+  // Shape: { [cfId]: string[] } where cfId matches a CustomFieldValue.fieldId.
+  // Example: { "cf_abc123": ["Diabetes (mother)", "Hypertension (father)"] }
   customData   Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -660,6 +661,30 @@ model PageDesign {
   clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@map("page_designs")
+}
+
+// ─────────────────────────────────────────────
+// CUSTOM FIELD VALUES — autocomplete suggestions for clinic-defined Rx custom fields
+// ─────────────────────────────────────────────
+// One row per (clinic, fieldId, value) triple. Acts as the master/suggestion list
+// for each custom field. When a doctor types a brand-new value on an Rx and saves,
+// we upsert a row here so it becomes a suggestion for the next Rx.
+//
+// fieldId matches the cf_xxx id stored in the rx_form PageDesign config; values
+// are not deleted when a custom field is renamed or removed (orphaned rows just
+// stop being shown).
+model CustomFieldValue {
+  id        String   @id @default(uuid())
+  clinicId  String
+  fieldId   String   // cf_* id matching a custom field configured in rx_form config
+  value     String
+  createdAt DateTime @default(now())
+
+  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, fieldId, value])
+  @@index([clinicId, fieldId])
+  @@map("custom_field_values")
 }
 
 // ─────────────────────────────────────────────

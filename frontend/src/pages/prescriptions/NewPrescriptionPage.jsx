@@ -901,9 +901,15 @@ export default function NewPrescriptionPage() {
   const [allTemplates, setAllTemplates] = useState([])
   const [pageDesign,   setPageDesign]   = useState(null)
   const [pdLoaded,     setPdLoaded]     = useState(false)
-  // customData = { cf_id: stringValue } — values for clinic-defined custom fields.
-  // Loaded from the saved prescription (edit mode) or starts empty (new Rx).
+  // customData shape: { cf_id: string[] } — multi-tag values per clinic-defined custom field.
+  // Loaded from the saved prescription on edit (normalized — see edit-loader below) or
+  // starts empty for a new Rx. Old single-string values from before multi-tag are
+  // automatically wrapped to arrays on load.
   const [customData,   setCustomData]   = useState({})
+  // customFieldValues — flat list of { id, nameEn, fieldId } across all custom fields
+  // for the clinic. We slice by fieldId locally when rendering each TagInput, which
+  // means we fetch ONCE on mount instead of N times (one per custom field).
+  const [customFieldValues, setCustomFieldValues] = useState([])
 
   // Medicine IDs sorted by "recently prescribed" for this doctor — shown at top of medicine dropdown
   const recentMedIds = useMemo(() => {
@@ -1055,6 +1061,7 @@ export default function NewPrescriptionPage() {
       try { const comp = await api.get('/master/complaints');   setComplaints(comp.data.data) }  catch {}
       try { const diag = await api.get('/master/diagnoses');    setDiagnoses(diag.data.data) }   catch {}
       try { const adv   = await api.get('/master/advice');         setAdviceList(adv.data.data) }     catch {}
+      try { const cfv = await api.get('/master/custom-field-values'); setCustomFieldValues(cfv.data.data || []) } catch {}
       try { const tmpl  = await api.get('/templates');              setAllTemplates(tmpl.data.data) }  catch {}
       try { const notes = await api.get('/master/medicine-notes');  setSavedMedNotes((notes.data.data || []).map(n => n.nameEn)) } catch {}
       try {
@@ -1117,8 +1124,18 @@ export default function NewPrescriptionPage() {
       setRxAdvice(rx.advice ? rx.advice.split('\n').filter(Boolean).map((a,i)=>({ id:'adv_'+i, name:a })) : [])
       setNextVisit(rx.nextVisit ? format(new Date(rx.nextVisit),'yyyy-MM-dd') : '')
       setPrintLang(rx.printLang||'en')
-      // Custom field values — backend serves nullable JSON, normalize to {}
-      setCustomData(rx.customData && typeof rx.customData === 'object' ? rx.customData : {})
+      // Custom field values — backend stores nullable JSON. Normalize to { cf_id: string[] }.
+      // Older Rxs may have stored a single string per field (pre multi-tag); wrap those
+      // into 1-element arrays so the form's TagInput sees a consistent shape.
+      const rawCD = rx.customData && typeof rx.customData === 'object' ? rx.customData : {}
+      const normalizedCD = {}
+      for (const [k, v] of Object.entries(rawCD)) {
+        if (Array.isArray(v))      normalizedCD[k] = v.filter(x => x != null && String(x).trim() !== '')
+        else if (v == null)        normalizedCD[k] = []
+        else if (String(v).trim()) normalizedCD[k] = [String(v)]
+        else                       normalizedCD[k] = []
+      }
+      setCustomData(normalizedCD)
     }).catch(()=>navigate('/prescriptions'))
   }, [editId, isEdit])
 
@@ -1717,6 +1734,37 @@ export default function NewPrescriptionPage() {
         existingNotes.add(note.toLowerCase())
       }
     }
+    // Save any new custom field values to the per-clinic suggestion master so they
+    // appear in the dropdown for the NEXT Rx. We compare case-insensitively against
+    // the in-memory list to avoid spurious 409s; the backend also de-dupes via the
+    // unique constraint, so a duplicate POST is harmless even if our cache is stale.
+    const cfIdsSeen = new Set(customFieldsConfig.map(cf => cf.id))
+    const existingByField = new Map()
+    for (const v of customFieldValues) {
+      if (!existingByField.has(v.fieldId)) existingByField.set(v.fieldId, new Set())
+      existingByField.get(v.fieldId).add(String(v.nameEn || '').toLowerCase())
+    }
+    const newlyAdded = []
+    for (const [cfId, vals] of Object.entries(customData || {})) {
+      if (!cfIdsSeen.has(cfId) || !Array.isArray(vals)) continue
+      const seen = existingByField.get(cfId) || new Set()
+      for (const raw of vals) {
+        const text = String(raw ?? '').trim()
+        if (!text) continue
+        if (seen.has(text.toLowerCase())) continue
+        try {
+          const { data } = await api.post('/master/custom-field-values', { fieldId: cfId, value: text })
+          newlyAdded.push(data.data)
+          seen.add(text.toLowerCase())
+        } catch (e) {
+          console.warn('[autoSave customFieldValue]', cfId, text, e?.response?.status, e?.response?.data)
+        }
+      }
+    }
+    // Update in-memory list so the dropdown shows new values immediately without a refetch.
+    if (newlyAdded.length > 0) {
+      setCustomFieldValues(prev => [...prev, ...newlyAdded])
+    }
     return savedTests
   }
 
@@ -1772,11 +1820,18 @@ export default function NewPrescriptionPage() {
       if (showVitals && Object.values(vitals).some(v=>v))
         await api.post(`/patients/${patient.id}/vitals`, vitals).catch(()=>{})
       // Strip custom field values down to fields actually configured by the clinic.
-      // If a custom field has been deleted from cfg, its old value is dropped on save.
+      // If a custom field has been deleted from cfg, its old values are dropped on save.
+      // Each value is now an array of tags (multi-tag input). We filter out empty arrays
+      // and trim each individual tag — empty trim'd tags get dropped silently.
       const cfIds = new Set(customFieldsConfig.map(cf => cf.id))
-      const cleanCustomData = Object.fromEntries(
-        Object.entries(customData || {}).filter(([k, v]) => cfIds.has(k) && v != null && String(v).trim() !== '')
-      )
+      const cleanCustomData = {}
+      for (const [k, v] of Object.entries(customData || {})) {
+        if (!cfIds.has(k)) continue
+        const arr = Array.isArray(v)
+          ? v.map(x => String(x ?? '').trim()).filter(Boolean)
+          : (v != null && String(v).trim() ? [String(v).trim()] : [])
+        if (arr.length > 0) cleanCustomData[k] = arr
+      }
       const payload = {
         patientId:  patient.id,
         complaint:  complaintTags.join(' || '),
@@ -2247,26 +2302,50 @@ export default function NewPrescriptionPage() {
             allowCustom={true}/>
         </Card></div>
 
-        {/* Custom fields — clinic-defined extra fields. Each renders as a labelled
-            text input. Only shown if the clinic has at least one configured. The
-            whole block participates in section-ordering: each custom field gets
-            its own `order:` based on cf_id position in pageDesign.fieldOrder. */}
-        {customFieldsConfig.map(cf => (
-          <div key={cf.id} id={`sec-cf-${cf.id}`} className="scroll-mt-20"
-               style={{order: getSectionOrder(cf.id)}}>
-            <Card>
-              <div className="form-group mb-0">
-                <label className="form-label">{cf.name}</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={customData[cf.id] || ''}
-                  onChange={(e) => setCustomData(prev => ({ ...prev, [cf.id]: e.target.value }))}
-                  placeholder={`Enter ${cf.name.toLowerCase()}`}/>
-              </div>
-            </Card>
-          </div>
-        ))}
+        {/* Custom fields — clinic-defined extra fields rendered as multi-tag TagInputs.
+            Each TagInput's items are filtered locally from the flat customFieldValues
+            list by fieldId — fetched once on mount, sliced per render. New values typed
+            here get auto-saved to the master on Rx save (see autoSaveToMaster). */}
+        {customFieldsConfig.map(cf => {
+          const tags = Array.isArray(customData[cf.id]) ? customData[cf.id] : []
+          // Only show suggestions for THIS custom field. Done locally to avoid N requests.
+          const fieldItems = customFieldValues.filter(v => v.fieldId === cf.id)
+          return (
+            <div key={cf.id} id={`sec-cf-${cf.id}`} className="scroll-mt-20"
+                 style={{order: getSectionOrder(cf.id)}}>
+              <Card>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-slate-700">{cf.name}</h3>
+                  {tags.length > 0 && (
+                    <button type="button"
+                            onClick={() => setCustomData(prev => ({ ...prev, [cf.id]: [] }))}
+                            className="text-xs text-slate-400 hover:text-danger flex items-center gap-1">
+                      <X className="w-3 h-3"/>Clear All
+                    </button>
+                  )}
+                </div>
+                <TagInput
+                  tags={tags}
+                  onAdd={(text) => {
+                    setCustomData(prev => {
+                      const cur = Array.isArray(prev[cf.id]) ? prev[cf.id] : []
+                      if (cur.includes(text)) return prev
+                      return { ...prev, [cf.id]: [...cur, text] }
+                    })
+                    setDirty()
+                  }}
+                  onRemove={(text) => {
+                    setCustomData(prev => {
+                      const cur = Array.isArray(prev[cf.id]) ? prev[cf.id] : []
+                      return { ...prev, [cf.id]: cur.filter(t => t !== text) }
+                    })
+                  }}
+                  items={fieldItems}
+                  placeholder={`Type ${cf.name.toLowerCase()} or select, press Enter to add another...`}/>
+              </Card>
+            </div>
+          )
+        })}
 
         {/* Next Visit & Settings — kept as a single card so admin niceties
             (Custom Rx No, Print Language) live alongside the date the doctor

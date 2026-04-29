@@ -5,6 +5,7 @@ const {
   diagnosisCtrl, adviceCtrl, medicineNoteCtrl, billingItemCtrl,
   dosageCtrl, timingCtrl, seedMasterData,
 } = require('../controllers/masterdata.controller');
+const customFieldValuesCtrl = require('../controllers/customFieldValues.controller');
 
 // Reads — any authenticated user can read masters (needed for prescribing, billing, etc)
 // Writes — manageMasterData, except inline-prescribing cases noted below
@@ -62,6 +63,14 @@ router.delete('/dosage-options/:id', authenticate, requirePermission('manageMast
 router.get   ('/timing-options',     authenticate, timingCtrl.getAll);
 router.post  ('/timing-options',     authenticate, requirePermission('manageMasterData'), timingCtrl.create);
 router.delete('/timing-options/:id', authenticate, requirePermission('manageMasterData'), timingCtrl.remove);
+
+// ── Custom Field Values ───────────────────────────────────
+// Autocomplete suggestions for clinic-defined Rx custom fields. Read by anyone who
+// can see Rx forms; writes happen automatically when an Rx is saved with new values
+// (the Rx form posts here via createPrescriptions permission, same as complaints).
+router.get   ('/custom-field-values',     authenticate, customFieldValuesCtrl.getAll);
+router.post  ('/custom-field-values',     authenticate, requirePermission('createPrescriptions'), customFieldValuesCtrl.create);
+router.delete('/custom-field-values/:id', authenticate, requirePermission('manageMasterData'), customFieldValuesCtrl.remove);
 
 // ── Bulk seed ─────────────────────────────────────────────
 // Seed default master data — gated by 'loadDefaultMasterData' permission.

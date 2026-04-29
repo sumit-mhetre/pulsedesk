@@ -563,12 +563,20 @@ export default function ViewPrescriptionPage() {
             Each gets its own `order:` matching its cf_* id position in fieldOrder
             so it lands wherever the doctor placed it (could be between sections). */}
         {show('showCustomFields') && rxCustomFields.map(cf => {
-          const value = rxCustomData[cf.id]
-          if (value == null || String(value).trim() === '') return null
+          const raw = rxCustomData[cf.id]
+          // Multi-tag custom fields store arrays. Older Rxs may have a single string
+          // from before the upgrade — render either gracefully.
+          let display = ''
+          if (Array.isArray(raw)) {
+            display = raw.map(x => String(x ?? '').trim()).filter(Boolean).join(', ')
+          } else if (raw != null && String(raw).trim()) {
+            display = String(raw).trim()
+          }
+          if (!display) return null
           return (
             <p key={cf.id} className="mb-1.5 text-sm" style={{ order: rxOrderMap[cf.id] ?? 999 }}>
               <span className="font-bold text-slate-900">{cf.name}:</span>{' '}
-              <span className="text-slate-800">{value}</span>
+              <span className="text-slate-800">{display}</span>
             </p>
           )
         })}
