@@ -97,6 +97,13 @@ const DEFAULT_RX_FORM = {
   showLabTests: true, showAdvice: true, showNextVisit: true,
   vitalBP: true, vitalSugar: true, vitalWeight: true, vitalTemp: true,
   vitalSpo2: true, vitalPulse: true, vitalHeight: false, vitalBMI: false,
+  // Custom fields the doctor adds (text inputs for now; v2 may add type=radio/dropdown/etc)
+  // Each: { id: 'cf_xxxx', name: 'Field Name', type: 'text' }
+  customFields: [],
+  // Section order for the writing form AND the printed Rx (same order). Built-in section
+  // keys are: complaint, diagnosis, vitals, medicines, labTests, advice, nextVisit.
+  // Custom fields appear here as their cf_* id. Falls back to built-in default order if empty/missing.
+  fieldOrder: ['complaint', 'diagnosis', 'vitals', 'medicines', 'labTests', 'advice', 'nextVisit'],
 }
 
 const DEFAULT_RX_PRINT = {
@@ -108,6 +115,7 @@ const DEFAULT_RX_PRINT = {
   showAllergy: true, showChronicConditions: false,
   showComplaint: true, showDiagnosis: true, showMedicines: true, showLabTests: true,
   showLabResults: true, showAdvice: true, showNextVisit: true, showVitals: false,
+  showCustomFields: true,    // Print clinic-defined custom field values, gated by this
   showDosage: true, showWhen: true, showFrequency: true, showDays: true, showQty: true, showNotes: true,
   showGeneric: false,  // Print generic/composition below medicine name — OFF by default
   compactPrint: true,  // Combine Timing-Freq-Duration into one column for denser layout
@@ -513,6 +521,9 @@ export default function SettingsPage() {
             </Card>
           )}
 
+          <CustomFieldsCard rxForm={rxForm} setRxForm={setRxForm}/>
+          <SectionOrderCard rxForm={rxForm} setRxForm={setRxForm}/>
+
           <div className="flex justify-between items-center">
             <p className="text-xs text-slate-400">These control the <strong>writing form</strong>. For how prescriptions <strong>print</strong>, use the Prescription Print tab.</p>
             <Button variant="primary" loading={saving}
@@ -629,9 +640,10 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
               <Toggle checked={cfg.showComplaint} onChange={v => set('showComplaint', v)} label="Chief Complaint"/>
               <Toggle checked={cfg.showDiagnosis} onChange={v => set('showDiagnosis', v)} label="Diagnosis"/>
               <Toggle checked={cfg.showVitals}    onChange={v => set('showVitals', v)}    label="Vitals" sub="BP, Sugar, Weight etc."/>
-              <Toggle checked={cfg.showMedicines} onChange={v => set('showMedicines', v)} label="Medicines Table"/>
+              <Toggle checked={true} onChange={()=>{}} locked label="Medicines Table" sub="Always printed — Rx is meaningless without medicines"/>
               <Toggle checked={cfg.showLabTests}  onChange={v => set('showLabTests', v)}  label="Lab Tests"/>
               <Toggle checked={cfg.showLabResults} onChange={v => set('showLabResults', v)} label="Test Outcomes" sub="Recorded values for ordered tests, with date columns"/>
+              <Toggle checked={cfg.showCustomFields !== false} onChange={v => set('showCustomFields', v)} label="Custom Fields" sub="Clinic-defined custom fields added in Prescription Form"/>
               <Toggle checked={cfg.showAdvice}    onChange={v => set('showAdvice', v)}    label="Advice & Precautions"/>
               <Toggle checked={cfg.showNextVisit} onChange={v => set('showNextVisit', v)} label="Next Visit Date"/>
             </CollapsibleSection>
@@ -1180,6 +1192,167 @@ function TemplateEditor({ type, template, onClose, onSaved }) {
             {isNew ? 'Create Template' : 'Save Changes'}
           </Button>
         </div>
+      </div>
+    </Card>
+  )
+}
+
+// ── Custom Fields editor ──────────────────────────────────
+// Lets the doctor define extra text fields (e.g. "Allergy Notes", "Family History")
+// that show up on every new Rx form and on the printed prescription. Only the
+// `name` is editable for v1; type is fixed to 'text' (radio/dropdown/checkbox in v2).
+function CustomFieldsCard({ rxForm, setRxForm }) {
+  const fields = Array.isArray(rxForm.customFields) ? rxForm.customFields : []
+
+  // Add a new row with a fresh id. Names start blank — doctor types it in.
+  const addField = () => {
+    const id = 'cf_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3)
+    setRxForm(f => ({
+      ...f,
+      customFields: [...(Array.isArray(f.customFields) ? f.customFields : []), { id, name: '', type: 'text' }],
+      // New custom fields go to the end of the order so the doctor can immediately reorder them
+      fieldOrder: [...(Array.isArray(f.fieldOrder) ? f.fieldOrder : []), id],
+    }))
+    setGlobalDirty(true)
+  }
+
+  const renameField = (id, newName) => {
+    setRxForm(f => ({
+      ...f,
+      customFields: (f.customFields || []).map(cf => cf.id === id ? { ...cf, name: newName } : cf),
+    }))
+    setGlobalDirty(true)
+  }
+
+  // Removing also drops the field from the section order array — keeps state consistent.
+  const removeField = (id) => {
+    if (!window.confirm('Remove this custom field? Any saved values for it will remain on existing prescriptions but will no longer appear on new ones.')) return
+    setRxForm(f => ({
+      ...f,
+      customFields: (f.customFields || []).filter(cf => cf.id !== id),
+      fieldOrder:   (f.fieldOrder   || []).filter(k  => k  !== id),
+    }))
+    setGlobalDirty(true)
+  }
+
+  return (
+    <Card title="Custom Fields" subtitle="Add extra fields to capture on every prescription. Each renders as a text input on the Rx form and prints with the Rx.">
+      {fields.length === 0 ? (
+        <div className="py-4 text-center">
+          <p className="text-sm text-slate-500 mb-3">No custom fields yet.</p>
+          <Button variant="primary" icon={<Plus className="w-4 h-4"/>} onClick={addField}>
+            Add Custom Field
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {fields.map(cf => (
+            <div key={cf.id} className="flex items-center gap-2">
+              <input
+                type="text"
+                className="form-input flex-1"
+                placeholder="Field name (e.g. Allergy Notes)"
+                value={cf.name || ''}
+                onChange={(e) => renameField(cf.id, e.target.value)}/>
+              <span className="text-[10px] text-slate-400 uppercase tracking-wide whitespace-nowrap">Text</span>
+              <button
+                type="button"
+                onClick={() => removeField(cf.id)}
+                title="Remove field"
+                className="text-slate-400 hover:text-danger hover:bg-danger/10 rounded p-1.5 transition flex-shrink-0">
+                <Trash2 className="w-4 h-4"/>
+              </button>
+            </div>
+          ))}
+          <div className="pt-2">
+            <Button variant="secondary" icon={<Plus className="w-4 h-4"/>} onClick={addField}>
+              Add Another
+            </Button>
+          </div>
+        </div>
+      )}
+      <p className="text-xs text-slate-400 mt-3 italic">
+        Future versions will let you choose input types (radio, dropdown, checkbox, number).
+      </p>
+    </Card>
+  )
+}
+
+// ── Section Order editor ──────────────────────────────────
+// Lets the doctor reorder which Rx sections appear in what order, both on the
+// writing form and on the printed Rx. Uses up/down arrow buttons (no drag-drop).
+// Built-in sections + custom fields share one unified order list.
+function SectionOrderCard({ rxForm, setRxForm }) {
+  // Map of section key → display label. Custom fields use their `name`.
+  const BUILTIN_LABELS = {
+    complaint:  'Chief Complaint',
+    diagnosis:  'Diagnosis',
+    vitals:     'Vitals',
+    medicines:  'Medicines',
+    labTests:   'Lab Tests',
+    advice:     'Advice & Precautions',
+    nextVisit:  'Next Visit Date',
+  }
+  const BUILTIN_KEYS = Object.keys(BUILTIN_LABELS)
+
+  // Resolve the canonical order:
+  // 1. Start from rxForm.fieldOrder if it exists, otherwise default builtin order
+  // 2. Append any builtin keys missing from the saved order (e.g. after a future schema bump)
+  // 3. Append any custom field ids missing from the saved order
+  // 4. Drop any orphan ids (custom fields that have been deleted but remain in fieldOrder)
+  const customIds = (rxForm.customFields || []).map(c => c.id)
+  const validKeys = new Set([...BUILTIN_KEYS, ...customIds])
+  const savedOrder = Array.isArray(rxForm.fieldOrder) ? rxForm.fieldOrder.filter(k => validKeys.has(k)) : []
+  const missing = [...BUILTIN_KEYS, ...customIds].filter(k => !savedOrder.includes(k))
+  const order = [...savedOrder, ...missing]
+
+  const labelFor = (key) => {
+    if (BUILTIN_LABELS[key]) return BUILTIN_LABELS[key]
+    const cf = (rxForm.customFields || []).find(c => c.id === key)
+    return cf ? (cf.name || '(unnamed custom field)') : key
+  }
+
+  const isCustom = (key) => !BUILTIN_LABELS[key]
+
+  const move = (idx, delta) => {
+    const next = [...order]
+    const target = idx + delta
+    if (target < 0 || target >= next.length) return
+    ;[next[idx], next[target]] = [next[target], next[idx]]
+    setRxForm(f => ({ ...f, fieldOrder: next }))
+    setGlobalDirty(true)
+  }
+
+  return (
+    <Card title="Section Order" subtitle="Arrange sections in the order you want them on the writing form and the printed Rx. Use ↑ ↓ buttons to move. Custom fields can be moved too.">
+      <div className="space-y-1.5">
+        {order.map((key, idx) => (
+          <div key={key} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+            <span className="text-xs font-mono text-slate-400 w-6 text-right">{idx + 1}.</span>
+            <span className="flex-1 text-sm text-slate-700 truncate">
+              {labelFor(key)}
+              {isCustom(key) && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded">Custom</span>}
+            </span>
+            <button
+              type="button"
+              onClick={() => move(idx, -1)}
+              disabled={idx === 0}
+              className="text-slate-500 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed p-1 rounded hover:bg-white transition"
+              title="Move up"
+              aria-label="Move up">
+              <ChevronUp className="w-4 h-4"/>
+            </button>
+            <button
+              type="button"
+              onClick={() => move(idx, 1)}
+              disabled={idx === order.length - 1}
+              className="text-slate-500 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed p-1 rounded hover:bg-white transition"
+              title="Move down"
+              aria-label="Move down">
+              <ChevronDown className="w-4 h-4"/>
+            </button>
+          </div>
+        ))}
       </div>
     </Card>
   )

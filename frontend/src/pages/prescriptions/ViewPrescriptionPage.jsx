@@ -75,15 +75,21 @@ export default function ViewPrescriptionPage() {
   const [loading, setLoading] = useState(true)
   const [lang, setLang]   = useState('en')
   const [cfg, setCfg]     = useState(null)
+  // Rx-form config holds custom field definitions (id → name) and the doctor's
+  // preferred section order. Loaded alongside the print-only cfg so we can both
+  // render custom field labels and apply the same section ordering on the print.
+  const [rxFormCfg, setRxFormCfg] = useState(null)
 
   useEffect(() => {
     Promise.all([
       api.get(`/prescriptions/${id}`),
       api.get('/page-design?type=prescription'),
-    ]).then(([rxRes, cfgRes]) => {
+      api.get('/page-design?type=rx_form').catch(() => ({ data: { data: null } })),
+    ]).then(([rxRes, cfgRes, rxFormRes]) => {
       setRx(rxRes.data.data)
       setLang(rxRes.data.data.printLang || 'en')
       if (cfgRes.data.data?.config) setCfg(cfgRes.data.data.config)
+      if (rxFormRes.data?.data?.config) setRxFormCfg(rxFormRes.data.data.config)
     }).catch(() => navigate('/prescriptions'))
     .finally(() => setLoading(false))
   }, [id])
@@ -105,6 +111,25 @@ export default function ViewPrescriptionPage() {
   const show = (key) => cfg ? (cfg[key] !== false) : true
   // Compact print: combine Timing - Freq. - Duration into one column. Default true.
   const compactPrint = cfg ? (cfg.compactPrint !== false) : true
+
+  // Build section order map from rx_form config. Falls back to default order.
+  // Used as inline `order:` CSS on each body section so the printed Rx matches
+  // the order the doctor configured for the writing form.
+  const __DEFAULT_ORDER = ['complaint', 'diagnosis', 'vitals', 'medicines', 'labTests', 'advice', 'nextVisit']
+  const rxOrderMap = (() => {
+    const order = (rxFormCfg && Array.isArray(rxFormCfg.fieldOrder) && rxFormCfg.fieldOrder.length > 0)
+      ? rxFormCfg.fieldOrder
+      : __DEFAULT_ORDER
+    const map = {}
+    order.forEach((k, i) => { map[k] = i + 1 })
+    return map
+  })()
+  // Custom fields (configured by clinic) — array of { id, name, type }
+  const rxCustomFields = (rxFormCfg && Array.isArray(rxFormCfg.customFields))
+    ? rxFormCfg.customFields.filter(cf => cf && cf.id && (cf.name || '').trim())
+    : []
+  // Per-row values entered on this prescription
+  const rxCustomData = (rx && rx.customData && typeof rx.customData === 'object') ? rx.customData : {}
 
   if (loading) return <div className="flex justify-center py-20"><div className="spinner text-primary w-8 h-8"/></div>
   if (!rx) return null
@@ -297,19 +322,23 @@ export default function ViewPrescriptionPage() {
           <p className="mb-3 text-sm"><span className="font-bold">⚠ Allergy:</span> {patient.allergies.join(', ')}</p>
         )}
 
+        {/* Body sections — wrapped in a flex-col so the doctor's saved fieldOrder
+            (from the rx_form config) drives the printed sequence. */}
+        <div className="flex flex-col">
         {/* Complaint — inline */}
         {show('showComplaint') && complaints.length > 0 && (
-          <p className="mb-1.5 text-sm"><span className="font-bold text-slate-900">Chief Complaint:</span> <span className="text-slate-800">{complaints.join(', ')}</span></p>
+          <p className="mb-1.5 text-sm" style={{ order: rxOrderMap.complaint }}><span className="font-bold text-slate-900">Chief Complaint:</span> <span className="text-slate-800">{complaints.join(', ')}</span></p>
         )}
 
         {/* Diagnosis — inline */}
         {show('showDiagnosis') && diagnoses.length > 0 && (
-          <p className="mb-3 text-sm"><span className="font-bold text-slate-900">Diagnosis:</span> <span className="text-slate-800">{diagnoses.join(', ')}</span></p>
+          <p className="mb-1.5 text-sm" style={{ order: rxOrderMap.diagnosis }}><span className="font-bold text-slate-900">Diagnosis:</span> <span className="text-slate-800">{diagnoses.join(', ')}</span></p>
         )}
 
         {/* Medicines */}
-        {show('showMedicines') && rx.medicines?.length > 0 && (
-          <div className="mb-4">
+        {/* Medicines section — always rendered if any medicines exist (locked-on in PageDesigner). */}
+        {rx.medicines?.length > 0 && (
+          <div className="mb-4" style={{ order: rxOrderMap.medicines }}>
             <div className="flex items-center gap-2 mb-1.5">
               {show('showRxSymbol') && <span className="text-xl font-bold italic" style={{color:cfg?.primaryColor||'#000'}}>℞</span>}
               <span className="font-bold text-slate-900 uppercase text-xs tracking-wider">Medicines</span>
@@ -377,7 +406,7 @@ export default function ViewPrescriptionPage() {
         )}
 
         {show('showLabTests') && rx.labTests?.length > 0 && (
-          <p className="mb-1.5 text-sm"><span className="font-bold text-slate-900">Lab Tests:</span> <span className="text-slate-800">{rx.labTests.map(lt => lt.labTestName).join(', ')}</span></p>
+          <p className="mb-1.5 text-sm" style={{ order: rxOrderMap.labTests }}><span className="font-bold text-slate-900">Lab Tests:</span> <span className="text-slate-800">{rx.labTests.map(lt => lt.labTestName).join(', ')}</span></p>
         )}
 
         {/* Test Outcomes — recorded lab values rendered as a table with date columns.
@@ -438,7 +467,7 @@ export default function ViewPrescriptionPage() {
           }
 
           return (
-            <div className="mb-3 text-sm">
+            <div className="mb-3 text-sm" style={{ order: rxOrderMap.labTests }}>
               <p className="font-bold text-slate-900 mb-1.5">{t.labTests === 'LAB TESTS' ? 'TEST OUTCOMES' : 'Test Outcomes'}</p>
               <table className="w-full border-collapse text-xs" style={{ pageBreakInside: 'auto' }}>
                 <thead>
@@ -513,7 +542,7 @@ export default function ViewPrescriptionPage() {
         })()}
 
         {show('showAdvice') && adviceList.length > 0 && (
-          <div className="mb-3 text-sm">
+          <div className="mb-3 text-sm" style={{ order: rxOrderMap.advice }}>
             <span className="font-bold text-slate-900">Advice:</span>{' '}
             {adviceList.length === 1 ? (
               <span className="text-slate-800">{adviceList[0]}</span>
@@ -526,8 +555,25 @@ export default function ViewPrescriptionPage() {
         )}
 
         {show('showNextVisit') && rx.nextVisit && (
-          <p className="mb-3 text-sm"><span className="font-bold text-slate-900">Next Visit:</span> <span className="text-slate-800">{format(new Date(rx.nextVisit),'dd MMMM yyyy')}</span></p>
+          <p className="mb-3 text-sm" style={{ order: rxOrderMap.nextVisit }}><span className="font-bold text-slate-900">Next Visit:</span> <span className="text-slate-800">{format(new Date(rx.nextVisit),'dd MMMM yyyy')}</span></p>
         )}
+
+        {/* Custom fields — only those that have a value entered AND are still
+            configured by the clinic. Hidden globally if showCustomFields is OFF.
+            Each gets its own `order:` matching its cf_* id position in fieldOrder
+            so it lands wherever the doctor placed it (could be between sections). */}
+        {show('showCustomFields') && rxCustomFields.map(cf => {
+          const value = rxCustomData[cf.id]
+          if (value == null || String(value).trim() === '') return null
+          return (
+            <p key={cf.id} className="mb-1.5 text-sm" style={{ order: rxOrderMap[cf.id] ?? 999 }}>
+              <span className="font-bold text-slate-900">{cf.name}:</span>{' '}
+              <span className="text-slate-800">{value}</span>
+            </p>
+          )
+        })}
+
+        </div>{/* end flex-col body sections */}
 
         {/* Spacer — paddingBottom before footer area */}
         <div style={{ height: `${(cfg?.paddingBottom ?? 8) * 3.78}px` }} aria-hidden/>

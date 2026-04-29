@@ -103,6 +103,7 @@ async function createPrescription(req, res) {
       medicines: rxMeds = [],
       labTests:  rxTests = [],
       customRxNo,
+      customData,   // { fieldId: stringValue, ... } — custom fields added by the clinic
     } = req.body;
 
     const doctorId = req.user.id;
@@ -131,6 +132,7 @@ async function createPrescription(req, res) {
           nextVisit: nextVisit ? new Date(nextVisit) : null,
           templateUsed,
           printLang: printLang || 'en',
+          customData: customData && typeof customData === 'object' ? customData : null,
         },
       });
 
@@ -271,7 +273,7 @@ async function updatePrescription(req, res) {
     });
     if (!existing) return errorResponse(res, 'Prescription not found', 404);
 
-    const { complaint, diagnosis, advice, nextVisit, printLang, medicines: rxMeds, labTests: rxTests } = req.body;
+    const { complaint, diagnosis, advice, nextVisit, printLang, medicines: rxMeds, labTests: rxTests, customData } = req.body;
 
     const updated = await prisma.$transaction(async (tx) => {
       await tx.prescription.update({
@@ -282,6 +284,7 @@ async function updatePrescription(req, res) {
           ...(advice     !== undefined && { advice }),
           ...(nextVisit  !== undefined && { nextVisit: nextVisit ? new Date(nextVisit) : null }),
           ...(printLang  !== undefined && { printLang }),
+          ...(customData !== undefined && { customData: customData && typeof customData === 'object' ? customData : null }),
         },
       });
 

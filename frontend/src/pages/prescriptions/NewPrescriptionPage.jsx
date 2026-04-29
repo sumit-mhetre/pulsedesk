@@ -901,6 +901,9 @@ export default function NewPrescriptionPage() {
   const [allTemplates, setAllTemplates] = useState([])
   const [pageDesign,   setPageDesign]   = useState(null)
   const [pdLoaded,     setPdLoaded]     = useState(false)
+  // customData = { cf_id: stringValue } — values for clinic-defined custom fields.
+  // Loaded from the saved prescription (edit mode) or starts empty (new Rx).
+  const [customData,   setCustomData]   = useState({})
 
   // Medicine IDs sorted by "recently prescribed" for this doctor — shown at top of medicine dropdown
   const recentMedIds = useMemo(() => {
@@ -914,6 +917,28 @@ export default function NewPrescriptionPage() {
   // Before config loads: show all. After load: hide if explicitly set to false
   const showSection = (key) => !pdLoaded ? true : (pageDesign === null ? true : pageDesign[key] !== false)
 
+  // Build a key → orderIndex map from pageDesign.fieldOrder. Used as inline `order:`
+  // CSS on each section wrapper so the doctor's preferred section order applies to
+  // the writing form. Built-in section keys: complaint/diagnosis/vitals/medicines/
+  // labTests/advice/nextVisit. Custom fields use their cf_* id.
+  // Returns a stable fallback order if config hasn't loaded or the key is missing.
+  const __DEFAULT_FIELD_ORDER = ['complaint', 'diagnosis', 'vitals', 'medicines', 'labTests', 'advice', 'nextVisit']
+  const sectionOrderMap = useMemo(() => {
+    const order = (pageDesign && Array.isArray(pageDesign.fieldOrder) && pageDesign.fieldOrder.length > 0)
+      ? pageDesign.fieldOrder
+      : __DEFAULT_FIELD_ORDER
+    const map = {}
+    order.forEach((key, idx) => { map[key] = idx + 1 })   // 1-based so unmapped (default 0) goes first
+    return map
+  }, [pageDesign])
+  const getSectionOrder = (key) => sectionOrderMap[key] ?? 999   // unmapped sections (e.g. patient) default to start
+
+  // Custom fields the clinic has defined (loaded with the rx_form config).
+  // Always treat as an array even if config is null/missing the key.
+  const customFieldsConfig = (pageDesign && Array.isArray(pageDesign.customFields))
+    ? pageDesign.customFields.filter(cf => cf && cf.id && (cf.name || '').trim())
+    : []
+
   // ── Autosave (drafts) ─────────────────────────────────────────
   // Enabled ONLY for NEW prescriptions (not while editing existing) and after a patient is picked.
   const [resumeDraft, setResumeDraft]       = useState(null)   // draft row when found
@@ -926,7 +951,8 @@ export default function NewPrescriptionPage() {
     vitals,
     medicines: rxMeds,
     labTests:  rxTests,
-  }), [complaintTags, diagnosisTags, rxAdvice, nextVisit, printLang, customRxNo, vitals, rxMeds, rxTests])
+    customData,
+  }), [complaintTags, diagnosisTags, rxAdvice, nextVisit, printLang, customRxNo, vitals, rxMeds, rxTests, customData])
 
   const autosave = useAutosave({
     enabled:      !isEdit && !!patient?.id,
@@ -960,6 +986,7 @@ export default function NewPrescriptionPage() {
     if (s.vitals && typeof s.vitals === 'object') setVitals(v => ({ ...v, ...s.vitals }))
     if (Array.isArray(s.medicines) && s.medicines.length) setRxMeds(s.medicines)
     if (Array.isArray(s.labTests)) setRxTests(s.labTests)
+    if (s.customData && typeof s.customData === 'object') setCustomData(s.customData)
     setResumeDraft(null)
     toast.success('Draft restored')
   }
@@ -1090,6 +1117,8 @@ export default function NewPrescriptionPage() {
       setRxAdvice(rx.advice ? rx.advice.split('\n').filter(Boolean).map((a,i)=>({ id:'adv_'+i, name:a })) : [])
       setNextVisit(rx.nextVisit ? format(new Date(rx.nextVisit),'yyyy-MM-dd') : '')
       setPrintLang(rx.printLang||'en')
+      // Custom field values — backend serves nullable JSON, normalize to {}
+      setCustomData(rx.customData && typeof rx.customData === 'object' ? rx.customData : {})
     }).catch(()=>navigate('/prescriptions'))
   }, [editId, isEdit])
 
@@ -1742,6 +1771,12 @@ export default function NewPrescriptionPage() {
       const savedTests = await autoSaveToMaster()
       if (showVitals && Object.values(vitals).some(v=>v))
         await api.post(`/patients/${patient.id}/vitals`, vitals).catch(()=>{})
+      // Strip custom field values down to fields actually configured by the clinic.
+      // If a custom field has been deleted from cfg, its old value is dropped on save.
+      const cfIds = new Set(customFieldsConfig.map(cf => cf.id))
+      const cleanCustomData = Object.fromEntries(
+        Object.entries(customData || {}).filter(([k, v]) => cfIds.has(k) && v != null && String(v).trim() !== '')
+      )
       const payload = {
         patientId:  patient.id,
         complaint:  complaintTags.join(' || '),
@@ -1750,6 +1785,7 @@ export default function NewPrescriptionPage() {
         nextVisit:  nextVisit||null, printLang, customRxNo: customRxNo||null,
         medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({...m, days: normalizeDays(m.days)})),
         labTests:   savedTests.filter(t=>t.id&&!t.isNew).map(t=>({labTestId:t.id,labTestName:t.name})),
+        customData: Object.keys(cleanCustomData).length > 0 ? cleanCustomData : null,
       }
       let savedId = editId
       if (isEdit) {
@@ -1855,7 +1891,10 @@ export default function NewPrescriptionPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      {/* Section list — flex-col + per-section `order` lets the doctor's preferred
+          order (saved in pageDesign.fieldOrder) drive the layout. Patient block stays
+          first (no order set, defaults to 0). */}
+      <div className="flex flex-col gap-4">
         {/* Patient */}
         <div id="sec-patient" className="scroll-mt-20"><Card>
           <h3 className="font-bold text-slate-700 mb-3">Patient</h3>
@@ -1902,7 +1941,7 @@ export default function NewPrescriptionPage() {
         </Card></div>
 
         {/* Vitals */}
-        <div id="sec-vitals" className="scroll-mt-20" style={{display: showSection('showVitals') ? '' : 'none'}}
+        <div id="sec-vitals" className="scroll-mt-20" style={{display: showSection('showVitals') ? '' : 'none', order: getSectionOrder('vitals')}}
              onBlur={handleSectionBlur('sec-vitals', Object.values(vitals).some(v => v && String(v).trim() !== ''))}><Card>
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">Vitals <Badge variant="gray">Optional</Badge></h3>
@@ -1954,7 +1993,7 @@ export default function NewPrescriptionPage() {
         </Card></div>
 
         {/* Complaint */}
-        <div id="sec-complaint" className="scroll-mt-20" style={{display: showSection('showComplaint') ? '' : 'none'}}
+        <div id="sec-complaint" className="scroll-mt-20" style={{display: showSection('showComplaint') ? '' : 'none', order: getSectionOrder('complaint')}}
              onBlur={handleSectionBlur('sec-complaint', complaintTags.length > 0)}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Chief Complaint</h3>
@@ -1972,7 +2011,7 @@ export default function NewPrescriptionPage() {
         </Card></div>
 
         {/* Diagnosis */}
-        <div id="sec-diagnosis" className="scroll-mt-20" style={{display: showSection('showDiagnosis') ? '' : 'none'}}
+        <div id="sec-diagnosis" className="scroll-mt-20" style={{display: showSection('showDiagnosis') ? '' : 'none', order: getSectionOrder('diagnosis')}}
              onBlur={handleSectionBlur('sec-diagnosis', diagnosisTags.length > 0)}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Diagnosis</h3>
@@ -1990,7 +2029,7 @@ export default function NewPrescriptionPage() {
         </Card></div>
 
         {/* Medicines */}
-        <div id="sec-medicines" className="scroll-mt-20"
+        <div id="sec-medicines" className="scroll-mt-20" style={{order: getSectionOrder('medicines')}}
              onFocusCapture={handleMedicinesFirstFocus}><Card>
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">
@@ -2169,7 +2208,7 @@ export default function NewPrescriptionPage() {
         </Card></div>
 
         {/* Lab Tests */}
-        <div id="sec-labtests" className="scroll-mt-20" style={{display: showSection('showLabTests') ? '' : 'none'}}
+        <div id="sec-labtests" className="scroll-mt-20" style={{display: showSection('showLabTests') ? '' : 'none', order: getSectionOrder('labTests')}}
              onBlur={handleSectionBlur('sec-labtests', rxTests.length > 0)}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Lab Tests</h3>
@@ -2189,7 +2228,7 @@ export default function NewPrescriptionPage() {
 
 
         {/* Advice */}
-        <div id="sec-advice" className="scroll-mt-20" style={{display: showSection('showAdvice') ? '' : 'none'}}><Card>
+        <div id="sec-advice" className="scroll-mt-20" style={{display: showSection('showAdvice') ? '' : 'none', order: getSectionOrder('advice')}}><Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700">Advice & Precautions</h3>
             <div className="flex gap-2">
@@ -2206,27 +2245,53 @@ export default function NewPrescriptionPage() {
             allowCustom={true}/>
         </Card></div>
 
-        {/* Settings */}
-        <Card>
-          <h3 className="font-bold text-slate-700 mb-3">Next Visit & Settings</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="form-group">
-              <label className="form-label">Next Visit Date</label>
-              <input type="date" className="form-input" value={nextVisit} onChange={e=>setNextVisit(e.target.value)}/>
-              {nextVisit && <p className="text-xs text-success mt-1">✓ Auto-set from medicine duration</p>}
-            </div>
-            <div className="form-group">
-              <label className="form-label">Custom Rx No.</label>
-              <input className="form-input font-mono" placeholder="Auto-generated if empty" value={customRxNo} onChange={e=>setCustomRxNo(e.target.value)}/>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Print Language</label>
-              <select className="form-select" value={printLang} onChange={e=>setPrintLang(e.target.value)}>
-                <option value="en">English</option><option value="hi">Hindi</option><option value="mr">Marathi</option>
-              </select>
-            </div>
+        {/* Custom fields — clinic-defined extra fields. Each renders as a labelled
+            text input. Only shown if the clinic has at least one configured. The
+            whole block participates in section-ordering: each custom field gets
+            its own `order:` based on cf_id position in pageDesign.fieldOrder. */}
+        {customFieldsConfig.map(cf => (
+          <div key={cf.id} id={`sec-cf-${cf.id}`} className="scroll-mt-20"
+               style={{order: getSectionOrder(cf.id)}}>
+            <Card>
+              <div className="form-group mb-0">
+                <label className="form-label">{cf.name}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={customData[cf.id] || ''}
+                  onChange={(e) => setCustomData(prev => ({ ...prev, [cf.id]: e.target.value }))}
+                  placeholder={`Enter ${cf.name.toLowerCase()}`}/>
+              </div>
+            </Card>
           </div>
-        </Card>
+        ))}
+
+        {/* Next Visit & Settings — kept as a single card so admin niceties
+            (Custom Rx No, Print Language) live alongside the date the doctor
+            actually cares about. Reorderable as the `nextVisit` section. */}
+        <div id="sec-nextvisit" className="scroll-mt-20"
+             style={{display: showSection('showNextVisit') ? '' : 'none', order: getSectionOrder('nextVisit')}}>
+          <Card>
+            <h3 className="font-bold text-slate-700 mb-3">Next Visit & Settings</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="form-group">
+                <label className="form-label">Next Visit Date</label>
+                <input type="date" className="form-input" value={nextVisit} onChange={e=>setNextVisit(e.target.value)}/>
+                {nextVisit && <p className="text-xs text-success mt-1">✓ Auto-set from medicine duration</p>}
+              </div>
+              <div className="form-group">
+                <label className="form-label">Custom Rx No.</label>
+                <input className="form-input font-mono" placeholder="Auto-generated if empty" value={customRxNo} onChange={e=>setCustomRxNo(e.target.value)}/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Print Language</label>
+                <select className="form-select" value={printLang} onChange={e=>setPrintLang(e.target.value)}>
+                  <option value="en">English</option><option value="hi">Hindi</option><option value="mr">Marathi</option>
+                </select>
+              </div>
+            </div>
+          </Card>
+        </div>
 
         <div ref={bottomBarRef} className="flex flex-col sm:flex-row justify-between gap-3 pb-12">
           <Button variant="outline" icon={<BookOpen className="w-4 h-4"/>} onClick={handleSaveAsTemplate}>
@@ -2276,11 +2341,11 @@ export default function NewPrescriptionPage() {
             disabled={saving}
             title={isEdit ? 'Update' : 'Save'}
             aria-label={isEdit ? 'Update' : 'Save'}
-            className="w-12 h-12 rounded-full bg-white border-2 border-primary text-primary shadow-lg hover:shadow-xl hover:bg-blue-50 active:scale-95 transition disabled:opacity-60 disabled:cursor-wait flex items-center justify-center animate-in fade-in"
+            className="w-14 h-14 rounded-full bg-primary text-white shadow-xl hover:bg-primary/90 hover:shadow-2xl active:scale-95 transition disabled:opacity-60 disabled:cursor-wait flex items-center justify-center animate-in fade-in"
           >
             {saving
-              ? <span className="spinner w-4 h-4 border-primary"/>
-              : <Save className="w-5 h-5"/>}
+              ? <span className="spinner w-5 h-5 border-white"/>
+              : <Save className="w-6 h-6"/>}
           </button>
           <button
             type="button"

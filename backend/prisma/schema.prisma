@@ -492,6 +492,10 @@ model Prescription {
   nextVisit    DateTime?
   templateUsed String?
   printLang    String   @default("en")
+  // Custom field values keyed by the customField id from the clinic's rxForm config.
+  // Example: { "cf_a1b2c3": "PCM 500", "cf_x9y8z7": "No known allergies" }
+  // Storing as Json keeps the doctor's freedom to add/rename fields without migrations.
+  customData   Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
