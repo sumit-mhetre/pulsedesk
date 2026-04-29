@@ -222,6 +222,54 @@ const __PSA_FIELDS = [
   { key:'freePSA',  label:'Free PSA',  unit:'ng/mL', normalLow:null, normalHigh:null },
   { key:'fpsaRatio', label:'Free/Total PSA Ratio', unit:'%', normalLow:25, normalHigh:null },
 ];
+// ── New multi-field constants for the expanded categories below ─────────────
+// Reference ranges below match what most Indian labs (SRL, Metropolis, Thyrocare) report.
+// `null` low/high means "no fixed cutoff" — typical for IgG/IgM titres reported as index/ratio.
+const __TORCH_IGG_FIELDS = [
+  { key:'toxoIgG',    label:'Toxoplasma IgG',  unit:'IU/mL', normalLow:null, normalHigh:null },
+  { key:'rubellaIgG', label:'Rubella IgG',     unit:'IU/mL', normalLow:null, normalHigh:null },
+  { key:'cmvIgG',     label:'CMV IgG',         unit:'AU/mL', normalLow:null, normalHigh:null },
+  { key:'hsv1IgG',    label:'HSV-1 IgG',       unit:'index', normalLow:null, normalHigh:null },
+  { key:'hsv2IgG',    label:'HSV-2 IgG',       unit:'index', normalLow:null, normalHigh:null },
+];
+const __TORCH_IGM_FIELDS = [
+  { key:'toxoIgM',    label:'Toxoplasma IgM',  unit:'index', normalLow:null, normalHigh:null },
+  { key:'rubellaIgM', label:'Rubella IgM',     unit:'index', normalLow:null, normalHigh:null },
+  { key:'cmvIgM',     label:'CMV IgM',         unit:'index', normalLow:null, normalHigh:null },
+  { key:'hsv1IgM',    label:'HSV-1 IgM',       unit:'index', normalLow:null, normalHigh:null },
+  { key:'hsv2IgM',    label:'HSV-2 IgM',       unit:'index', normalLow:null, normalHigh:null },
+];
+const __DOUBLE_MARKER_FIELDS = [
+  { key:'pappa', label:'PAPP-A',         unit:'MoM',  normalLow:null, normalHigh:null },
+  { key:'fbhcg', label:'Free β-hCG',     unit:'MoM',  normalLow:null, normalHigh:null },
+  { key:'nt',    label:'NT measurement', unit:'mm',   normalLow:null, normalHigh:null },
+  { key:'risk',  label:'Down risk',      unit:'1 in', normalLow:null, normalHigh:null },
+];
+const __TRIPLE_MARKER_FIELDS = [
+  { key:'afp',  label:'AFP',          unit:'MoM',  normalLow:null, normalHigh:null },
+  { key:'hcg',  label:'Total β-hCG',  unit:'MoM',  normalLow:null, normalHigh:null },
+  { key:'ue3',  label:'uE3',          unit:'MoM',  normalLow:null, normalHigh:null },
+  { key:'risk', label:'Down risk',    unit:'1 in', normalLow:null, normalHigh:null },
+];
+const __QUAD_MARKER_FIELDS = [
+  { key:'afp',     label:'AFP',          unit:'MoM',  normalLow:null, normalHigh:null },
+  { key:'hcg',     label:'Total β-hCG',  unit:'MoM',  normalLow:null, normalHigh:null },
+  { key:'ue3',     label:'uE3',          unit:'MoM',  normalLow:null, normalHigh:null },
+  { key:'inhibin', label:'Inhibin A',    unit:'MoM',  normalLow:null, normalHigh:null },
+  { key:'risk',    label:'Down risk',    unit:'1 in', normalLow:null, normalHigh:null },
+];
+const __IMMUNOGLOBULIN_FIELDS = [
+  { key:'iga', label:'IgA', unit:'mg/dL', normalLow:70,  normalHigh:400 },
+  { key:'igg', label:'IgG', unit:'mg/dL', normalLow:700, normalHigh:1600 },
+  { key:'igm', label:'IgM', unit:'mg/dL', normalLow:40,  normalHigh:230 },
+];
+const __CSF_FIELDS = [
+  { key:'wbc',      label:'WBC count', unit:'/µL',   normalLow:0,    normalHigh:5 },
+  { key:'rbc',      label:'RBC count', unit:'/µL',   normalLow:0,    normalHigh:0 },
+  { key:'protein',  label:'Protein',   unit:'mg/dL', normalLow:15,   normalHigh:45 },
+  { key:'glucose',  label:'Glucose',   unit:'mg/dL', normalLow:40,   normalHigh:70 },
+  { key:'chloride', label:'Chloride',  unit:'mEq/L', normalLow:118,  normalHigh:132 },
+];
 
 export const labTests = [
   // ── HAEMATOLOGY ────────────────────────────────────────────────
@@ -264,6 +312,13 @@ export const labTests = [
   { name:"CRP (C-Reactive Protein)",             category:"Bio Chemistry", expectedFields: [{ key:'crp', label:'CRP', unit:'mg/L', normalLow:0, normalHigh:6 }] },
   { name:"hs-CRP (high-sensitivity)",            category:"Bio Chemistry", expectedFields: [{ key:'hsCrp', label:'hs-CRP', unit:'mg/L', normalLow:0, normalHigh:3 }] },
   { name:"Procalcitonin",                        category:"Bio Chemistry", expectedFields: [{ key:'pct', label:'Procalcitonin', unit:'ng/mL', normalLow:0, normalHigh:0.1 }] },
+  { name:"LDH (Lactate Dehydrogenase)",          category:"Bio Chemistry", expectedFields: [{ key:'ldh', label:'LDH', unit:'U/L', normalLow:140, normalHigh:280 }] },
+  { name:"CPK / CK Total",                       category:"Bio Chemistry", expectedFields: [{ key:'cpk', label:'CPK Total', unit:'U/L', normalLow:30, normalHigh:200 }] },
+  { name:"Serum Amylase",                        category:"Bio Chemistry", expectedFields: [{ key:'amylase', label:'Amylase', unit:'U/L', normalLow:30, normalHigh:110 }] },
+  { name:"Serum Lipase",                         category:"Bio Chemistry", expectedFields: [{ key:'lipase', label:'Lipase', unit:'U/L', normalLow:0, normalHigh:160 }] },
+  { name:"Total Protein",                        category:"Bio Chemistry", expectedFields: [{ key:'totalProtein', label:'Total Protein', unit:'g/dL', normalLow:6.0, normalHigh:8.3 }] },
+  { name:"Serum Albumin",                        category:"Bio Chemistry", expectedFields: [{ key:'albumin', label:'Albumin', unit:'g/dL', normalLow:3.5, normalHigh:5.0 }] },
+  { name:"Homocysteine",                         category:"Bio Chemistry", expectedFields: [{ key:'hcy', label:'Homocysteine', unit:'µmol/L', normalLow:5, normalHigh:15 }] },
 
   // ── THYROID / ENDOCRINE ─────────────────────────────────────────
   { name:"Thyroid Function Test (TFT)",          category:"Endocrine", expectedFields: __TFT_FIELDS },
@@ -274,6 +329,18 @@ export const labTests = [
     ] },
   { name:"Anti-TPO Antibody",                    category:"Endocrine", expectedFields: [{ key:'antiTpo', label:'Anti-TPO', unit:'IU/mL', normalLow:0, normalHigh:34 }] },
   { name:"Cortisol (Serum)",                     category:"Endocrine", expectedFields: [{ key:'cortisol', label:'Cortisol', unit:'µg/dL', normalLow:6, normalHigh:23 }] },
+  { name:"Parathyroid Hormone (PTH)",            category:"Endocrine", expectedFields: [{ key:'pth', label:'PTH', unit:'pg/mL', normalLow:15, normalHigh:65 }] },
+  { name:"Growth Hormone (GH)",                  category:"Endocrine", expectedFields: [{ key:'gh', label:'GH', unit:'ng/mL', normalLow:0, normalHigh:5 }] },
+  { name:"IGF-1 (Somatomedin C)",                category:"Endocrine", expectedFields: [{ key:'igf1', label:'IGF-1', unit:'ng/mL', normalLow:null, normalHigh:null }] },
+  { name:"ACTH (Adrenocorticotropic Hormone)",   category:"Endocrine", expectedFields: [{ key:'acth', label:'ACTH', unit:'pg/mL', normalLow:7, normalHigh:63 }] },
+  { name:"Anti-Müllerian Hormone (AMH)",         category:"Endocrine", expectedFields: [{ key:'amh', label:'AMH', unit:'ng/mL', normalLow:null, normalHigh:null }] },
+  { name:"Total Testosterone",                   category:"Endocrine", expectedFields: [{ key:'totalT', label:'Total Testosterone', unit:'ng/dL', normalLow:null, normalHigh:null }] },
+  { name:"Free Testosterone",                    category:"Endocrine", expectedFields: [{ key:'freeT', label:'Free Testosterone', unit:'pg/mL', normalLow:null, normalHigh:null }] },
+  { name:"Estradiol (E2)",                       category:"Endocrine", expectedFields: [{ key:'e2', label:'Estradiol', unit:'pg/mL', normalLow:null, normalHigh:null }] },
+  { name:"Serum Progesterone",                   category:"Endocrine", expectedFields: [{ key:'progesterone', label:'Progesterone', unit:'ng/mL', normalLow:null, normalHigh:null }] },
+  { name:"17-OH Progesterone",                   category:"Endocrine", expectedFields: [{ key:'oh17p', label:'17-OH Progesterone', unit:'ng/mL', normalLow:null, normalHigh:null }] },
+  { name:"DHEA-S",                               category:"Endocrine", expectedFields: [{ key:'dheas', label:'DHEA-S', unit:'µg/dL', normalLow:null, normalHigh:null }] },
+  { name:"Prolactin",                            category:"Endocrine", expectedFields: [{ key:'prolactin', label:'Prolactin', unit:'ng/mL', normalLow:null, normalHigh:null }] },
   { name:"PCOS / Hirsutism Profile",             category:"Endocrine", expectedFields: __PCOS_FIELDS },
   { name:"Female Infertility Profile",           category:"Endocrine", expectedFields: __INFERTILITY_F_FIELDS },
   { name:"Male Hormone Panel",                   category:"Endocrine", expectedFields: __HORMONE_PANEL_FIELDS },
@@ -299,6 +366,9 @@ export const labTests = [
   { name:"Malaria Antigen Test",                 category:"Serology" },
   { name:"Typhoid IgM",                          category:"Serology" },
   { name:"COVID-19 RT-PCR / Antigen",            category:"Serology" },
+  { name:"Chikungunya IgM",                      category:"Serology" },
+  { name:"Chikungunya IgG",                      category:"Serology" },
+  { name:"Leptospira IgM",                       category:"Serology" },
   { name:"HIV (1 & 2) ELISA",                    category:"Serology" },
   { name:"HBsAg (Hepatitis B)",                  category:"Serology" },
   { name:"Anti-HCV (Hepatitis C)",               category:"Serology" },
@@ -310,15 +380,21 @@ export const labTests = [
   // ── MICROBIOLOGY ───────────────────────────────────────────────
   { name:"Throat Swab Culture",                  category:"Microbiology" },
   { name:"Sputum AFB / GeneXpert (TB)",          category:"Microbiology" },
+  { name:"Mantoux / Tuberculin Skin Test",       category:"Microbiology" },
   { name:"Blood Culture & Sensitivity",          category:"Microbiology" },
+  { name:"HVS / Vaginal Swab Culture",           category:"Microbiology" },
   { name:"Stool Examination",                    category:"Microbiology" },
   { name:"Stool Occult Blood",                   category:"Microbiology" },
 
   // ── ONCOLOGY MARKERS ────────────────────────────────────────────
   { name:"PSA (Prostate Specific Antigen)",      category:"Oncology", expectedFields: __PSA_FIELDS },
   { name:"CA-125",                               category:"Oncology", expectedFields: [{ key:'ca125', label:'CA-125', unit:'U/mL', normalLow:0, normalHigh:35 }] },
+  { name:"CA 19-9",                              category:"Oncology", expectedFields: [{ key:'ca199', label:'CA 19-9', unit:'U/mL', normalLow:0, normalHigh:37 }] },
+  { name:"CA 15-3",                              category:"Oncology", expectedFields: [{ key:'ca153', label:'CA 15-3', unit:'U/mL', normalLow:0, normalHigh:25 }] },
   { name:"AFP (Alpha-Fetoprotein)",              category:"Oncology", expectedFields: [{ key:'afp', label:'AFP', unit:'ng/mL', normalLow:0, normalHigh:10 }] },
   { name:"CEA",                                  category:"Oncology", expectedFields: [{ key:'cea', label:'CEA', unit:'ng/mL', normalLow:0, normalHigh:5 }] },
+  { name:"Beta-2 Microglobulin",                 category:"Oncology", expectedFields: [{ key:'b2m', label:'β2-Microglobulin', unit:'mg/L', normalLow:0, normalHigh:2.5 }] },
+  { name:"NSE (Neuron-Specific Enolase)",        category:"Oncology", expectedFields: [{ key:'nse', label:'NSE', unit:'ng/mL', normalLow:0, normalHigh:15 }] },
 
   // ── RADIOLOGY (free-text) ──────────────────────────────────────
   { name:"Chest X-Ray (PA View)",                category:"Radiology" },
@@ -334,14 +410,76 @@ export const labTests = [
   // ── CARDIOLOGY (free-text) ─────────────────────────────────────
   { name:"ECG (Electrocardiogram)",              category:"Cardiology" },
   { name:"2D Echocardiography",                  category:"Cardiology" },
+  { name:"Stress Echocardiography",              category:"Cardiology" },
   { name:"TMT (Treadmill Test)",                 category:"Cardiology" },
   { name:"Holter Monitoring",                    category:"Cardiology" },
+  { name:"Coronary Angiography",                 category:"Cardiology" },
 
   // ── OTHER ──────────────────────────────────────────────────────
   { name:"Pregnancy Test (Urine β-hCG)",         category:"Other",    expectedFields: [{ key:'bhcg', label:'β-hCG', unit:'', normalLow:null, normalHigh:null }] },
   { name:"Serum β-hCG",                          category:"Other",    expectedFields: [{ key:'bhcg', label:'β-hCG', unit:'mIU/mL', normalLow:0, normalHigh:5 }] },
   { name:"Pap Smear",                            category:"Other" },
   { name:"Biopsy / Histopathology",              category:"Other" },
+
+  // ── VITAMINS ───────────────────────────────────────────────────
+  // (Vit D, B12, Folate live under Bio Chemistry where Indian labs typically file
+  // them. Add the rarer fat-soluble + B-complex panel here.)
+  { name:"Vitamin A (Retinol)",                  category:"Vitamins", expectedFields: [{ key:'vitA', label:'Vitamin A', unit:'µg/dL', normalLow:30, normalHigh:80 }] },
+  { name:"Vitamin E (Tocopherol)",               category:"Vitamins", expectedFields: [{ key:'vitE', label:'Vitamin E', unit:'mg/L', normalLow:5.5, normalHigh:17 }] },
+  { name:"Vitamin K (Phylloquinone)",            category:"Vitamins", expectedFields: [{ key:'vitK', label:'Vitamin K', unit:'ng/mL', normalLow:0.13, normalHigh:1.19 }] },
+  { name:"Vitamin B1 (Thiamine)",                category:"Vitamins", expectedFields: [{ key:'vitB1', label:'Vitamin B1', unit:'nmol/L', normalLow:70, normalHigh:180 }] },
+  { name:"Vitamin B6 (Pyridoxine)",              category:"Vitamins", expectedFields: [{ key:'vitB6', label:'Vitamin B6', unit:'ng/mL', normalLow:5, normalHigh:50 }] },
+  { name:"Vitamin C (Ascorbic Acid)",            category:"Vitamins", expectedFields: [{ key:'vitC', label:'Vitamin C', unit:'mg/dL', normalLow:0.4, normalHigh:2.0 }] },
+
+  // ── PREGNANCY & ANTENATAL ──────────────────────────────────────
+  { name:"Beta hCG (Quantitative)",              category:"Pregnancy & Antenatal", expectedFields: [{ key:'bhcgQuant', label:'β-hCG', unit:'mIU/mL', normalLow:null, normalHigh:null }] },
+  { name:"TORCH IgG Panel",                      category:"Pregnancy & Antenatal", expectedFields: __TORCH_IGG_FIELDS },
+  { name:"TORCH IgM Panel",                      category:"Pregnancy & Antenatal", expectedFields: __TORCH_IGM_FIELDS },
+  { name:"Double Marker (NT + Bio)",             category:"Pregnancy & Antenatal", expectedFields: __DOUBLE_MARKER_FIELDS },
+  { name:"Triple Marker Test",                   category:"Pregnancy & Antenatal", expectedFields: __TRIPLE_MARKER_FIELDS },
+  { name:"Quadruple Marker Test",                category:"Pregnancy & Antenatal", expectedFields: __QUAD_MARKER_FIELDS },
+  { name:"NT Scan (11–14 wks)",                  category:"Pregnancy & Antenatal" },
+  { name:"Anomaly Scan / TIFFA (18–22 wks)",     category:"Pregnancy & Antenatal" },
+  { name:"Doppler Ultrasound (Obstetric)",       category:"Pregnancy & Antenatal" },
+  { name:"Non-Stress Test (NST)",                category:"Pregnancy & Antenatal" },
+  { name:"OGTT in Pregnancy (75g)",              category:"Pregnancy & Antenatal", expectedFields: [
+      { key:'fasting', label:'Fasting',          unit:'mg/dL', normalLow:0, normalHigh:92 },
+      { key:'oneHour', label:'After 1 hour',     unit:'mg/dL', normalLow:0, normalHigh:180 },
+      { key:'twoHour', label:'After 2 hours',    unit:'mg/dL', normalLow:0, normalHigh:153 },
+    ] },
+
+  // ── ALLERGY & IMMUNOLOGY ───────────────────────────────────────
+  { name:"Total IgE",                            category:"Allergy & Immunology", expectedFields: [{ key:'totalIgE', label:'Total IgE', unit:'IU/mL', normalLow:0, normalHigh:100 }] },
+  { name:"Specific IgE Panel",                   category:"Allergy & Immunology" },
+  { name:"Immunoglobulins (IgA / IgG / IgM)",    category:"Allergy & Immunology", expectedFields: __IMMUNOGLOBULIN_FIELDS },
+  { name:"C3 Complement",                        category:"Allergy & Immunology", expectedFields: [{ key:'c3', label:'C3', unit:'mg/dL', normalLow:90,  normalHigh:180 }] },
+  { name:"C4 Complement",                        category:"Allergy & Immunology", expectedFields: [{ key:'c4', label:'C4', unit:'mg/dL', normalLow:10,  normalHigh:40 }] },
+  { name:"Anti-dsDNA Antibody",                  category:"Allergy & Immunology", expectedFields: [{ key:'dsdna', label:'Anti-dsDNA', unit:'IU/mL', normalLow:0, normalHigh:30 }] },
+  { name:"Anti-CCP Antibody",                    category:"Allergy & Immunology", expectedFields: [{ key:'antiCcp', label:'Anti-CCP', unit:'U/mL', normalLow:0, normalHigh:20 }] },
+  { name:"ANCA (c-ANCA / p-ANCA)",               category:"Allergy & Immunology" },
+
+  // ── GI / ENDOSCOPY ─────────────────────────────────────────────
+  { name:"Upper GI Endoscopy",                   category:"GI / Endoscopy" },
+  { name:"Colonoscopy",                          category:"GI / Endoscopy" },
+  { name:"Sigmoidoscopy",                        category:"GI / Endoscopy" },
+  { name:"H. pylori Stool Antigen",              category:"GI / Endoscopy" },
+  { name:"H. pylori Urea Breath Test",           category:"GI / Endoscopy" },
+  { name:"H. pylori Serum IgG",                  category:"GI / Endoscopy", expectedFields: [{ key:'hpIgg', label:'H. pylori IgG', unit:'U/mL', normalLow:0, normalHigh:20 }] },
+  { name:"ERCP",                                 category:"GI / Endoscopy" },
+
+  // ── PULMONOLOGY ────────────────────────────────────────────────
+  { name:"PFT / Spirometry",                     category:"Pulmonology" },
+  { name:"Sleep Study (Polysomnography)",        category:"Pulmonology" },
+  { name:"Bronchoscopy",                         category:"Pulmonology" },
+  { name:"Sputum Cytology",                      category:"Pulmonology" },
+  { name:"6-Minute Walk Test",                   category:"Pulmonology" },
+
+  // ── NEUROLOGY ──────────────────────────────────────────────────
+  { name:"EEG (Electroencephalogram)",           category:"Neurology" },
+  { name:"NCS (Nerve Conduction Studies)",       category:"Neurology" },
+  { name:"EMG (Electromyography)",               category:"Neurology" },
+  { name:"CSF Analysis (Lumbar Puncture)",       category:"Neurology", expectedFields: __CSF_FIELDS },
+  { name:"Visual Evoked Potential (VEP)",        category:"Neurology" },
 ];
 
 export const complaints = [
