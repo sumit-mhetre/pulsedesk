@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, createContext, useContext } from 'react'
 import {
   Save, RotateCcw, Eye, Check, ChevronDown, ChevronUp,
   Building2, FileText, Printer, Receipt, Palette, ImageIcon, FileCheck,
@@ -42,11 +42,78 @@ function Toggle({ checked, onChange, label, sub, locked = false }) {
   )
 }
 
-function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true }) {
-  const [open, setOpen] = useState(defaultOpen)
+// ─────────────────────────────────────────────
+// ACCORDION — only one section open at a time, all start closed
+// ─────────────────────────────────────────────
+// Pattern: parent provides AccordionContext; children read openId and toggle.
+// Wrap a tab in <AccordionProvider> and use <AccordionItem id="..."> for each
+// collapsible section inside. Opening one closes any other.
+//
+// CollapsibleSection (used by PrintDesignPanel) opts in by passing an id —
+// when an id is provided AND a context exists, it behaves as an accordion item.
+// Otherwise it falls back to internal state with defaultOpen, so the component
+// is backward-compatible for any non-accordion uses.
+const AccordionContext = createContext(null)
+
+function AccordionProvider({ children, defaultOpenId = null }) {
+  const [openId, setOpenId] = useState(defaultOpenId)
+  // useEffect handled by callers if they need to reset on parent state change.
+  const toggle = (id) => setOpenId(prev => prev === id ? null : id)
+  const setOpen = (id) => setOpenId(id)
+  return (
+    <AccordionContext.Provider value={{ openId, toggle, setOpen, isControlled: true }}>
+      {children}
+    </AccordionContext.Provider>
+  )
+}
+
+// AccordionItem — generic collapsible card that renders title + chevron + children.
+// Children render only when this item's id matches the provider's openId.
+// headerExtra is an optional slot for badges/counts shown on the header strip.
+function AccordionItem({ id, title, subtitle, headerExtra, icon: Icon, children }) {
+  const ctx = useContext(AccordionContext)
+  const open = ctx?.openId === id
+  const onToggle = () => ctx?.toggle(id)
   return (
     <Card className="overflow-hidden p-0">
-      <button type="button" onClick={() => setOpen(o => !o)}
+      <button type="button" onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 p-4 hover:bg-slate-50 transition-colors text-left">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {Icon && <Icon className="w-4 h-4 text-primary flex-shrink-0"/>}
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-slate-700 text-sm">{title}</div>
+            {subtitle && <div className="text-xs text-slate-400 mt-0.5">{subtitle}</div>}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {headerExtra}
+          {open ? <ChevronUp className="w-4 h-4 text-slate-400"/> : <ChevronDown className="w-4 h-4 text-slate-400"/>}
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100">
+          {children}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function CollapsibleSection({ id, title, icon: Icon, children, defaultOpen = true }) {
+  // Accordion-aware: if an id is provided AND a wrapping AccordionProvider exists,
+  // defer open/close to the shared context. Otherwise use local state with
+  // defaultOpen so non-accordion uses still work.
+  const ctx = useContext(AccordionContext)
+  const inAccordion = !!(ctx && id)
+  const [internalOpen, setInternalOpen] = useState(defaultOpen)
+  const open = inAccordion ? ctx.openId === id : internalOpen
+  const handleToggle = () => {
+    if (inAccordion) ctx.toggle(id)
+    else setInternalOpen(o => !o)
+  }
+  return (
+    <Card className="overflow-hidden p-0">
+      <button type="button" onClick={handleToggle}
         className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
         <div className="flex items-center gap-2">
           {Icon && <Icon className="w-4 h-4 text-primary"/>}
@@ -335,9 +402,10 @@ export default function SettingsPage() {
       {/*  Tab 1 — Clinic Info                                   */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'clinic' && (
-        <form onSubmit={saveClinicInfo}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card title="Basic Information">
+        <AccordionProvider>
+        <form onSubmit={saveClinicInfo} className="max-w-3xl space-y-3">
+          <AccordionItem id="basic-info" title="Basic Information" subtitle="Clinic name, address, GST, OPD prefix">
+            <div className="p-4 space-y-3">
               <div className="form-group">
                 <label className="form-label">Clinic Name *</label>
                 <input className="form-input" placeholder="e.g. Sharma Medical Clinic"
@@ -366,9 +434,11 @@ export default function SettingsPage() {
                   Patient codes: <strong className="font-mono">{clinic.opdSeriesPrefix || 'SHA'}0001</strong>, <strong className="font-mono">{clinic.opdSeriesPrefix || 'SHA'}0002</strong>…
                 </p>
               </div>
-            </Card>
+            </div>
+          </AccordionItem>
 
-            <Card title="Contact Details">
+          <AccordionItem id="contact-details" title="Contact Details" subtitle="Landline, mobile, email">
+            <div className="p-4 space-y-3">
               <div className="form-group">
                 <label className="form-label">Landline</label>
                 <input className="form-input" placeholder="e.g. 020-27654321"
@@ -388,101 +458,119 @@ export default function SettingsPage() {
                 <p className="text-xs font-semibold text-primary mb-1">Tip</p>
                 <p className="text-xs text-slate-500">These details appear on prescription and bill headers.</p>
               </div>
-            </Card>
-          </div>
-          <div className="flex justify-end mt-6">
+            </div>
+          </AccordionItem>
+
+          <div className="flex justify-end mt-4">
             <Button type="submit" variant="primary" loading={saving}
               icon={saved ? <Check className="w-4 h-4"/> : <Save className="w-4 h-4"/>}>
               {saved ? 'Saved!' : 'Save Changes'}
             </Button>
           </div>
         </form>
+        </AccordionProvider>
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
       {/*  Tab 2 — Branding (centralized image management)        */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'branding' && (
-        <div className="max-w-3xl space-y-5">
-          {/* NEW — full-width header banner (recommended for most clinics) */}
-          <Card
+        <AccordionProvider>
+        <div className="max-w-3xl space-y-3">
+          <AccordionItem
+            id="header-banner"
             title="Header Banner (recommended)"
-            subtitle="Full-width image with your logo + clinic name + address — replaces the text header on print"
-          >
-            <div className="space-y-4">
-              <ImageUploader
-                kind="header"
-                value={clinic.headerImageUrl}
-                onChange={(url) => setClinic(c => ({ ...c, headerImageUrl: url }))}
-                label="Header Image"
-                description="Recommended: 2400×500 px PNG, designed in Canva/Photoshop. Includes your logo, clinic name, address, phone, etc."
-                aspectHint="wide"
-              />
-              {clinic.headerImageUrl && (
-                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800">Hide text header</p>
-                    <p className="text-xs text-slate-500 mt-0.5">When ON, clinic name/address/phone text is NOT printed (since it's already in your banner). Turn OFF if you want both image AND text.</p>
+            subtitle="Full-width image with your logo + clinic name + address — replaces the text header on print">
+            <div className="p-4">
+              <div className="space-y-4">
+                <ImageUploader
+                  kind="header"
+                  value={clinic.headerImageUrl}
+                  onChange={(url) => setClinic(c => ({ ...c, headerImageUrl: url }))}
+                  label="Header Image"
+                  description="Recommended: 2400×500 px PNG, designed in Canva/Photoshop. Includes your logo, clinic name, address, phone, etc."
+                  aspectHint="wide"
+                />
+                {clinic.headerImageUrl && (
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">Hide text header</p>
+                      <p className="text-xs text-slate-500 mt-0.5">When ON, clinic name/address/phone text is NOT printed (since it's already in your banner). Turn OFF if you want both image AND text.</p>
+                    </div>
+                    <Toggle
+                      checked={clinic.hideTextOnHeader}
+                      onChange={(v) => { setClinic(c => ({ ...c, hideTextOnHeader: v })); setGlobalDirty(true) }}
+                      label=""
+                    />
                   </div>
-                  <Toggle
-                    checked={clinic.hideTextOnHeader}
-                    onChange={(v) => { setClinic(c => ({ ...c, hideTextOnHeader: v })); setGlobalDirty(true) }}
-                    label=""
-                  />
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </Card>
+          </AccordionItem>
 
-          <Card title="Clinic Branding" subtitle="Used when no header banner is uploaded — shows logo + text in header">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <ImageUploader
-                kind="logo"
-                value={clinic.logo}
-                onChange={(url) => setClinic(c => ({ ...c, logo: url }))}
-                label="Clinic Logo"
-                description="Small square logo, appears next to clinic name. Skip this if you've uploaded a header banner above."
-                aspectHint="square"
-              />
-              <ImageUploader
-                kind="footer"
-                value={clinic.footerImageUrl}
-                onChange={(url) => setClinic(c => ({ ...c, footerImageUrl: url }))}
-                label="Footer Image (optional)"
-                description="Disclaimer banner, partner logos, etc. Shown above SimpleRx watermark."
-                aspectHint="wide"
-              />
-            </div>
-          </Card>
-
-          <Card title="Letterhead" subtitle="For clinics with pre-printed prescription pads">
-            <div className="space-y-4">
-              <ImageUploader
-                kind="letterhead"
-                value={clinic.letterheadUrl}
-                onChange={(url) => setClinic(c => ({ ...c, letterheadUrl: url }))}
-                label="Letterhead Background"
-                description="Upload a scan of your pre-printed letterhead. When letterhead mode is on, the print page hides the clinic header (logo, name, address, doctor info) so it doesn't overlap."
-                aspectHint="16:9"
-              />
-
-              <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">Letterhead Mode</p>
-                  <p className="text-xs text-slate-500 mt-0.5">When ON, hides clinic header + logo on print so your pre-printed letterhead shows through cleanly.</p>
-                </div>
-                <Toggle
-                  checked={clinic.letterheadMode}
-                  onChange={(v) => { setClinic(c => ({ ...c, letterheadMode: v })); setGlobalDirty(true) }}
-                  label=""
+          <AccordionItem
+            id="clinic-branding"
+            title="Clinic Branding"
+            subtitle="Used when no header banner is uploaded — shows logo + text in header">
+            <div className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <ImageUploader
+                  kind="logo"
+                  value={clinic.logo}
+                  onChange={(url) => setClinic(c => ({ ...c, logo: url }))}
+                  label="Clinic Logo"
+                  description="Small square logo, appears next to clinic name. Skip this if you've uploaded a header banner above."
+                  aspectHint="square"
+                />
+                <ImageUploader
+                  kind="footer"
+                  value={clinic.footerImageUrl}
+                  onChange={(url) => setClinic(c => ({ ...c, footerImageUrl: url }))}
+                  label="Footer Image (optional)"
+                  description="Disclaimer banner, partner logos, etc. Shown above SimpleRx watermark."
+                  aspectHint="wide"
                 />
               </div>
             </div>
-          </Card>
+          </AccordionItem>
 
-          <Card title="Doctor Signature & Stamp" subtitle="Your personal signature and stamp — appear on YOUR prescriptions only">
-            <DoctorBrandingSection/>
-          </Card>
+          <AccordionItem
+            id="letterhead"
+            title="Letterhead"
+            subtitle="For clinics with pre-printed prescription pads">
+            <div className="p-4">
+              <div className="space-y-4">
+                <ImageUploader
+                  kind="letterhead"
+                  value={clinic.letterheadUrl}
+                  onChange={(url) => setClinic(c => ({ ...c, letterheadUrl: url }))}
+                  label="Letterhead Background"
+                  description="Upload a scan of your pre-printed letterhead. When letterhead mode is on, the print page hides the clinic header (logo, name, address, doctor info) so it doesn't overlap."
+                  aspectHint="16:9"
+                />
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Letterhead Mode</p>
+                    <p className="text-xs text-slate-500 mt-0.5">When ON, hides clinic header + logo on print so your pre-printed letterhead shows through cleanly.</p>
+                  </div>
+                  <Toggle
+                    checked={clinic.letterheadMode}
+                    onChange={(v) => { setClinic(c => ({ ...c, letterheadMode: v })); setGlobalDirty(true) }}
+                    label=""
+                  />
+                </div>
+              </div>
+            </div>
+          </AccordionItem>
+
+          <AccordionItem
+            id="doctor-signature"
+            title="Doctor Signature & Stamp"
+            subtitle="Your personal signature and stamp — appear on YOUR prescriptions only">
+            <div className="p-4">
+              <DoctorBrandingSection/>
+            </div>
+          </AccordionItem>
 
           <div className="flex justify-end">
             <Button variant="primary" loading={saving}
@@ -492,27 +580,32 @@ export default function SettingsPage() {
             </Button>
           </div>
         </div>
+        </AccordionProvider>
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
       {/*  Tab — Clinical Settings                                */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'clinical' && (
-        <div className="max-w-2xl space-y-5">
-          <Card title="Lab Results" subtitle="How lab values are displayed when doctors record test outcomes">
-            <Toggle
-              checked={clinical.flagOutOfRangeLabValues}
-              onChange={v => { setClinical(c => ({ ...c, flagOutOfRangeLabValues: v })); setGlobalDirty(true) }}
-              label="Highlight out-of-range values"
-              sub="When ON, lab values outside the configured normal range get a soft red background. Doctors still make all clinical decisions — this is just a visual cue."
-            />
-          </Card>
+        <AccordionProvider>
+        <div className="max-w-2xl space-y-3">
+          <AccordionItem id="lab-results" title="Lab Results" subtitle="How lab values are displayed when doctors record test outcomes">
+            <div className="p-4">
+              <Toggle
+                checked={clinical.flagOutOfRangeLabValues}
+                onChange={v => { setClinical(c => ({ ...c, flagOutOfRangeLabValues: v })); setGlobalDirty(true) }}
+                label="Highlight out-of-range values"
+                sub="When ON, lab values outside the configured normal range get a soft red background. Doctors still make all clinical decisions — this is just a visual cue."
+              />
+            </div>
+          </AccordionItem>
           <div className="flex justify-end pt-2">
             <Button variant="primary" loading={saving} icon={<Save className="w-4 h-4"/>} onClick={saveClinical}>
               Save Clinical Settings
             </Button>
           </div>
         </div>
+        </AccordionProvider>
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
@@ -522,19 +615,21 @@ export default function SettingsPage() {
       {/*  Rx preview on the right that updates as toggles change.  */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'rxform' && (
+        <AccordionProvider>
         <div className="max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px] gap-5 items-start">
-            {/* LEFT — collapsible setting groups */}
+            {/* LEFT — collapsible setting groups (accordion: only one open at a time) */}
             <div className="space-y-3 min-w-0">
               <CollapsibleGroupCard
+                id="sections"
                 title="Sections"
                 subtitle="Body sections that appear on the writing form and the printed Rx"
                 rows={BODY_SECTION_ROWS}
-                defaultOpen={true}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
 
               <CollapsibleGroupCard
+                id="clinic-header"
                 title="Clinic Header"
                 subtitle="Print only — shown at the top of every Rx"
                 rows={CLINIC_HEADER_ROWS}
@@ -542,6 +637,7 @@ export default function SettingsPage() {
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
 
               <CollapsibleGroupCard
+                id="doctor-info"
                 title="Doctor Information"
                 subtitle="Print only — shown in the header"
                 rows={DOCTOR_INFO_ROWS}
@@ -549,6 +645,7 @@ export default function SettingsPage() {
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
 
               <CollapsibleGroupCard
+                id="patient-details"
                 title="Patient Details"
                 subtitle="Print only — shown after the header"
                 rows={PATIENT_DETAIL_ROWS}
@@ -556,6 +653,7 @@ export default function SettingsPage() {
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
 
               <CollapsibleGroupCard
+                id="medicine-cols"
                 title="Medicine Table Columns"
                 subtitle="Print only — controls columns in the medicines table"
                 rows={MEDICINE_COL_ROWS}
@@ -563,30 +661,47 @@ export default function SettingsPage() {
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
 
               <CollapsibleGroupCard
+                id="footer"
                 title="Footer"
                 subtitle="Print only — bottom of the Rx"
                 rows={FOOTER_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
 
-              {/* Vitals Fields — only relevant when Vitals form-side is enabled. */}
+              {/* Vitals Fields — collapsible accordion item (only when Vitals form-side is on). */}
               {rxForm.showVitals && (
-                <Card title="Vitals Fields" subtitle="Choose which vital parameters to record on the writing form">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-                    <Toggle checked={rxForm.vitalBP     ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalBP: v }));     setGlobalDirty(true) }} label="Blood Pressure" sub="Systolic / Diastolic"/>
-                    <Toggle checked={rxForm.vitalSugar  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSugar: v }));  setGlobalDirty(true) }} label="Blood Sugar"    sub="mg/dL"/>
-                    <Toggle checked={rxForm.vitalWeight ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalWeight: v })); setGlobalDirty(true) }} label="Weight"         sub="kg"/>
-                    <Toggle checked={rxForm.vitalTemp   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalTemp: v }));   setGlobalDirty(true) }} label="Temperature"    sub="°F"/>
-                    <Toggle checked={rxForm.vitalSpo2   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSpo2: v }));   setGlobalDirty(true) }} label="SpO2"           sub="Oxygen saturation %"/>
-                    <Toggle checked={rxForm.vitalPulse  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalPulse: v }));  setGlobalDirty(true) }} label="Pulse Rate"     sub="bpm"/>
-                    <Toggle checked={rxForm.vitalHeight ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalHeight: v })); setGlobalDirty(true) }} label="Height"         sub="cm"/>
-                    <Toggle checked={rxForm.vitalBMI    ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalBMI: v }));    setGlobalDirty(true) }} label="BMI"            sub="Auto-calculated"/>
+                <AccordionItem
+                  id="vitals-fields"
+                  title="Vitals Fields"
+                  subtitle="Choose which vital parameters to record on the writing form">
+                  <div className="p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                      <Toggle checked={rxForm.vitalBP     ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalBP: v }));     setGlobalDirty(true) }} label="Blood Pressure" sub="Systolic / Diastolic"/>
+                      <Toggle checked={rxForm.vitalSugar  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSugar: v }));  setGlobalDirty(true) }} label="Blood Sugar"    sub="mg/dL"/>
+                      <Toggle checked={rxForm.vitalWeight ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalWeight: v })); setGlobalDirty(true) }} label="Weight"         sub="kg"/>
+                      <Toggle checked={rxForm.vitalTemp   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalTemp: v }));   setGlobalDirty(true) }} label="Temperature"    sub="°F"/>
+                      <Toggle checked={rxForm.vitalSpo2   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSpo2: v }));   setGlobalDirty(true) }} label="SpO2"           sub="Oxygen saturation %"/>
+                      <Toggle checked={rxForm.vitalPulse  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalPulse: v }));  setGlobalDirty(true) }} label="Pulse Rate"     sub="bpm"/>
+                      <Toggle checked={rxForm.vitalHeight ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalHeight: v })); setGlobalDirty(true) }} label="Height"         sub="cm"/>
+                      <Toggle checked={rxForm.vitalBMI    ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalBMI: v }));    setGlobalDirty(true) }} label="BMI"            sub="Auto-calculated"/>
+                    </div>
                   </div>
-                </Card>
+                </AccordionItem>
               )}
 
-              <CustomFieldsCard rxForm={rxForm} setRxForm={setRxForm} rxPrint={rxPrint} setRxPrint={setRxPrint}/>
-              <SectionOrderCard rxForm={rxForm} setRxForm={setRxForm}/>
+              <AccordionItem
+                id="custom-fields"
+                title="Custom Fields"
+                subtitle="Extra fields captured on every prescription. Tap 🖨 to control whether each one prints">
+                <CustomFieldsBody rxForm={rxForm} setRxForm={setRxForm} rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+              </AccordionItem>
+
+              <AccordionItem
+                id="section-order"
+                title="Section Order"
+                subtitle="Drag rows to reorder sections on the writing form and the printed Rx">
+                <SectionOrderBody rxForm={rxForm} setRxForm={setRxForm}/>
+              </AccordionItem>
 
               <div className="flex justify-between items-center pt-2">
                 <p className="text-xs text-slate-400 max-w-md">
@@ -609,12 +724,13 @@ export default function SettingsPage() {
                 </p>
                 <RxLivePreview cfg={rxPrint}/>
                 <p className="text-[10px] text-slate-400 mt-2 italic">
-                  Toggle 🖨 icons on the left — preview updates instantly. Sample data shown.
+                  Expand a section above and toggle 🖨 icons — preview updates instantly.
                 </p>
               </div>
             </div>
           </div>
         </div>
+        </AccordionProvider>
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
@@ -667,12 +783,13 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
   const isRx = type === 'prescription'
 
   return (
+    <AccordionProvider>
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Settings panel */}
-      <div className="lg:col-span-2 space-y-4">
+      <div className="lg:col-span-2 space-y-3">
 
         {/* Paper & typography */}
-        <CollapsibleSection title="Paper & Typography">
+        <CollapsibleSection id="paper" title="Paper & Typography">
           <RadioGroup label="Paper Size"  value={cfg.paperSize}    onChange={v => set('paperSize', v)}
             options={[{ value: 'A4', label: 'A4' }, { value: 'A5', label: 'A5' }, { value: 'half', label: 'Half Page' }]}/>
           <RadioGroup label="Font Size"   value={cfg.baseFontSize} onChange={v => set('baseFontSize', v)}
@@ -685,7 +802,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
 
         {/* Clinic header */}
         {!styleOnly && (
-        <CollapsibleSection title="Clinic Header">
+        <CollapsibleSection id="print-clinic-header" title="Clinic Header">
           <Toggle checked={cfg.showLogo ?? true}  onChange={v => set('showLogo', v)}     label="Clinic Logo"        sub="Upload via Branding tab"/>
           <Toggle checked={cfg.showClinicName}    onChange={v => set('showClinicName', v)}    label="Clinic Name"/>
           <Toggle checked={cfg.showClinicTagline} onChange={v => set('showClinicTagline', v)} label="Tagline / Motto"/>
@@ -697,7 +814,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
 
         {/* Doctor info */}
         {!styleOnly && isRx && (
-          <CollapsibleSection title="Doctor Information">
+          <CollapsibleSection id="print-doctor-info" title="Doctor Information">
             <Toggle checked={cfg.showDoctorName}  onChange={v => set('showDoctorName', v)}  label="Doctor Name"/>
             <Toggle checked={cfg.showDoctorQual}  onChange={v => set('showDoctorQual', v)}  label="Qualification" sub="e.g. MBBS, MD"/>
             <Toggle checked={cfg.showDoctorSpec}  onChange={v => set('showDoctorSpec', v)}  label="Specialization"/>
@@ -707,7 +824,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
 
         {/* Patient section */}
         {!styleOnly && (
-        <CollapsibleSection title="Patient Details">
+        <CollapsibleSection id="print-patient-details" title="Patient Details">
           <Toggle checked={cfg.showOPD ?? true}    onChange={v => set('showOPD', v)}    label="OPD / Patient Code"  sub="e.g. MH0001 — printed in bold"/>
           <Toggle checked={cfg.showPatient}        onChange={v => set('showPatient', v)} label="Patient Name"/>
           <Toggle checked={cfg.showAge}            onChange={v => set('showAge', v)}     label="Age"/>
@@ -727,7 +844,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
         {/* Prescription-only sections */}
         {!styleOnly && isRx && (
           <>
-            <CollapsibleSection title="Print — Prescription Sections">
+            <CollapsibleSection id="print-rx-sections" title="Print — Prescription Sections">
               <p className="text-xs text-slate-400 mb-3 bg-blue-50 px-3 py-2 rounded-lg">
                 Controls what appears on the <strong>printed prescription</strong>. For the writing form, see the <strong>Prescription Form</strong> tab.
               </p>
@@ -742,7 +859,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
               <Toggle checked={cfg.showNextVisit} onChange={v => set('showNextVisit', v)} label="Next Visit Date"/>
             </CollapsibleSection>
 
-            <CollapsibleSection title="Medicine Table Columns">
+            <CollapsibleSection id="print-medicine-cols" title="Medicine Table Columns">
               <Toggle checked={cfg.compactPrint !== false} onChange={v => set('compactPrint', v)} label="Compact Columns" sub="Combine Timing – Freq. – Duration into a single column (saves horizontal space)"/>
               <Toggle checked={cfg.showDosage}       onChange={v => set('showDosage', v)}       label="Dosage" sub="e.g. 1-0-1"/>
               <Toggle checked={cfg.showWhen}         onChange={v => set('showWhen', v)}         label="When / Timing" sub="After Food, Before Food etc."/>
@@ -759,7 +876,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
 
         {/* Bill-only sections */}
         {!isRx && (
-          <CollapsibleSection title="Bill Sections">
+          <CollapsibleSection id="print-bill-sections" title="Bill Sections">
             <Toggle checked={cfg.showBillNo}      onChange={v => set('showBillNo', v)}      label="Bill Number"/>
             <Toggle checked={cfg.showDate}        onChange={v => set('showDate', v)}        label="Date"/>
             <Toggle checked={cfg.showItemName}    onChange={v => set('showItemName', v)}    label="Item Name"/>
@@ -781,7 +898,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
         )}
 
         {/* Spacing — paddings and line height */}
-        <CollapsibleSection title="Spacing & Layout">
+        <CollapsibleSection id="print-spacing" title="Spacing & Layout">
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -842,7 +959,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
 
         {/* Footer */}
         {!styleOnly && (
-        <CollapsibleSection title="Footer">
+        <CollapsibleSection id="print-footer" title="Footer">
           {isRx && <Toggle checked={cfg.showSignatureImage ?? true}  onChange={v => set('showSignatureImage', v)} label="Doctor Signature Image"  sub="Use uploaded signature instead of blank line"/>}
           {isRx && <Toggle checked={cfg.showStampImage ?? true}      onChange={v => set('showStampImage', v)}     label="Doctor Stamp / Seal"     sub="Uploaded via Branding tab"/>}
           <Toggle checked={cfg.showFooterImage ?? false} onChange={v => set('showFooterImage', v)} label="Footer Image"           sub="Banner uploaded via Branding tab"/>
@@ -1014,6 +1131,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
         </div>
       </div>
     </div>
+    </AccordionProvider>
   )
 }
 
@@ -1436,8 +1554,15 @@ function RxLivePreview({ cfg }) {
 // Wraps a SectionGroupCard in a collapsible header. Shows a count badge and
 // an "n on / m total" summary so the doctor can see at a glance which groups
 // have non-default state without expanding them.
-function CollapsibleGroupCard({ title, subtitle, rows, rxForm, setRxForm, rxPrint, setRxPrint, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen)
+function CollapsibleGroupCard({ id, title, subtitle, rows, rxForm, setRxForm, rxPrint, setRxPrint, defaultOpen = false }) {
+  const ctx = useContext(AccordionContext)
+  const inAccordion = !!(ctx && id)
+  const [internalOpen, setInternalOpen] = useState(defaultOpen)
+  const open = inAccordion ? ctx.openId === id : internalOpen
+  const handleToggle = () => {
+    if (inAccordion) ctx.toggle(id)
+    else setInternalOpen(o => !o)
+  }
 
   // Compute "on" counts so the collapsed header is informative.
   const formOnCount  = rows.filter(r => r.formKey  && rxForm[r.formKey]   !== false).length
@@ -1447,7 +1572,7 @@ function CollapsibleGroupCard({ title, subtitle, rows, rxForm, setRxForm, rxPrin
 
   return (
     <Card className="overflow-hidden p-0">
-      <button type="button" onClick={() => setOpen(o => !o)}
+      <button type="button" onClick={handleToggle}
         className="w-full flex items-center justify-between gap-3 p-4 hover:bg-slate-50 transition-colors text-left">
         <div className="flex-1 min-w-0">
           <div className="font-bold text-slate-700 text-sm">{title}</div>
@@ -1702,7 +1827,9 @@ const FOOTER_ROWS = [
   { label: 'Generated by SimpleRx EMR', sub: 'Footer timestamp', printKey: 'showGeneratedBy', locked: true },
 ]
 
-function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
+// Body-only version of Custom Fields, used inside accordion items.
+// The full card with title is rendered by the parent (AccordionItem).
+function CustomFieldsBody({ rxForm, setRxForm, rxPrint, setRxPrint }) {
   const fields = Array.isArray(rxForm.customFields) ? rxForm.customFields : []
 
   // Per-cf print visibility is stored in rxPrint.customFieldPrint as a {[cfId]: bool}
@@ -1712,16 +1839,13 @@ function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
   const cfPrintMap = (rxPrint && typeof rxPrint.customFieldPrint === 'object' && rxPrint.customFieldPrint) || {}
   const isPrintOn  = (id) => cfPrintMap[id] !== false
 
-  // Add a new row with a fresh id. Names start blank — doctor types it in.
   const addField = () => {
     const id = 'cf_' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3)
     setRxForm(f => ({
       ...f,
       customFields: [...(Array.isArray(f.customFields) ? f.customFields : []), { id, name: '', type: 'text' }],
-      // New custom fields go to the end of the order so the doctor can immediately reorder them
       fieldOrder: [...(Array.isArray(f.fieldOrder) ? f.fieldOrder : []), id],
     }))
-    // Default new field to "prints" so doctors don't have to opt in for every new one.
     setRxPrint(p => ({
       ...p,
       customFieldPrint: { ...(p.customFieldPrint || {}), [id]: true },
@@ -1745,8 +1869,6 @@ function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
     setGlobalDirty(true)
   }
 
-  // Removing also drops the field from the section order array AND its print flag —
-  // keeps state consistent and avoids leaving orphan flags accumulating in JSON.
   const removeField = (id) => {
     if (!window.confirm('Remove this custom field? Any saved values for it will remain on existing prescriptions but will no longer appear on new ones.')) return
     setRxForm(f => ({
@@ -1763,7 +1885,7 @@ function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
   }
 
   return (
-    <Card title="Custom Fields" subtitle="Extra fields captured on every prescription. Tap 🖨 to control whether each one prints — they always show on the writing form.">
+    <div className="p-4">
       {fields.length === 0 ? (
         <div className="py-4 text-center">
           <p className="text-sm text-slate-500 mb-3">No custom fields yet.</p>
@@ -1815,6 +1937,15 @@ function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
       <p className="text-xs text-slate-400 mt-3 italic">
         Future versions will let you choose input types (radio, dropdown, checkbox, number).
       </p>
+    </div>
+  )
+}
+
+// Backward-compatible Card wrapper — kept so existing uses (if any) still work.
+function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
+  return (
+    <Card title="Custom Fields" subtitle="Extra fields captured on every prescription. Tap 🖨 to control whether each one prints — they always show on the writing form.">
+      <CustomFieldsBody rxForm={rxForm} setRxForm={setRxForm} rxPrint={rxPrint} setRxPrint={setRxPrint}/>
     </Card>
   )
 }
@@ -1823,7 +1954,10 @@ function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
 // Lets the doctor reorder which Rx sections appear in what order, both on the
 // writing form and on the printed Rx. Uses up/down arrow buttons (no drag-drop).
 // Built-in sections + custom fields share one unified order list.
-function SectionOrderCard({ rxForm, setRxForm }) {
+// Body-only version of Section Order — drag-drop list of sections without
+// the outer Card wrapper. Used inside accordion items where the parent supplies
+// the header. The thin SectionOrderCard wrapper below is kept for backward compat.
+function SectionOrderBody({ rxForm, setRxForm }) {
   // Map of section key → display label. Custom fields use their `name`.
   const BUILTIN_LABELS = {
     complaint:  'Chief Complaint',
@@ -1870,26 +2004,20 @@ function SectionOrderCard({ rxForm, setRxForm }) {
   }
 
   // ── Drag-and-drop state ────────────────────────────────────
-  // dragKey = the section being dragged. dropKey = the row currently being hovered
-  // over (used to draw the blue insertion line). We track keys (not indices) so we
-  // don't break when a user drags faster than React re-renders.
   const [dragKey, setDragKey] = useState(null)
   const [dropKey, setDropKey] = useState(null)
-  // Where the drop indicator goes: above (before) or below (after) the dropKey row.
   const [dropPos, setDropPos] = useState(null)
 
   const onDragStart = (e, key) => {
     setDragKey(key)
-    // dataTransfer is required on Firefox to start a drag at all. The data is unused.
     try { e.dataTransfer.setData('text/plain', key) } catch {}
     e.dataTransfer.effectAllowed = 'move'
   }
 
   const onDragOver = (e, key) => {
     if (!dragKey || dragKey === key) return
-    e.preventDefault()  // required to allow drop
+    e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    // Decide above-or-below based on cursor position within the row.
     const rect = e.currentTarget.getBoundingClientRect()
     const mid = rect.top + rect.height / 2
     setDropKey(key)
@@ -1897,7 +2025,6 @@ function SectionOrderCard({ rxForm, setRxForm }) {
   }
 
   const onDragLeave = (e, key) => {
-    // Only clear if we're really leaving (not entering a child)
     if (e.currentTarget.contains(e.relatedTarget)) return
     if (dropKey === key) { setDropKey(null); setDropPos(null) }
   }
@@ -1914,8 +2041,6 @@ function SectionOrderCard({ rxForm, setRxForm }) {
       setDragKey(null); setDropKey(null); setDropPos(null)
       return
     }
-    // Build the new order. Remove the dragged item, then insert at the target slot
-    // adjusting for whether we removed something that came before our target.
     const without = order.filter(k => k !== dragKey)
     const targetSlot = without.indexOf(key) + (dropPos === 'below' ? 1 : 0)
     const next = [...without.slice(0, targetSlot), dragKey, ...without.slice(targetSlot)]
@@ -1928,7 +2053,7 @@ function SectionOrderCard({ rxForm, setRxForm }) {
   }
 
   return (
-    <Card title="Section Order" subtitle="Drag rows to reorder sections on the writing form and the printed Rx. Or use the ↑ ↓ buttons. Custom fields can be moved too.">
+    <div className="p-4">
       <div className="space-y-1.5">
         {order.map((key, idx) => {
           const isDragging = dragKey === key
@@ -1978,6 +2103,15 @@ function SectionOrderCard({ rxForm, setRxForm }) {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// Backward-compatible Card wrapper.
+function SectionOrderCard({ rxForm, setRxForm }) {
+  return (
+    <Card title="Section Order" subtitle="Drag rows to reorder sections on the writing form and the printed Rx. Or use the ↑ ↓ buttons. Custom fields can be moved too.">
+      <SectionOrderBody rxForm={rxForm} setRxForm={setRxForm}/>
     </Card>
   )
 }
