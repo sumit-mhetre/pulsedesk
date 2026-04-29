@@ -1192,17 +1192,20 @@ export default function NewPrescriptionPage() {
     })
   }
 
-  // Remove a date column. If values exist for that date, confirm first; on
-  // confirm we drop the column AND delete those rows (queueing server-side
-  // deletion if they had ids). Always keep at least one column.
+  // Remove a date column. Always confirms (even for empty columns) — accidentally
+  // dropping a column you just added is annoying. Always keeps at least one column.
+  // If values exist, queues server-side deletion and drops the rows too.
   const removeDate = (date) => {
     if (outcomesDates.length <= 1) {
       toast('At least one date is required', { icon: 'ℹ️' })
       return
     }
     const rowsForDate = rxLabResults.filter(r => r.resultDate === date)
+    const msg = rowsForDate.length > 0
+      ? `Remove ${date} and the ${rowsForDate.length} value(s) recorded for it?`
+      : `Remove ${date} column?`
+    if (!window.confirm(msg)) return
     if (rowsForDate.length > 0) {
-      if (!window.confirm(`Remove ${date} and the ${rowsForDate.length} value(s) recorded for it?`)) return
       rowsForDate.forEach(r => { if (r.id) setDeletedLabResultIds(d => [...d, r.id]) })
       setRxLabResults(prev => prev.filter(r => r.resultDate !== date))
       setDirty(true)
@@ -2334,45 +2337,28 @@ export default function NewPrescriptionPage() {
             </button>
           </div>
 
-          {/* Recording dates — multi-column input. Each chip is one column in the
-              grid below. Click the date inside a chip to change it (rows migrate
-              automatically). The "+ Add Date" button opens a native date picker
-              that adds a new column when a date is chosen. */}
+          {/* Top date picker — used only for ADDING a new date column. The actual
+              date chips with edit/remove live inside each expanded category in
+              context with the input rows below. Pick a date here and it gets
+              added as a column visible in every category. */}
           <div className="flex items-center gap-2 flex-wrap px-5 py-3 border-b border-slate-200 bg-blue-50/40 flex-shrink-0">
+            <Calendar className="w-4 h-4 text-primary flex-shrink-0"/>
             <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex-shrink-0">
-              Dates:
+              Add Date:
             </span>
-            {outcomesDates.map((date) => (
-              <div key={date}
-                className="inline-flex items-center gap-1 bg-white border border-blue-200 rounded-lg pl-2 pr-0.5 py-0.5 hover:border-blue-300 transition shadow-sm">
-                <Calendar className="w-3.5 h-3.5 text-primary flex-shrink-0"/>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => changeDate(date, e.target.value)}
-                  className="bg-transparent border-0 text-xs font-medium text-slate-700 focus:outline-none focus:ring-0 p-0 cursor-pointer"
-                  aria-label="Edit date"/>
-                {outcomesDates.length > 1 && (
-                  <button type="button"
-                    onClick={() => removeDate(date)}
-                    className="ml-0.5 text-slate-400 hover:text-white hover:bg-danger rounded p-1 transition flex-shrink-0"
-                    title={`Remove ${date} column`}
-                    aria-label={`Remove ${date} column`}>
-                    <X className="w-3.5 h-3.5"/>
-                  </button>
-                )}
-              </div>
-            ))}
-            {/* Native date input wrapped as button — reset value after pick so picking same date again still triggers */}
-            <button type="button"
-              onClick={() => addDate()}
-              className="inline-flex items-center gap-1 bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-lg hover:bg-primary/90 transition cursor-pointer shadow-sm"
-              title="Add a new date column. Click the date inside the chip to change it.">
-              <Plus className="w-3.5 h-3.5"/>
-              <span>Add Date</span>
-            </button>
+            <input
+              type="date"
+              className="form-input text-sm py-1 px-2 w-auto"
+              onChange={(e) => {
+                if (e.target.value) {
+                  addDate(e.target.value)
+                  e.target.value = ''   // reset so picking same date again still fires onChange
+                }
+              }}
+              aria-label="Pick a date to add as a new column"
+              title="Pick any date to add a new column. Edit or remove it from inside any category below."/>
             <span className="text-[10px] text-slate-500 ml-auto hidden sm:inline">
-              {outcomesDates.length} column{outcomesDates.length > 1 ? 's' : ''} · click any date to change it
+              {outcomesDates.length} date column{outcomesDates.length !== 1 ? 's' : ''} active · edit or remove from inside categories
             </span>
           </div>
 
@@ -2538,10 +2524,41 @@ export default function NewPrescriptionPage() {
                     </button>
                     {open && (
                       <div className="border-t border-slate-100 overflow-x-auto">
-                        {/* No per-category date column headers here — the date chips
-                            at the top of the modal already show all columns and serve
-                            as the single source of truth. Avoids visual repetition
-                            in long-scrolling Rx forms with many expanded categories. */}
+                        {/* Date chips strip — global dates rendered inside each expanded
+                            category so the doctor can edit, remove, or add dates in context
+                            with the test rows below. Same dates show in every category since
+                            they're shared across all tests in the modal. */}
+                        <div className="flex items-center gap-1.5 flex-wrap px-4 py-2 bg-blue-50/30 border-b border-slate-100">
+                          <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide flex-shrink-0">DATES:</span>
+                          {outcomesDates.map((date) => (
+                            <div key={date}
+                              className="inline-flex items-center gap-0.5 bg-white border border-blue-200 rounded-lg pl-2 pr-0.5 py-0.5 hover:border-blue-300 transition shadow-sm">
+                              <Calendar className="w-3 h-3 text-primary flex-shrink-0"/>
+                              <input
+                                type="date"
+                                value={date}
+                                onChange={(e) => changeDate(date, e.target.value)}
+                                className="bg-transparent border-0 text-[11px] font-medium text-slate-700 focus:outline-none focus:ring-0 p-0 cursor-pointer"
+                                aria-label="Edit date"/>
+                              {outcomesDates.length > 1 && (
+                                <button type="button"
+                                  onClick={() => removeDate(date)}
+                                  className="ml-0.5 text-slate-400 hover:text-white hover:bg-danger rounded p-0.5 transition flex-shrink-0"
+                                  title={`Remove ${date} column`}
+                                  aria-label={`Remove ${date} column`}>
+                                  <X className="w-3 h-3"/>
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <button type="button"
+                            onClick={() => addDate()}
+                            className="inline-flex items-center gap-0.5 bg-primary text-white text-[11px] font-semibold px-2 py-0.5 rounded-lg hover:bg-primary/90 transition shadow-sm flex-shrink-0"
+                            title="Add a new date column">
+                            <Plus className="w-3 h-3"/>
+                            <span>Add</span>
+                          </button>
+                        </div>
                         {Array.from(testGroups.entries()).map(([labTestId, group], groupIdx) => {
                           // For single-field tests we skip the per-test header and put a tiny ✕ on
                           // the row itself — saves a whole line of vertical space per test, which
