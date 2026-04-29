@@ -518,83 +518,101 @@ export default function SettingsPage() {
       {/* ─────────────────────────────────────────────────────── */}
       {/* ─────────────────────────────────────────────────────── */}
       {/*  Tab — Prescription Form & Print                          */}
+      {/*  Pattern B: collapsible groups on the left, sticky live   */}
+      {/*  Rx preview on the right that updates as toggles change.  */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'rxform' && (
-        <div className="max-w-6xl space-y-5">
-          {/* 2-column grid for the toggle groups. Collapses to 1 col on small screens. */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div className="space-y-5">
-              <SectionGroupCard
+        <div className="max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px] gap-5 items-start">
+            {/* LEFT — collapsible setting groups */}
+            <div className="space-y-3 min-w-0">
+              <CollapsibleGroupCard
+                title="Sections"
+                subtitle="Body sections that appear on the writing form and the printed Rx"
+                rows={BODY_SECTION_ROWS}
+                defaultOpen={true}
+                rxForm={rxForm} setRxForm={setRxForm}
+                rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+
+              <CollapsibleGroupCard
                 title="Clinic Header"
-                subtitle="Print only — appears at the top of every Rx"
+                subtitle="Print only — shown at the top of every Rx"
                 rows={CLINIC_HEADER_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
-              <SectionGroupCard
+
+              <CollapsibleGroupCard
                 title="Doctor Information"
-                subtitle="Print only"
+                subtitle="Print only — shown in the header"
                 rows={DOCTOR_INFO_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
-              <SectionGroupCard
+
+              <CollapsibleGroupCard
                 title="Patient Details"
-                subtitle="Print only"
+                subtitle="Print only — shown after the header"
                 rows={PATIENT_DETAIL_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
-            </div>
-            <div className="space-y-5">
-              <SectionGroupCard
-                title="Sections"
-                subtitle="Tap 👁 to show on the writing form, 🖨 to print on the Rx"
-                rows={BODY_SECTION_ROWS}
-                rxForm={rxForm} setRxForm={setRxForm}
-                rxPrint={rxPrint} setRxPrint={setRxPrint}/>
-              <SectionGroupCard
+
+              <CollapsibleGroupCard
                 title="Medicine Table Columns"
-                subtitle="Print only — controls what appears in the medicines table"
+                subtitle="Print only — controls columns in the medicines table"
                 rows={MEDICINE_COL_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
-              <SectionGroupCard
+
+              <CollapsibleGroupCard
                 title="Footer"
-                subtitle="Print only"
+                subtitle="Print only — bottom of the Rx"
                 rows={FOOTER_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
-            </div>
-          </div>
 
-          {/* Vitals Fields card — only relevant when Vitals form-side is enabled,
-              and it only affects the writing form (which sub-fields appear there). */}
-          {rxForm.showVitals && (
-            <Card title="Vitals Fields" subtitle="Choose which vital parameters to record on the writing form">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-                <Toggle checked={rxForm.vitalBP     ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalBP: v }));     setGlobalDirty(true) }} label="Blood Pressure" sub="Systolic / Diastolic"/>
-                <Toggle checked={rxForm.vitalSugar  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSugar: v }));  setGlobalDirty(true) }} label="Blood Sugar"    sub="mg/dL"/>
-                <Toggle checked={rxForm.vitalWeight ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalWeight: v })); setGlobalDirty(true) }} label="Weight"         sub="kg"/>
-                <Toggle checked={rxForm.vitalTemp   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalTemp: v }));   setGlobalDirty(true) }} label="Temperature"    sub="°F"/>
-                <Toggle checked={rxForm.vitalSpo2   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSpo2: v }));   setGlobalDirty(true) }} label="SpO2"           sub="Oxygen saturation %"/>
-                <Toggle checked={rxForm.vitalPulse  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalPulse: v }));  setGlobalDirty(true) }} label="Pulse Rate"     sub="bpm"/>
-                <Toggle checked={rxForm.vitalHeight ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalHeight: v })); setGlobalDirty(true) }} label="Height"         sub="cm"/>
-                <Toggle checked={rxForm.vitalBMI    ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalBMI: v }));    setGlobalDirty(true) }} label="BMI"            sub="Auto-calculated"/>
+              {/* Vitals Fields — only relevant when Vitals form-side is enabled. */}
+              {rxForm.showVitals && (
+                <Card title="Vitals Fields" subtitle="Choose which vital parameters to record on the writing form">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+                    <Toggle checked={rxForm.vitalBP     ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalBP: v }));     setGlobalDirty(true) }} label="Blood Pressure" sub="Systolic / Diastolic"/>
+                    <Toggle checked={rxForm.vitalSugar  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSugar: v }));  setGlobalDirty(true) }} label="Blood Sugar"    sub="mg/dL"/>
+                    <Toggle checked={rxForm.vitalWeight ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalWeight: v })); setGlobalDirty(true) }} label="Weight"         sub="kg"/>
+                    <Toggle checked={rxForm.vitalTemp   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalTemp: v }));   setGlobalDirty(true) }} label="Temperature"    sub="°F"/>
+                    <Toggle checked={rxForm.vitalSpo2   ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalSpo2: v }));   setGlobalDirty(true) }} label="SpO2"           sub="Oxygen saturation %"/>
+                    <Toggle checked={rxForm.vitalPulse  ?? true}  onChange={v => { setRxForm(f => ({ ...f, vitalPulse: v }));  setGlobalDirty(true) }} label="Pulse Rate"     sub="bpm"/>
+                    <Toggle checked={rxForm.vitalHeight ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalHeight: v })); setGlobalDirty(true) }} label="Height"         sub="cm"/>
+                    <Toggle checked={rxForm.vitalBMI    ?? false} onChange={v => { setRxForm(f => ({ ...f, vitalBMI: v }));    setGlobalDirty(true) }} label="BMI"            sub="Auto-calculated"/>
+                  </div>
+                </Card>
+              )}
+
+              <CustomFieldsCard rxForm={rxForm} setRxForm={setRxForm} rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+              <SectionOrderCard rxForm={rxForm} setRxForm={setRxForm}/>
+
+              <div className="flex justify-between items-center pt-2">
+                <p className="text-xs text-slate-400 max-w-md">
+                  Visual styling (colors, fonts, paper size, padding) is on the <strong>Print Style</strong> tab.
+                </p>
+                <Button variant="primary" loading={saving}
+                  icon={saved ? <Check className="w-4 h-4"/> : <Save className="w-4 h-4"/>}
+                  onClick={saveFormAndPrint}>
+                  {saved ? 'Saved!' : 'Save Settings'}
+                </Button>
               </div>
-            </Card>
-          )}
+            </div>
 
-          {/* Custom Fields manager + Section Order — full-width below the 2-col grid */}
-          <CustomFieldsCard rxForm={rxForm} setRxForm={setRxForm} rxPrint={rxPrint} setRxPrint={setRxPrint}/>
-          <SectionOrderCard rxForm={rxForm} setRxForm={setRxForm}/>
-
-          <div className="flex justify-between items-center">
-            <p className="text-xs text-slate-400">
-              All sections, columns, and visibility live here. Visual styling (colors, fonts, paper size, padding) is on the <strong>Print Style</strong> tab.
-            </p>
-            <Button variant="primary" loading={saving}
-              icon={saved ? <Check className="w-4 h-4"/> : <Save className="w-4 h-4"/>}
-              onClick={saveFormAndPrint}>
-              {saved ? 'Saved!' : 'Save Settings'}
-            </Button>
+            {/* RIGHT — sticky live preview. Hidden on small screens (under lg) so the
+                left side gets full width. Doctor sees instant feedback as they toggle. */}
+            <div className="hidden lg:block">
+              <div className="sticky top-4">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5"/>Live Print Preview
+                </p>
+                <RxLivePreview cfg={rxPrint}/>
+                <p className="text-[10px] text-slate-400 mt-2 italic">
+                  Toggle 🖨 icons on the left — preview updates instantly. Sample data shown.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1293,6 +1311,240 @@ function TemplateEditor({ type, template, onClose, onSaved }) {
 //
 // Used for: Clinic Header, Doctor Info, Patient Details, Sections (body), Medicine
 // Columns, Footer. Each group passes its own row list — see merged tab below.
+// ─────────────────────────────────────────────
+// RX LIVE PREVIEW — small print mockup that updates as toggles change
+// ─────────────────────────────────────────────
+// Renders a compact prescription preview reflecting the current rxPrint config.
+// Used inside the merged "Prescription Form & Print" tab as a sticky sidebar so
+// the doctor sees instant feedback as they toggle visibility.
+//
+// Only depends on rxPrint — form-side toggles affect what the doctor RECORDS
+// (and hence what data exists), but the printed output is purely a function of
+// the print toggles. We render with sample data, so the preview shows what WOULD
+// print if the doctor entered values for every section.
+function RxLivePreview({ cfg }) {
+  const cfPrintMap = (cfg && typeof cfg.customFieldPrint === 'object' && cfg.customFieldPrint) || {}
+  return (
+    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden text-xs"
+      style={{ fontFamily: cfg.fontFamily === 'serif' ? 'Georgia,serif' : cfg.fontFamily === 'mono' ? 'monospace' : 'inherit' }}>
+
+      {/* Header */}
+      <div className={`p-3 ${cfg.headerBorder !== false ? 'border-b-2' : ''}`}
+           style={{ borderColor: cfg.primaryColor || cfg.headerColor || '#1565C0' }}>
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0">
+            {cfg.showClinicName    && <p className="font-bold text-sm truncate" style={{ color: cfg.primaryColor || '#1565C0' }}>Sharma Medical Clinic</p>}
+            {cfg.showClinicTagline && <p className="text-[10px] text-slate-500 italic truncate">Your Health, Our Priority</p>}
+            {cfg.showClinicAddress && <p className="text-[10px] text-slate-400 truncate">123 Main Street, Pune</p>}
+            {cfg.showClinicPhone   && <p className="text-[10px] text-slate-400">Phone: 9876543210</p>}
+          </div>
+          <div className="text-right flex-shrink-0">
+            {cfg.showDoctorName  && <p className="font-bold text-[10px]">Dr. Rajesh Sharma</p>}
+            {cfg.showDoctorQual  && <p className="text-[10px] text-slate-500">MBBS, MD</p>}
+            {cfg.showDoctorSpec  && <p className="text-[10px] text-slate-500">General Physician</p>}
+            {cfg.showDoctorRegNo && <p className="text-[10px] text-slate-400">Reg: MH-12345</p>}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-3 space-y-1.5">
+        {/* Patient row */}
+        <div className="border-b border-slate-100 pb-1.5 text-[11px] flex flex-wrap items-baseline gap-x-1.5">
+          {(cfg.showOPD ?? true) && <span className="font-bold tracking-wide">MH0001</span>}
+          {cfg.showPatient && (
+            <span className="font-semibold">
+              Mrs Dummy 15
+              {(cfg.showAge || cfg.showGender) && (
+                <span className="font-normal text-slate-700">
+                  {' '}({[cfg.showAge && '44 yrs', cfg.showGender && 'Female'].filter(Boolean).join(', ')})
+                </span>
+              )}
+              {(cfg.showPhone ?? true) && <span className="text-slate-700"> - 9876543210</span>}
+            </span>
+          )}
+          {cfg.showRxNo && <span className="ml-auto text-slate-400 font-mono" style={{ fontSize: '9px' }}>Rx: 0042</span>}
+        </div>
+        {(cfg.showEmail || cfg.showAddress || cfg.showBloodGroup) && (
+          <p className="text-[10px] text-slate-500">
+            {[cfg.showEmail && 'patient@email.com', cfg.showAddress && '123 Main St, Pune', cfg.showBloodGroup && 'B+'].filter(Boolean).join(' • ')}
+          </p>
+        )}
+        {cfg.showAllergy && <p className="text-[10px]"><span className="font-semibold text-danger">⚠ Allergy:</span> Penicillin</p>}
+        {cfg.showChronicConditions && <p className="text-[10px]"><span className="font-semibold">Chronic:</span> Hypertension, Diabetes</p>}
+
+        {/* Body sections */}
+        {cfg.showComplaint && <p className="text-[11px]"><span className="font-semibold">Chief Complaint:</span> Headache, mild fever</p>}
+        {cfg.showDiagnosis && <p className="text-[11px]"><span className="font-semibold">Diagnosis:</span> Viral fever</p>}
+        {cfg.showVitals    && <p className="text-[11px]"><span className="font-semibold">Vitals:</span> BP 120/80 • Pulse 78 • Temp 99°F</p>}
+
+        {cfg.showMedicines !== false && (
+          <div className="pt-1">
+            <div className="flex items-center gap-1 mb-1">
+              {cfg.showRxSymbol && <span className="text-base font-bold italic" style={{ color: cfg.primaryColor || '#1565C0' }}>℞</span>}
+              <span className="text-[10px] font-bold text-slate-700">MEDICINES</span>
+            </div>
+            <table className="w-full text-[10px] border-collapse">
+              <thead>
+                <tr className="border-b border-slate-300 text-slate-600">
+                  <th className="text-left py-0.5 pr-1">Medicine</th>
+                  {cfg.showDosage && <th className="text-center px-1">Dosage</th>}
+                  {cfg.showWhen   && <th className="text-center px-1">Timing</th>}
+                  {cfg.showDays   && <th className="text-center px-1">Days</th>}
+                  {cfg.showQty    && <th className="text-center px-1">Qty</th>}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-slate-100">
+                  <td className={`py-0.5 pr-1 ${cfg.medicineNameBold ? 'font-bold' : ''}`}>Paracetamol 500mg</td>
+                  {cfg.showDosage && <td className="text-center">1-0-1</td>}
+                  {cfg.showWhen   && <td className="text-center">A/F</td>}
+                  {cfg.showDays   && <td className="text-center">3</td>}
+                  {cfg.showQty    && <td className="text-center">9</td>}
+                </tr>
+                <tr>
+                  <td className={`py-0.5 pr-1 ${cfg.medicineNameBold ? 'font-bold' : ''}`}>Cetirizine 10mg</td>
+                  {cfg.showDosage && <td className="text-center">0-0-1</td>}
+                  {cfg.showWhen   && <td className="text-center">A/F</td>}
+                  {cfg.showDays   && <td className="text-center">5</td>}
+                  {cfg.showQty    && <td className="text-center">5</td>}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {cfg.showLabTests   && <p className="text-[11px]"><span className="font-semibold">Lab Tests:</span> CBC, Lipid Profile</p>}
+        {cfg.showLabResults && <p className="text-[11px]"><span className="font-semibold">Test Outcomes:</span> Hb 13.5, Glucose 110</p>}
+        {cfg.showAdvice     && <p className="text-[11px]"><span className="font-semibold">Advice:</span> Rest, drink fluids</p>}
+        {cfg.showNextVisit  && <p className="text-[11px]"><span className="font-semibold">Next Visit:</span> Monday 04 May 2026</p>}
+
+        {/* Footer */}
+        <div className="border-t border-slate-100 pt-2 flex justify-between items-end text-[10px]">
+          <div>
+            {cfg.showSignature && <span className="text-slate-400">_______________<br/>Signature</span>}
+          </div>
+          <span className="text-slate-300 italic">Generated by SimpleRx EMR</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// COLLAPSIBLE GROUP CARD — collapsible variant of SectionGroupCard
+// ─────────────────────────────────────────────
+// Wraps a SectionGroupCard in a collapsible header. Shows a count badge and
+// an "n on / m total" summary so the doctor can see at a glance which groups
+// have non-default state without expanding them.
+function CollapsibleGroupCard({ title, subtitle, rows, rxForm, setRxForm, rxPrint, setRxPrint, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  // Compute "on" counts so the collapsed header is informative.
+  const formOnCount  = rows.filter(r => r.formKey  && rxForm[r.formKey]   !== false).length
+  const printOnCount = rows.filter(r => r.printKey && rxPrint[r.printKey] !== false).length
+  const formTotal    = rows.filter(r => r.formKey).length
+  const printTotal   = rows.filter(r => r.printKey).length
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-3 p-4 hover:bg-slate-50 transition-colors text-left">
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-slate-700 text-sm">{title}</div>
+          {subtitle && <div className="text-xs text-slate-400 mt-0.5">{subtitle}</div>}
+        </div>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {formTotal > 0 && (
+            <span className="flex items-center gap-1 text-[11px] text-slate-500" title={`${formOnCount} of ${formTotal} shown on form`}>
+              <Eye className="w-3.5 h-3.5"/>{formOnCount}/{formTotal}
+            </span>
+          )}
+          {printTotal > 0 && (
+            <span className="flex items-center gap-1 text-[11px] text-slate-500" title={`${printOnCount} of ${printTotal} printed`}>
+              <Printer className="w-3.5 h-3.5"/>{printOnCount}/{printTotal}
+            </span>
+          )}
+          {open ? <ChevronUp className="w-4 h-4 text-slate-400"/> : <ChevronDown className="w-4 h-4 text-slate-400"/>}
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-slate-100">
+          <SectionGroupCardBody rows={rows} rxForm={rxForm} setRxForm={setRxForm} rxPrint={rxPrint} setRxPrint={setRxPrint}/>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// Body-only variant of SectionGroupCard — same row UI but without the wrapper Card,
+// so it can be embedded inside a CollapsibleGroupCard's expanded panel.
+function SectionGroupCardBody({ rows, rxForm, setRxForm, rxPrint, setRxPrint }) {
+  const isFormOn  = (key) => key == null ? null : rxForm[key]  !== false
+  const isPrintOn = (key) => key == null ? null : rxPrint[key] !== false
+
+  const toggleForm = (key, locked) => {
+    if (locked || !key) return
+    setRxForm(f => ({ ...f, [key]: !isFormOn(key) }))
+    setGlobalDirty(true)
+  }
+  const togglePrint = (key, locked) => {
+    if (locked || !key) return
+    setRxPrint(p => ({ ...p, [key]: !isPrintOn(key) }))
+    setGlobalDirty(true)
+  }
+
+  return (
+    <div className="p-1">
+      {rows.map((row, idx) => {
+        const formOn  = isFormOn(row.formKey)
+        const printOn = isPrintOn(row.printKey)
+        const hasForm  = row.formKey  != null
+        const hasPrint = row.printKey != null
+        return (
+          <div key={row.label + '_' + idx}
+               className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50 transition">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm text-slate-700 flex items-center gap-2">
+                <span className="truncate">{row.label}</span>
+                {row.locked && (
+                  <span className="text-[9px] uppercase tracking-wide bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded flex-shrink-0">Locked</span>
+                )}
+              </div>
+              {row.sub && <div className="text-[11px] text-slate-400 truncate mt-0.5">{row.sub}</div>}
+            </div>
+            {hasForm ? (
+              <button type="button" onClick={() => toggleForm(row.formKey, row.locked)} disabled={!!row.locked}
+                title={row.locked ? 'Always shown on form' : (formOn ? 'Showing on form — click to hide' : 'Hidden on form — click to show')}
+                aria-label={`Toggle ${row.label} on writing form`}
+                className={['p-1.5 rounded-lg transition flex-shrink-0',
+                  row.locked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white',
+                  formOn ? 'text-primary' : 'text-slate-300',
+                ].join(' ')}>
+                <Eye className="w-4 h-4"/>
+              </button>
+            ) : (
+              <span className="w-7 flex-shrink-0" aria-hidden/>
+            )}
+            {hasPrint ? (
+              <button type="button" onClick={() => togglePrint(row.printKey, row.locked)} disabled={!!row.locked}
+                title={row.locked ? 'Always printed' : (printOn ? 'Printing — click to hide on print' : 'Hidden on print — click to print')}
+                aria-label={`Toggle ${row.label} on printed Rx`}
+                className={['p-1.5 rounded-lg transition flex-shrink-0',
+                  row.locked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white',
+                  printOn ? 'text-primary' : 'text-slate-300',
+                ].join(' ')}>
+                <Printer className="w-4 h-4"/>
+              </button>
+            ) : (
+              <span className="w-7 flex-shrink-0" aria-hidden/>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function SectionGroupCard({ title, subtitle, rows, rxForm, setRxForm, rxPrint, setRxPrint }) {
   const isFormOn  = (key) => key == null ? null : rxForm[key]  !== false
   const isPrintOn = (key) => key == null ? null : rxPrint[key] !== false
