@@ -888,6 +888,7 @@ export default function NewPrescriptionPage() {
   const [outcomesDates, setOutcomesDates] = useState(() => [format(new Date(), 'yyyy-MM-dd')]) // multi-date columns
   const [outcomesSearchQuery, setOutcomesSearchQuery] = useState('')  // filter for inline categorized field search
   const [openCategories, setOpenCategories] = useState({})            // category name → bool (manual expand state)
+  const [showAllCategories, setShowAllCategories] = useState(false)   // when true, render all categories; otherwise only those with filled values
   const [nextVisit, setNextVisit] = useState('')
   const [printLang, setPrintLang] = useState('en')
   const [customRxNo,setCustomRxNo]= useState('')
@@ -1139,12 +1140,18 @@ export default function NewPrescriptionPage() {
   // On modal open, hydrate outcomesDates from existing rows (so editing an Rx
   // shows the dates it already has). If no rows yet, default to a single column
   // for today. Dates always sorted ascending so charts read left→right (old→new).
+  // Also reset transient UI state (search, expand toggles) so the modal opens
+  // clean every time — categories with filled values still appear via the
+  // outcomesFilteredCategories memo.
   useEffect(() => {
     if (!outcomesOpen) return
     const existing = Array.from(new Set(
       rxLabResults.map(r => r.resultDate).filter(Boolean)
     )).sort()
     setOutcomesDates(existing.length > 0 ? existing : [format(new Date(), 'yyyy-MM-dd')])
+    setOutcomesSearchQuery('')
+    setOpenCategories({})
+    setShowAllCategories(false)
     // intentionally only depend on outcomesOpen — we sync once per modal open
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outcomesOpen])
@@ -1258,22 +1265,39 @@ export default function NewPrescriptionPage() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
   }, [labTestList])
 
-  // Search filter — matches by field label, test name, or category. When the
-  // category name itself matches, all rows under it pass through (broad match).
+  // Decide which categories to render in the body. Three modes:
+  //   1. Search active → show matching categories/fields, regardless of values entered
+  //   2. "Show all" toggled → render every category (browse mode)
+  //   3. Default → only categories that have at least one filled value (clean default)
   const outcomesFilteredCategories = useMemo(() => {
     const q = outcomesSearchQuery.trim().toLowerCase()
-    if (!q) return outcomesFieldsByCategory
+    if (q) {
+      return outcomesFieldsByCategory
+        .map(([cat, rows]) => {
+          if (cat.toLowerCase().includes(q)) return [cat, rows]
+          const filtered = rows.filter(r =>
+            (r.label || '').toLowerCase().includes(q) ||
+            (r.labTestName || '').toLowerCase().includes(q)
+          )
+          return [cat, filtered]
+        })
+        .filter(([, rows]) => rows.length > 0)
+    }
+    if (showAllCategories) return outcomesFieldsByCategory
+    // Default — collect labTestIds that have at least one non-empty value, then
+    // render only categories whose rows include any of those ids. Keeps the modal
+    // visually clean when there's no work in progress.
+    const filledLabIds = new Set()
+    for (const r of rxLabResults) {
+      const hasVal = (r.freeTextResult && String(r.freeTextResult).trim()) ||
+                     Object.values(r.values || {}).some(v => v && String(v).trim())
+      if (hasVal && r.labTestId) filledLabIds.add(r.labTestId)
+    }
+    if (filledLabIds.size === 0) return []
     return outcomesFieldsByCategory
-      .map(([cat, rows]) => {
-        if (cat.toLowerCase().includes(q)) return [cat, rows]
-        const filtered = rows.filter(r =>
-          (r.label || '').toLowerCase().includes(q) ||
-          (r.labTestName || '').toLowerCase().includes(q)
-        )
-        return [cat, filtered]
-      })
+      .map(([cat, rows]) => [cat, rows.filter(r => filledLabIds.has(r.labTestId))])
       .filter(([, rows]) => rows.length > 0)
-  }, [outcomesFieldsByCategory, outcomesSearchQuery])
+  }, [outcomesFieldsByCategory, outcomesSearchQuery, showAllCategories, rxLabResults])
 
   // Orphan rows = saved values that don't map to current master (labTest deleted
   // from Master Data, or older free-text outcomes from previous flow). We surface
@@ -1385,18 +1409,34 @@ export default function NewPrescriptionPage() {
     setDirty(true)
   }
 
-  // Category accordion controls
-  const toggleCategory = (cat) => setOpenCategories(prev => ({ ...prev, [cat]: !prev[cat] }))
+  // Category accordion controls. Three open-state inputs interact:
+  //   • search active → all rendered categories are open (live filter feel)
+  //   • showAllCategories → user is in browse mode; openCategories controls each
+  //   • default (filled-only mode) → categories are open by default since they
+  //     wouldn't be rendered at all if they had no values; user can still toggle
+  const toggleCategory = (cat) => setOpenCategories(prev => ({
+    ...prev,
+    [cat]: prev[cat] === undefined ? false : !prev[cat]
+  }))
   const isCategoryOpen = (cat) => {
-    if (outcomesSearchQuery.trim()) return true   // auto-expand all matches when searching
-    return !!openCategories[cat]
+    if (outcomesSearchQuery.trim()) return true
+    if (showAllCategories) return !!openCategories[cat]
+    // filled-only mode → open unless user explicitly collapsed
+    return openCategories[cat] !== false
   }
+  // "Expand all" reveals every category AND opens each one. Use it when you want
+  // to browse the full catalog without searching.
   const expandAllCategories = () => {
+    setShowAllCategories(true)
     const next = {}
     outcomesFieldsByCategory.forEach(([cat]) => { next[cat] = true })
     setOpenCategories(next)
   }
-  const collapseAllCategories = () => setOpenCategories({})
+  // "Collapse all" returns to filled-only mode and clears any toggled state.
+  const collapseAllCategories = () => {
+    setShowAllCategories(false)
+    setOpenCategories({})
+  }
 
   // Category → color (Ocean Blue palette + accents). Used as left-edge stripe.
   const categoryColor = (cat) => {
@@ -2288,24 +2328,47 @@ export default function NewPrescriptionPage() {
             </div>
             <button type="button"
               onClick={expandAllCategories}
-              className="text-xs text-slate-600 hover:text-primary px-2 py-1 rounded hover:bg-blue-50 transition">
-              Expand all
+              className={`text-xs px-2 py-1 rounded transition ${showAllCategories ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-blue-50'}`}
+              title="Show every category in the catalog">
+              {showAllCategories ? 'Showing all' : 'Browse all'}
             </button>
             <button type="button"
               onClick={collapseAllCategories}
-              className="text-xs text-slate-600 hover:text-primary px-2 py-1 rounded hover:bg-blue-50 transition">
-              Collapse all
+              className="text-xs text-slate-600 hover:text-primary px-2 py-1 rounded hover:bg-blue-50 transition"
+              title="Show only categories with values entered">
+              Hide empty
             </button>
           </div>
 
           {/* Body — scrollable. Categories listed; click to expand → field rows with inline textboxes. */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
             {outcomesFilteredCategories.length === 0 && outcomesOrphanRows.length === 0 ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-center">
-                {(labTestList || []).length === 0
-                  ? <>No lab tests in master data yet. Ask your admin to <strong>Load Default Data</strong> in Master Data → Lab Tests.</>
-                  : <>No tests match <strong>"{outcomesSearchQuery}"</strong>. Try a shorter query.</>}
-              </div>
+              (labTestList || []).length === 0 ? (
+                /* Master data not loaded yet */
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-center">
+                  No lab tests in master data yet. Ask your admin to <strong>Load Default Data</strong> in Master Data → Lab Tests.
+                </div>
+              ) : outcomesSearchQuery.trim() ? (
+                /* User searched but nothing matched */
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-center">
+                  No tests match <strong>"{outcomesSearchQuery}"</strong>. Try a shorter query.
+                </div>
+              ) : (
+                /* Default — nothing entered yet, friendly entry hint */
+                <div className="bg-blue-50/60 border border-blue-200 rounded-xl py-10 px-6 text-center">
+                  <Search className="w-10 h-10 text-primary/40 mx-auto mb-3"/>
+                  <p className="text-sm text-slate-700 font-medium">Search to record a test result</p>
+                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                    Type a test name or field above (try <strong>Hb</strong>, <strong>LDL</strong>, or <strong>TSH</strong>)
+                    <br className="hidden sm:inline"/>
+                    {' '}— or {' '}
+                    <button type="button" onClick={expandAllCategories}
+                      className="text-primary hover:underline font-medium">
+                      browse all categories
+                    </button>.
+                  </p>
+                </div>
+              )
             ) : (
               outcomesFilteredCategories.map(([cat, rows]) => {
                 const open = isCategoryOpen(cat)
