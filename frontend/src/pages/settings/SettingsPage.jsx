@@ -107,7 +107,7 @@ const DEFAULT_RX_PRINT = {
   showPhone: true, showEmail: false, showAddress: false, showBloodGroup: false,
   showAllergy: true, showChronicConditions: false,
   showComplaint: true, showDiagnosis: true, showMedicines: true, showLabTests: true,
-  showAdvice: true, showNextVisit: true, showVitals: false,
+  showLabResults: true, showAdvice: true, showNextVisit: true, showVitals: false,
   showDosage: true, showWhen: true, showFrequency: true, showDays: true, showQty: true, showNotes: true,
   showGeneric: false,  // Print generic/composition below medicine name — OFF by default
   compactPrint: true,  // Combine Timing-Freq-Duration into one column for denser layout
@@ -631,6 +631,7 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved })
               <Toggle checked={cfg.showVitals}    onChange={v => set('showVitals', v)}    label="Vitals" sub="BP, Sugar, Weight etc."/>
               <Toggle checked={cfg.showMedicines} onChange={v => set('showMedicines', v)} label="Medicines Table"/>
               <Toggle checked={cfg.showLabTests}  onChange={v => set('showLabTests', v)}  label="Lab Tests"/>
+              <Toggle checked={cfg.showLabResults} onChange={v => set('showLabResults', v)} label="Test Outcomes" sub="Recorded values for ordered tests, with date columns"/>
               <Toggle checked={cfg.showAdvice}    onChange={v => set('showAdvice', v)}    label="Advice & Precautions"/>
               <Toggle checked={cfg.showNextVisit} onChange={v => set('showNextVisit', v)} label="Next Visit Date"/>
             </CollapsibleSection>
