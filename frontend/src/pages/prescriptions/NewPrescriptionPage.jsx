@@ -1288,21 +1288,37 @@ export default function NewPrescriptionPage() {
       .filter(([, rows]) => rows.length > 0)
   }, [outcomesFieldsByCategory, showAllCategories, addedLabTestIds, rxLabResults])
 
-  // Picker dropdown items — full lab tests catalog sorted by category → name,
-  // with already-added tests excluded. Driven by outcomesSearchQuery for the
-  // typeahead filter. No slice limit — full list shown on focus, like TagSearch.
+  // Picker dropdown items — one entry per CATEGORY (not per test). Clicking a
+  // category adds ALL its tests to the body at once. This matches how doctors
+  // think — "I need a full lipid profile", not "I need LDL, then HDL, then…".
+  // A category is hidden from the picker once all its tests are already added.
+  // Search query filters by category name OR any sub-test name within (so typing
+  // "ldl" still surfaces LIPID PROFILE).
   const outcomesPickerItems = useMemo(() => {
     const q = outcomesSearchQuery.trim().toLowerCase()
-    const list = (labTestList || [])
-      .filter(t => t && t.id && !addedLabTestIds.has(t.id))
-      .filter(t => !q
-        || (t.name || '').toLowerCase().includes(q)
-        || (t.category || '').toLowerCase().includes(q))
-    list.sort((a, b) => {
-      const c = String(a.category || 'zzz').toLowerCase().localeCompare(String(b.category || 'zzz').toLowerCase())
-      if (c !== 0) return c
-      return String(a.name || '').toLowerCase().localeCompare(String(b.name || '').toLowerCase())
-    })
+    const map = new Map()
+    for (const t of (labTestList || [])) {
+      if (!t || !t.id) continue
+      const cat = String(t.category || 'Other').trim() || 'Other'
+      if (!map.has(cat)) map.set(cat, { name: cat, totalCount: 0, labTestIds: [], testNames: [] })
+      const entry = map.get(cat)
+      entry.totalCount++
+      entry.labTestIds.push(t.id)
+      entry.testNames.push(t.name || '')
+    }
+    let list = Array.from(map.values()).map(c => ({
+      ...c,
+      // The actual ids that aren't already added — what would be appended on click
+      remainingIds: c.labTestIds.filter(id => !addedLabTestIds.has(id)),
+    })).filter(c => c.remainingIds.length > 0)
+
+    if (q) {
+      list = list.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.testNames.some(n => n.toLowerCase().includes(q))
+      )
+    }
+    list.sort((a, b) => a.name.localeCompare(b.name))
     return list
   }, [labTestList, addedLabTestIds, outcomesSearchQuery])
 
@@ -1444,15 +1460,16 @@ export default function NewPrescriptionPage() {
   }
 
   // ── Lab test picker (TagSearch-style typeahead) ───────────────────
-  // Adding a test to the body means putting its id into addedLabTestIds. The
-  // body's categorized renderer picks it up automatically. We also clear the
-  // query and refocus so doctors can rapid-add several tests in a row.
-  const pickLabTest = (item) => {
-    if (!item || !item.id) return
+  // Picking a category adds ALL its remaining test ids to addedLabTestIds in
+  // one go, so every test in that category shows up on the page with input
+  // boxes. Doctor fills in the ones they care about; empty ones simply won't
+  // be persisted. We clear the query and refocus for rapid multi-add.
+  const pickCategory = (categoryItem) => {
+    if (!categoryItem || !Array.isArray(categoryItem.remainingIds)) return
+    if (categoryItem.remainingIds.length === 0) return
     setAddedLabTestIds(prev => {
-      if (prev.has(item.id)) return prev
       const next = new Set(prev)
-      next.add(item.id)
+      for (const id of categoryItem.remainingIds) next.add(id)
       return next
     })
     setOutcomesSearchQuery('')
@@ -2373,7 +2390,7 @@ export default function NewPrescriptionPage() {
                   if (e.key === 'Escape') setOutcomesPickerOpen(false)
                   if (e.key === 'Enter' && outcomesPickerItems.length > 0) {
                     e.preventDefault()
-                    pickLabTest(outcomesPickerItems[0])
+                    pickCategory(outcomesPickerItems[0])
                   }
                 }}/>
               {outcomesSearchQuery && (
@@ -2394,26 +2411,29 @@ export default function NewPrescriptionPage() {
                   ) : outcomesPickerItems.length === 0 ? (
                     <div className="px-3 py-3 text-xs text-slate-500">
                       {outcomesSearchQuery.trim()
-                        ? <>No tests match <strong>"{outcomesSearchQuery}"</strong>.</>
-                        : <>All catalog tests are already added.</>}
+                        ? <>No categories match <strong>"{outcomesSearchQuery}"</strong>.</>
+                        : <>All categories already added.</>}
                     </div>
                   ) : (
-                    outcomesPickerItems.map((item) => (
-                      <button key={item.id} type="button"
-                        onMouseDown={(e) => { e.preventDefault(); pickLabTest(item) }}
-                        className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-slate-50 last:border-b-0 flex items-center justify-between gap-2 transition">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <Plus className="w-3.5 h-3.5 text-primary flex-shrink-0"/>
-                          <span className="text-sm font-medium text-slate-800 truncate">{item.name}</span>
-                          {Array.isArray(item.expectedFields) && item.expectedFields.length > 1 && (
-                            <Badge variant="success">{item.expectedFields.length} fields</Badge>
-                          )}
-                        </div>
-                        {item.category && (
-                          <span className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold flex-shrink-0">{item.category}</span>
-                        )}
-                      </button>
-                    ))
+                    outcomesPickerItems.map((cat) => {
+                      const partial = cat.totalCount > cat.remainingIds.length
+                      return (
+                        <button key={cat.name} type="button"
+                          onMouseDown={(e) => { e.preventDefault(); pickCategory(cat) }}
+                          className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-slate-50 last:border-b-0 flex items-center justify-between gap-2 transition">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <Plus className="w-4 h-4 text-primary flex-shrink-0"/>
+                            <span className={`w-1 h-5 rounded-full flex-shrink-0 ${categoryColor(cat.name)}`}/>
+                            <span className="text-sm font-bold text-slate-800 uppercase tracking-wide truncate">{cat.name}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-medium flex-shrink-0">
+                            {partial
+                              ? `+${cat.remainingIds.length} of ${cat.totalCount}`
+                              : `${cat.totalCount} test${cat.totalCount > 1 ? 's' : ''}`}
+                          </span>
+                        </button>
+                      )
+                    })
                   )}
                 </div>
               )}
