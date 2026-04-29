@@ -1891,14 +1891,10 @@ export default function NewPrescriptionPage() {
         </div>
       </div>
 
-      {/* Section list — flex-col + per-section `order` lets the doctor's preferred
-          order (saved in pageDesign.fieldOrder) drive the layout. Patient block stays
-          first (no order set, defaults to 0). */}
-      <div className="flex flex-col gap-4">
-        {/* Patient */}
-        <div id="sec-patient" className="scroll-mt-20"><Card>
-          <h3 className="font-bold text-slate-700 mb-3">Patient</h3>
-          {!patient ? (
+      {/* Patient block — sits OUTSIDE the reorderable section list. Always first. */}
+      <div id="sec-patient" className="scroll-mt-20 mb-4"><Card>
+        <h3 className="font-bold text-slate-700 mb-3">Patient</h3>
+        {!patient ? (
             <div className="relative">
               <input autoFocus className="form-input" placeholder="Click to see all patients or search by name / phone..."
                 value={ptSearch}
@@ -1939,6 +1935,12 @@ export default function NewPrescriptionPage() {
             </div>
           )}
         </Card></div>
+
+      {/* Reorderable section list — flex-col + per-section `order` lets the doctor's
+          preferred order (saved in pageDesign.fieldOrder) drive the layout. Patient
+          block is OUTSIDE this container so it always stays at the top, and the
+          action bar at the bottom is also OUTSIDE so it always stays at the bottom. */}
+      <div className="flex flex-col gap-4">
 
         {/* Vitals */}
         <div id="sec-vitals" className="scroll-mt-20" style={{display: showSection('showVitals') ? '' : 'none', order: getSectionOrder('vitals')}}
@@ -2293,6 +2295,8 @@ export default function NewPrescriptionPage() {
           </Card>
         </div>
 
+      </div>{/* end flex-col reorderable sections */}
+
         <div ref={bottomBarRef} className="flex flex-col sm:flex-row justify-between gap-3 pb-12">
           <Button variant="outline" icon={<BookOpen className="w-4 h-4"/>} onClick={handleSaveAsTemplate}>
             Save as Template
@@ -2307,7 +2311,6 @@ export default function NewPrescriptionPage() {
             </Button>
           </div>
         </div>
-      </div>
     </div>
     <ConfirmDialog {...confirmProps} confirmLabel="Yes, Discard" cancelLabel="Keep Editing"/>
 
