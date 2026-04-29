@@ -104,6 +104,7 @@ async function createPrescription(req, res) {
       labTests:  rxTests = [],
       customRxNo,
       customData,   // { fieldId: stringValue, ... } — custom fields added by the clinic
+      vitals,       // snapshot of vitals taken at write-time — { systolicBP, diastolicBP, sugar, ... }
     } = req.body;
 
     const doctorId = req.user.id;
@@ -133,6 +134,20 @@ async function createPrescription(req, res) {
           templateUsed,
           printLang: printLang || 'en',
           customData: customData && typeof customData === 'object' ? customData : null,
+          // Persist a snapshot only if the doctor actually entered values. We strip
+          // empty/null fields so a later toggle-off-then-toggle-on of vitals doesn't
+          // resurrect blanks. If nothing meaningful was recorded, store NULL.
+          vitals: (() => {
+            if (!vitals || typeof vitals !== 'object') return null
+            const cleaned = {}
+            for (const [k, v] of Object.entries(vitals)) {
+              if (v === null || v === undefined) continue
+              const s = String(v).trim()
+              if (s === '') continue
+              cleaned[k] = s
+            }
+            return Object.keys(cleaned).length > 0 ? cleaned : null
+          })(),
         },
       });
 
@@ -273,7 +288,7 @@ async function updatePrescription(req, res) {
     });
     if (!existing) return errorResponse(res, 'Prescription not found', 404);
 
-    const { complaint, diagnosis, advice, nextVisit, printLang, medicines: rxMeds, labTests: rxTests, customData } = req.body;
+    const { complaint, diagnosis, advice, nextVisit, printLang, medicines: rxMeds, labTests: rxTests, customData, vitals } = req.body;
 
     const updated = await prisma.$transaction(async (tx) => {
       await tx.prescription.update({
@@ -285,6 +300,19 @@ async function updatePrescription(req, res) {
           ...(nextVisit  !== undefined && { nextVisit: nextVisit ? new Date(nextVisit) : null }),
           ...(printLang  !== undefined && { printLang }),
           ...(customData !== undefined && { customData: customData && typeof customData === 'object' ? customData : null }),
+          ...(vitals !== undefined && {
+            vitals: (() => {
+              if (!vitals || typeof vitals !== 'object') return null
+              const cleaned = {}
+              for (const [k, v] of Object.entries(vitals)) {
+                if (v === null || v === undefined) continue
+                const s = String(v).trim()
+                if (s === '') continue
+                cleaned[k] = s
+              }
+              return Object.keys(cleaned).length > 0 ? cleaned : null
+            })(),
+          }),
         },
       });
 

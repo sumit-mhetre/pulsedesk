@@ -348,6 +348,38 @@ export default function ViewPrescriptionPage() {
           <p className="mb-1.5 text-sm" style={{ order: rxOrderMap.diagnosis }}><span className="font-bold text-slate-900">Diagnosis:</span> <span className="text-slate-800">{diagnoses.join(', ')}</span></p>
         )}
 
+        {/* Vitals — snapshot stored on the Rx itself (rx.vitals). Only renders if the
+            doctor entered any values AND the print toggle is on. Format is compact:
+            "BP 120/80 • Sugar 110 • Weight 72 kg" — semicolon-style for one-liner.
+            The order key matches the form's `vitals` slot. */}
+        {show('showVitals') && rx.vitals && typeof rx.vitals === 'object' && (() => {
+          const v = rx.vitals
+          const parts = []
+          // BP can be in two forms: combined "120/80" or split systolicBP/diastolicBP
+          const sys = String(v.systolicBP || '').trim()
+          const dia = String(v.diastolicBP || '').trim()
+          const bpCombined = String(v.bp || '').trim()
+          if (sys && dia)        parts.push(`BP ${sys}/${dia}`)
+          else if (bpCombined)   parts.push(`BP ${bpCombined}`)
+          if (String(v.pulse  || '').trim()) parts.push(`Pulse ${v.pulse} bpm`)
+          if (String(v.temp   || '').trim()) parts.push(`Temp ${v.temp}°F`)
+          if (String(v.spo2   || '').trim()) parts.push(`SpO₂ ${v.spo2}%`)
+          if (String(v.sugar  || '').trim()) parts.push(`Sugar ${v.sugar} mg/dL`)
+          if (String(v.weight || '').trim()) parts.push(`Weight ${v.weight} kg`)
+          if (String(v.height || '').trim()) {
+            const unit = v.heightUnit || 'cm'
+            parts.push(`Height ${v.height} ${unit}`)
+          }
+          if (String(v.bmi    || '').trim()) parts.push(`BMI ${v.bmi}`)
+          if (parts.length === 0) return null
+          return (
+            <p className="mb-1.5 text-sm" style={{ order: rxOrderMap.vitals }}>
+              <span className="font-bold text-slate-900">Vitals:</span>{' '}
+              <span className="text-slate-800">{parts.join(' • ')}</span>
+            </p>
+          )
+        })()}
+
         {/* Medicines */}
         {/* Medicines section — always rendered if any medicines exist (locked-on in PageDesigner). */}
         {rx.medicines?.length > 0 && (

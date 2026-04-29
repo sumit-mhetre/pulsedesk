@@ -501,6 +501,11 @@ model Prescription {
   // Shape: { [cfId]: string[] } where cfId matches a CustomFieldValue.fieldId.
   // Example: { "cf_abc123": ["Diabetes (mother)", "Hypertension (father)"] }
   customData   Json?
+  // Snapshot of vitals captured at the moment this Rx was written. Independent of
+  // VitalRecord rows on the patient timeline so the printed Rx always reflects the
+  // values the doctor saw, even if the patient's later vitals diverge. Shape mirrors
+  // the form fields: { systolicBP, diastolicBP, sugar, weight, temp, spo2, pulse, height, bmi }.
+  vitals       Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

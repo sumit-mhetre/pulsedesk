@@ -1160,6 +1160,15 @@ export default function NewPrescriptionPage() {
         else                       normalizedCD[k] = []
       }
       setCustomData(normalizedCD)
+      // Vitals snapshot — restore the values entered when this Rx was originally
+      // saved. We merge into the existing default vitals state (with units etc.)
+      // and auto-expand the vitals section if any value was previously entered.
+      if (rx.vitals && typeof rx.vitals === 'object') {
+        setVitals(v => ({ ...v, ...rx.vitals }))
+        if (Object.values(rx.vitals).some(x => x != null && String(x).trim() !== '')) {
+          setShowVitals(true)
+        }
+      }
     }).catch(()=>navigate('/prescriptions'))
   }, [editId, isEdit])
 
@@ -1882,6 +1891,22 @@ export default function NewPrescriptionPage() {
           : (v != null && String(v).trim() ? [String(v).trim()] : [])
         if (arr.length > 0) cleanCustomData[k] = arr
       }
+      // Snapshot vitals onto the Rx itself so the printed Rx always reflects the
+      // values the doctor saw at write-time. Independent of the patient timeline POST
+      // above (which writes a VitalRecord row). If nothing was entered, send null
+      // so the controller stores NULL (and the Print tab's "Vitals" toggle simply
+      // has nothing to render — toggle stays harmlessly on).
+      const cleanVitals = (() => {
+        if (!showVitals) return null
+        const out = {}
+        for (const [k, v] of Object.entries(vitals || {})) {
+          if (v === null || v === undefined) continue
+          const s = String(v).trim()
+          if (s === '') continue
+          out[k] = s
+        }
+        return Object.keys(out).length > 0 ? out : null
+      })()
       const payload = {
         patientId:  patient.id,
         complaint:  complaintTags.join(' || '),
@@ -1891,6 +1916,7 @@ export default function NewPrescriptionPage() {
         medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({...m, days: normalizeDays(m.days)})),
         labTests:   savedTests.filter(t=>t.id&&!t.isNew).map(t=>({labTestId:t.id,labTestName:t.name})),
         customData: Object.keys(cleanCustomData).length > 0 ? cleanCustomData : null,
+        vitals:     cleanVitals,
       }
       let savedId = editId
       if (isEdit) {
