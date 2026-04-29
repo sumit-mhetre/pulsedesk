@@ -2355,10 +2355,10 @@ export default function NewPrescriptionPage() {
                 {outcomesDates.length > 1 && (
                   <button type="button"
                     onClick={() => removeDate(date)}
-                    className="text-slate-300 hover:text-danger hover:bg-danger/10 rounded p-0.5 transition flex-shrink-0"
-                    title={`Remove ${date}`}
-                    aria-label={`Remove ${date}`}>
-                    <X className="w-3 h-3"/>
+                    className="ml-0.5 text-slate-400 hover:text-white hover:bg-danger rounded p-1 transition flex-shrink-0"
+                    title={`Remove ${date} column`}
+                    aria-label={`Remove ${date} column`}>
+                    <X className="w-3.5 h-3.5"/>
                   </button>
                 )}
               </div>
@@ -2538,19 +2538,10 @@ export default function NewPrescriptionPage() {
                     </button>
                     {open && (
                       <div className="border-t border-slate-100 overflow-x-auto">
-                        {/* Date column header — only when 2+ date columns. Aligned with input columns below. */}
-                        {outcomesDates.length > 1 && (
-                          <div className="grid items-center gap-x-3 px-4 py-1 bg-slate-50/60 border-b border-slate-100"
-                               style={{ gridTemplateColumns: gridTemplate }}>
-                            <span/>{/* spacer for label column */}
-                            {outcomesDates.map(d => (
-                              <span key={d} className="text-[10px] font-bold text-slate-500 uppercase text-center tracking-wide">
-                                {(() => { try { return format(new Date(d), 'd MMM') } catch { return d } })()}
-                              </span>
-                            ))}
-                            <span/>{/* spacer for trailing ✕ column */}
-                          </div>
-                        )}
+                        {/* No per-category date column headers here — the date chips
+                            at the top of the modal already show all columns and serve
+                            as the single source of truth. Avoids visual repetition
+                            in long-scrolling Rx forms with many expanded categories. */}
                         {Array.from(testGroups.entries()).map(([labTestId, group], groupIdx) => {
                           // For single-field tests we skip the per-test header and put a tiny ✕ on
                           // the row itself — saves a whole line of vertical space per test, which
