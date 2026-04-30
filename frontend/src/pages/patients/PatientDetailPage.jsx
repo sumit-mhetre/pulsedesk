@@ -389,19 +389,25 @@ function PatientDocumentsTab({ patientId }) {
     </div>
   )
 }
+
 // ── Lab Results tab content ───────────────────────────────────────────────
 // Shows a patient's lab values over time across ALL their prescriptions, with
-// trend charts for tests that have 2+ data points and a master table at the
+// trend charts for tests that have ≥1 numeric values and a master table at the
 // bottom. Filters: which test(s) to focus on, and a time range.
 //
-// Data source: /lab-results/patient/:id (existing endpoint, returns up to 500
-// most-recent results with values + prescription metadata). Grouping/charting
-// is done client-side so the doctor can re-filter without extra API calls.
+// CHART INCLUSION: previously only fields with ≥2 numeric points were rendered
+// (a "trend" needs two points to draw a line). We've relaxed that to ≥1 so a
+// "spot reading" card shows a single dot inside the normal-range band — the
+// doctor sees the value, the date, and how it sits relative to normal even on
+// the first recording. A small caption clarifies that another date would draw
+// a trend line.
+//
+// Data source: /lab-results/patient/:id (existing endpoint).
 function PatientLabResultsTab({ patientId }) {
   const [results,    setResults]    = useState([])
   const [loading,    setLoading]    = useState(true)
-  const [categoryFilter, setCategoryFilter] = useState('all')   // 'all' or a category name
-  const [rangeFilter, setRangeFilter] = useState('all') // 'all' | '3m' | '6m' | '1y'
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [rangeFilter, setRangeFilter] = useState('all')
 
   useEffect(() => {
     if (!patientId) return
@@ -414,7 +420,6 @@ function PatientLabResultsTab({ patientId }) {
     }).finally(() => setLoading(false))
   }, [patientId])
 
-  // Apply time-range filter (does NOT mutate `results` so resetting is instant).
   const filteredByRange = (() => {
     if (rangeFilter === 'all') return results
     const cutoff = new Date()
@@ -424,9 +429,6 @@ function PatientLabResultsTab({ patientId }) {
     return results.filter(r => new Date(r.resultDate) >= cutoff)
   })()
 
-  // Group: Map<testKey, { testName, category, rows: LabResult[] }>. testKey uses
-  // labTestId when present so two records of the same test (across different Rx)
-  // group together; falls back to testName for free-text catalog gaps.
   const testGroups = (() => {
     const groups = new Map()
     for (const r of filteredByRange) {
@@ -439,15 +441,12 @@ function PatientLabResultsTab({ patientId }) {
     return groups
   })()
 
-  // Tests visible after applying the category filter — used by both charts and the table.
-  // 'all' = all categories, otherwise only tests whose category matches.
   const visibleTestKeys = (() => {
     const all = Array.from(testGroups.entries())
     if (categoryFilter === 'all') return all.map(([k]) => k)
     return all.filter(([, g]) => g.category === categoryFilter).map(([k]) => k)
   })()
 
-  // Helper: numeric out-of-range check (skips non-numeric strings like "Negative").
   const isOutOfRange = (value, low, high) => {
     if (value == null || value === '') return false
     const n = parseFloat(value)
@@ -457,15 +456,12 @@ function PatientLabResultsTab({ patientId }) {
     return false
   }
 
-  // For ONE test, build per-field chart series. Each field becomes its own chart
-  // because units (g/dL vs cells/µL vs %) make a single multi-line chart unreadable.
-  // We chart structured `values` AND numeric `freeTextResult` — many simple tests
-  // (KFT, single-marker biochem) save the value as freeTextResult, and skipping
-  // those would silently hide trends the doctor expects to see.
+  // For ONE test, build per-field chart series. Each field becomes its own chart.
+  // Includes any field with ≥1 numeric point. Single-point fields render as a
+  // "spot reading" card; multi-point fields render as line trends.
   const buildChartsForTest = (group) => {
-    const fieldMap = new Map()  // fieldKey → { label, unit, normalLow, normalHigh, points: [{ date, value }] }
+    const fieldMap = new Map()
     for (const r of group.rows) {
-      // Structured field values — preferred path for multi-field tests like CBC.
       for (const v of (r.values || [])) {
         if (!fieldMap.has(v.fieldKey)) {
           fieldMap.set(v.fieldKey, {
@@ -487,16 +483,13 @@ function PatientLabResultsTab({ patientId }) {
           })
         }
       }
-      // Free-text fallback — if the doctor entered a numeric reading directly
-      // (no fieldKey), graph it under a synthetic "__freetext__" field so it
-      // still appears as a trend. Skips truly textual results like "Negative".
       if (r.freeTextResult && String(r.freeTextResult).trim()) {
         const numeric = parseFloat(r.freeTextResult)
         if (!Number.isNaN(numeric)) {
           if (!fieldMap.has('__freetext__')) {
             fieldMap.set('__freetext__', {
               fieldKey:   '__freetext__',
-              label:      group.testName,   // chart label = test name (no separate field)
+              label:      group.testName,
               unit:       null,
               normalLow:  null,
               normalHigh: null,
@@ -512,20 +505,16 @@ function PatientLabResultsTab({ patientId }) {
         }
       }
     }
-    // Sort each field's points oldest-first so the line draws left-to-right by time
     for (const f of fieldMap.values()) f.points.sort((a, b) => a.dateMs - b.dateMs)
-    // Only fields with 2+ points qualify as a trend
-    return Array.from(fieldMap.values()).filter(f => f.points.length >= 2)
+    // ≥1 point — single-point fields will show as "spot readings"
+    return Array.from(fieldMap.values()).filter(f => f.points.length >= 1)
   }
 
-  // Master table data: unique resultDates DESC across all visible tests, then for
-  // each (test × field × date) the value. Rendered as an HTML table below charts.
   const buildTableData = () => {
-    const rowsForTable = []   // [{ category, testName, fieldLabel, fieldUnit, normalLow, normalHigh, valuesByDate: {date: string} }]
+    const rowsForTable = []
     const allDates = new Set()
     for (const key of visibleTestKeys) {
       const g = testGroups.get(key); if (!g) continue
-      // Collect all field metas for this test
       const fieldMap = new Map()
       let anyFreeText = false
       for (const r of g.rows) {
@@ -572,8 +561,7 @@ function PatientLabResultsTab({ patientId }) {
         })
       }
     }
-    const sortedDates = Array.from(allDates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())  // newest first
-    // Group by category for rendering
+    const sortedDates = Array.from(allDates).sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
     const byCategory = new Map()
     for (const row of rowsForTable) {
       if (!byCategory.has(row.category)) byCategory.set(row.category, [])
@@ -600,7 +588,6 @@ function PatientLabResultsTab({ patientId }) {
     )
   }
 
-  // For the category filter dropdown — sorted by category name with test counts
   const categoryCounts = (() => {
     const counts = new Map()
     for (const g of testGroups.values()) {
@@ -609,7 +596,6 @@ function PatientLabResultsTab({ patientId }) {
     return Array.from(counts.entries()).sort(([a], [b]) => a.localeCompare(b))
   })()
 
-  // Quick stats for the header strip
   const totalDates = new Set(filteredByRange.map(r => r.resultDate)).size
   const flagCount = (() => {
     let n = 0
@@ -667,7 +653,9 @@ function PatientLabResultsTab({ patientId }) {
         </div>
       </Card>
 
-      {/* Charts — one per (test × field) with 2+ data points */}
+      {/* Charts — one per (test × field) with ≥1 data points.
+          Single-point fields render as a "spot reading" card with a dot + value caption.
+          Multi-point fields render as a line trend. Both share the same card layout. */}
       {visibleTestKeys.length > 0 && (() => {
         const chartCards = []
         for (const key of visibleTestKeys) {
@@ -682,7 +670,7 @@ function PatientLabResultsTab({ patientId }) {
             <Card className="p-8 text-center">
               <TrendingUp className="w-10 h-10 text-slate-300 mx-auto mb-3"/>
               <p className="text-sm text-slate-500">
-                No trend charts to show — at least 2 numeric values per test are needed.
+                No numeric values yet — only textual results recorded so far.
                 <br/>The full values table is below.
               </p>
             </Card>
@@ -692,30 +680,43 @@ function PatientLabResultsTab({ patientId }) {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {chartCards.map(({ testKey, group, field }) => {
               const hasRange = typeof field.normalLow === 'number' || typeof field.normalHigh === 'number'
+              const isSinglePoint = field.points.length === 1
+              const onlyPoint = field.points[0]
+              const flagSingle = isSinglePoint && isOutOfRange(onlyPoint.value, field.normalLow, field.normalHigh)
+
+              // Y-axis bounds. For single-point cards, pad more aggressively so the
+              // dot sits centered vertically (otherwise it lands on the axis edge).
               const yMin = (() => {
                 const vals = field.points.map(p => p.value)
                 const dataMin = Math.min(...vals)
                 const refMin  = typeof field.normalLow === 'number' ? field.normalLow : dataMin
-                return Math.floor(Math.min(dataMin, refMin) * 0.9)
+                const base = Math.min(dataMin, refMin)
+                return Math.floor(isSinglePoint ? base * 0.7 : base * 0.9)
               })()
               const yMax = (() => {
                 const vals = field.points.map(p => p.value)
                 const dataMax = Math.max(...vals)
                 const refMax  = typeof field.normalHigh === 'number' ? field.normalHigh : dataMax
-                return Math.ceil(Math.max(dataMax, refMax) * 1.1)
+                const base = Math.max(dataMax, refMax)
+                return Math.ceil(isSinglePoint ? base * 1.3 : base * 1.1)
               })()
+
               return (
                 <Card key={`${testKey}-${field.fieldKey}`} className="p-3">
-                  {/* Header — single line where possible. Test name + range pill on one row,
-                      category/field/unit on a second tiny row. Keeps chart-to-chart vertical
-                      spacing tight when there are many tests. */}
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <h4 className="font-semibold text-slate-800 text-sm truncate flex-1 min-w-0">{group.testName}</h4>
-                    {hasRange && (
-                      <span className="text-[10px] bg-success/10 text-success font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
-                        {field.normalLow ?? '—'}{typeof field.normalHigh === 'number' ? `–${field.normalHigh}` : '+'}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {isSinglePoint && (
+                        <span className="text-[10px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap" title="Only one reading recorded — add another date to see a trend line">
+                          1 reading
+                        </span>
+                      )}
+                      {hasRange && (
+                        <span className="text-[10px] bg-success/10 text-success font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                          {field.normalLow ?? '—'}{typeof field.normalHigh === 'number' ? `–${field.normalHigh}` : '+'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="text-[11px] text-slate-500 truncate mb-2">
                     <span className="text-primary font-medium">{group.category}</span>
@@ -727,6 +728,10 @@ function PatientLabResultsTab({ patientId }) {
                     )}
                     {field.unit && <span className="ml-1">({field.unit})</span>}
                   </p>
+
+                  {/* The chart itself. recharts renders a single dot fine without a
+                      connecting line (line.type=monotone needs ≥2 points to draw).
+                      Tooltip + reference area both work for single-point. */}
                   <ResponsiveContainer width="100%" height={140}>
                     <LineChart data={field.points} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb"/>
@@ -748,13 +753,30 @@ function PatientLabResultsTab({ patientId }) {
                       <Line type="monotone" dataKey="value" stroke="#1565C0" strokeWidth={2}
                         dot={(props) => {
                           const flag = isOutOfRange(props.payload.value, field.normalLow, field.normalHigh)
-                          return <circle key={props.index} cx={props.cx} cy={props.cy} r={3.5}
+                          // Single-point dots render larger so they're clearly visible
+                          // without a line for context.
+                          const r = isSinglePoint ? 5 : 3.5
+                          return <circle key={props.index} cx={props.cx} cy={props.cy} r={r}
                             fill={flag ? '#E53935' : '#1565C0'}
                             stroke="#fff" strokeWidth={2}/>
                         }}
                         activeDot={{ r: 5 }}/>
                     </LineChart>
                   </ResponsiveContainer>
+
+                  {/* Caption for single-point cards: explicit value + date, plus a
+                      gentle hint that another date would produce a trend line.
+                      Out-of-range values get red text so the doctor catches it without
+                      relying on the (smaller) red dot color alone. */}
+                  {isSinglePoint && (
+                    <div className="pt-1.5 mt-1.5 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <span className={`text-[11px] font-semibold truncate ${flagSingle ? 'text-danger' : 'text-slate-700'}`}>
+                        {onlyPoint.value}{field.unit ? ` ${field.unit}` : ''}
+                        <span className="text-slate-400 font-normal ml-1">on {format(new Date(onlyPoint.date), 'd MMM yyyy')}</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 italic whitespace-nowrap">add another date for trend</span>
+                    </div>
+                  )}
                 </Card>
               )
             })}
