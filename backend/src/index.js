@@ -77,6 +77,8 @@ app.use('/api/super',        require('./routes/super.routes'))
 app.use('/api/upload',       require('./routes/upload.routes'))
 app.use('/api/documents',    require('./routes/medicalDocument.routes'))
 app.use('/api/document-templates', require('./routes/medicalDocumentTemplate.routes'))
+app.use('/api/ipd',          require('./routes/ipd.routes'))
+app.use('/api/super',        require('./routes/superAdminIpd.routes'))
 
 // ── Audit log route ────────────────────────────────────────
 const { authenticate, authorize } = require('./middleware/auth.middleware')

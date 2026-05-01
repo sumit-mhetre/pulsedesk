@@ -46,7 +46,7 @@ export default function SuperClinics() {
       <Card className="mb-5">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input className="form-input pl-9" placeholder="Search clinics..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="form-input pl-9" placeholder="Search by code (CLN001) or name..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </Card>
 
@@ -62,6 +62,7 @@ export default function SuperClinics() {
             <table className="table">
               <thead>
                 <tr>
+                  <th>Code</th>
                   <th>Clinic</th>
                   <th>Contact</th>
                   <th>Plan</th>
@@ -75,6 +76,11 @@ export default function SuperClinics() {
               <tbody>
                 {clinics.map(c => (
                   <tr key={c.id}>
+                    <td>
+                      <span className="font-mono text-xs font-semibold text-primary">
+                        {c.code || '—'}
+                      </span>
+                    </td>
                     <td>
                       <div>
                         <p className="font-semibold text-slate-800 text-sm">{c.name}</p>

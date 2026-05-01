@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { X, Loader2 } from 'lucide-react'
 
 // ── Button ────────────────────────────────────────────────
@@ -78,10 +79,20 @@ export function Badge({ children, variant = 'primary', dot }) {
 
 // ── Modal ─────────────────────────────────────────────────
 export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
+  // Esc key still closes (accessibility), but clicking backdrop does NOT
+  // (prevents accidental data loss when user mis-clicks while filling forms).
+  // To close: X button, Cancel button, or Escape key.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
   if (!open) return null
   const widths = { sm: 'max-w-md', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' }
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay">
       <div className={`modal ${widths[size] || 'max-w-lg'}`}>
         <div className="modal-header">
           <h2 className="modal-title">{title}</h2>
