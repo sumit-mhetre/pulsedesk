@@ -96,6 +96,65 @@ const DEFAULT_RX_FORM_CONFIG = {
   vitalBMI:       false,
 };
 
+// Default config for IPD discharge summary print template.
+// Matches existing prescription/bill toggle pattern.
+const DEFAULT_DISCHARGE_SUMMARY_CONFIG = {
+  paperSize:           'A4',
+  // Header
+  showClinicName:      true,
+  showClinicAddress:   true,
+  showClinicPhone:     true,
+  showClinicTagline:   false,
+  showDoctorName:      true,
+  showDoctorQual:      true,
+  showDoctorSpec:      true,
+  showDoctorRegNo:     true,
+  headerBorder:        true,
+  headerColor:         '#1565C0',
+  // Patient block
+  showPatient:         true,
+  showAge:             true,
+  showGender:          true,
+  showAddress:         true,
+  showPhone:           true,
+  showAllergies:       true,
+  // Admission summary
+  showAdmissionNumber: true,
+  showAdmittedAt:      true,
+  showDischargedAt:    true,
+  showLengthOfStay:    true,
+  showBedDetails:      true,
+  showAdmissionSource: true,
+  // Clinical sections
+  showProvisionalDx:   true,
+  showFinalDiagnosis:  true,
+  showHospitalCourse:  true,    // pulled from dischargeNotes
+  showInvestigations:  true,    // lab + imaging orders summary
+  showProcedures:      true,
+  showConsultations:   true,
+  showMedications:     true,    // medications during stay
+  showVitalsSnapshot:  false,   // last few readings — off by default (gets long)
+  // Discharge details
+  showConditionAtDc:   true,    // condition at discharge from notes
+  showDischargeAdvice: true,
+  showFollowUp:        true,
+  // Typography
+  baseFontSize:        'md',
+  fontFamily:          'default',
+  // Footer
+  showDoctorSignature: true,
+  showStamp:           false,
+  showGeneratedBy:     true,
+  primaryColor:        '#1565C0',
+};
+
+function configForType(type) {
+  if (type === 'bill')              return DEFAULT_BILL_CONFIG;
+  if (type === 'rx_form')           return DEFAULT_RX_FORM_CONFIG;
+  if (type === 'discharge_summary') return DEFAULT_DISCHARGE_SUMMARY_CONFIG;
+  return DEFAULT_RX_CONFIG;
+}
+
 // ── Get design for clinic ─────────────────────────────────
 async function getDesign(req, res) {
   try {
@@ -105,8 +164,7 @@ async function getDesign(req, res) {
     });
     if (!design) {
       // Return default config without saving
-      const config = type === 'bill' ? DEFAULT_BILL_CONFIG : type === 'rx_form' ? DEFAULT_RX_FORM_CONFIG : DEFAULT_RX_CONFIG;
-      return successResponse(res, { type, config, isDefault: true, id: null });
+      return successResponse(res, { type, config: configForType(type), isDefault: true, id: null });
     }
     return successResponse(res, design);
   } catch (err) {
@@ -154,11 +212,13 @@ async function resetDesign(req, res) {
   try {
     const { type = 'prescription' } = req.query;
     await prisma.pageDesign.deleteMany({ where: { clinicId: req.clinicId, type } });
-    const config = type === 'bill' ? DEFAULT_BILL_CONFIG : type === 'rx_form' ? DEFAULT_RX_FORM_CONFIG : DEFAULT_RX_CONFIG;
-    return successResponse(res, { type, config }, 'Reset to defaults');
+    return successResponse(res, { type, config: configForType(type) }, 'Reset to defaults');
   } catch (err) {
     return errorResponse(res, 'Failed to reset', 500);
   }
 }
 
-module.exports = { getDesign, saveDesign, resetDesign, DEFAULT_RX_CONFIG, DEFAULT_BILL_CONFIG };
+module.exports = {
+  getDesign, saveDesign, resetDesign,
+  DEFAULT_RX_CONFIG, DEFAULT_BILL_CONFIG, DEFAULT_DISCHARGE_SUMMARY_CONFIG,
+};

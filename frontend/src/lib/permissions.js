@@ -16,6 +16,22 @@ export const PERMISSION_KEYS = [
   'manageUsers',
   'viewDocuments',
   'createDocuments',
+  // ── IPD permissions ──
+  'manageIPD',
+  'manageBeds',
+  'manageAdmissions',
+  'recordRoundNotes',
+  'recordIPDVitals',
+  'recordNursingNotes',
+  'manageMedicationOrders',
+  'recordMAR',
+  'manageIPDOrders',
+  'recordIntakeOutput',
+  'manageConsents',
+  'manageConsultations',
+  'manageIPDBilling',
+  'manageBillingPackages',
+  'dischargePatient',
 ]
 
 export const PERMISSION_LABELS = {
@@ -34,6 +50,22 @@ export const PERMISSION_LABELS = {
   manageUsers:           'Manage Users',
   viewDocuments:         'View Certificates',
   createDocuments:       'Create / Edit Certificates',
+  // ── IPD ──
+  manageIPD:                'Access IPD Module',
+  manageBeds:               'Manage Beds (Allocate / Transfer)',
+  manageAdmissions:         'Admit & Manage Patients',
+  recordRoundNotes:         'Record Doctor Round Notes',
+  recordIPDVitals:          'Record IPD Vitals',
+  recordNursingNotes:       'Record Nursing Notes',
+  manageMedicationOrders:   'Order Inpatient Medications',
+  recordMAR:                'Record Medication Administration (MAR)',
+  manageIPDOrders:          'Place IPD Orders (Lab / Imaging / Diet)',
+  recordIntakeOutput:       'Record Intake / Output',
+  manageConsents:           'Manage Consent Forms',
+  manageConsultations:      'Manage Cross-Specialty Consultations',
+  manageIPDBilling:         'Manage IPD Charges & Bills',
+  manageBillingPackages:    'Manage Billing Packages',
+  dischargePatient:         'Discharge Patients',
 }
 
 // Grouping for the admin UI checkboxes
@@ -50,6 +82,16 @@ export const PERMISSION_GROUPS = [
     label: 'Administration',
     keys: ['manageMasterData','loadDefaultMasterData','manageSettings','manageUsers'],
   },
+  {
+    label: 'Inpatient (IPD)',
+    keys: [
+      'manageIPD','manageBeds','manageAdmissions',
+      'recordRoundNotes','recordIPDVitals','recordNursingNotes',
+      'manageMedicationOrders','recordMAR','manageIPDOrders','recordIntakeOutput',
+      'manageConsents','manageConsultations','manageIPDBilling','manageBillingPackages',
+      'dischargePatient',
+    ],
+  },
 ]
 
 export const ROLE_DEFAULTS = {
@@ -61,6 +103,12 @@ export const ROLE_DEFAULTS = {
     manageMasterData: true, loadDefaultMasterData: true,
     manageSettings: true, manageUsers: true,
     viewDocuments: true,  createDocuments: true,
+    // IPD — admins get all
+    manageIPD: true, manageBeds: true, manageAdmissions: true,
+    recordRoundNotes: true, recordIPDVitals: true, recordNursingNotes: true,
+    manageMedicationOrders: true, recordMAR: true, manageIPDOrders: true,
+    recordIntakeOutput: true, manageConsents: true, manageConsultations: true,
+    manageIPDBilling: true, manageBillingPackages: true, dischargePatient: true,
   },
   DOCTOR: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
@@ -70,6 +118,12 @@ export const ROLE_DEFAULTS = {
     manageMasterData: true, loadDefaultMasterData: false,
     manageSettings: true, manageUsers: false,
     viewDocuments: true,  createDocuments: true,
+    // IPD — doctors get clinical + admin functions, not nursing-specific
+    manageIPD: true, manageBeds: true, manageAdmissions: true,
+    recordRoundNotes: true, recordIPDVitals: true, recordNursingNotes: false,
+    manageMedicationOrders: true, recordMAR: false, manageIPDOrders: true,
+    recordIntakeOutput: true, manageConsents: true, manageConsultations: true,
+    manageIPDBilling: true, manageBillingPackages: false, dischargePatient: true,
   },
   RECEPTIONIST: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
@@ -79,6 +133,28 @@ export const ROLE_DEFAULTS = {
     manageMasterData: false, loadDefaultMasterData: false,
     manageSettings: false, manageUsers: false,
     viewDocuments: false, createDocuments: false,
+    // IPD — receptionists handle admission paperwork + billing
+    manageIPD: true, manageBeds: true, manageAdmissions: true,
+    recordRoundNotes: false, recordIPDVitals: false, recordNursingNotes: false,
+    manageMedicationOrders: false, recordMAR: false, manageIPDOrders: false,
+    recordIntakeOutput: false, manageConsents: true, manageConsultations: false,
+    manageIPDBilling: true, manageBillingPackages: false, dischargePatient: false,
+  },
+  NURSE: {
+    // OPD permissions — minimal access
+    viewDashboard: true,  managePatients: false,  manageQueue: false,
+    viewPrescriptions: true, createPrescriptions: false,
+    viewBilling: false,   createBilling: false,
+    viewReports: false,   manageTemplates: false,
+    manageMasterData: false, loadDefaultMasterData: false,
+    manageSettings: false, manageUsers: false,
+    viewDocuments: false, createDocuments: false,
+    // IPD — nursing core duties
+    manageIPD: true, manageBeds: false, manageAdmissions: false,
+    recordRoundNotes: false, recordIPDVitals: true, recordNursingNotes: true,
+    manageMedicationOrders: false, recordMAR: true, manageIPDOrders: false,
+    recordIntakeOutput: true, manageConsents: false, manageConsultations: false,
+    manageIPDBilling: false, manageBillingPackages: false, dischargePatient: false,
   },
 }
 
@@ -90,7 +166,7 @@ export function getDefaultsForRole(role) {
 }
 
 // Resolves effective permissions for a user — role defaults + per-user overrides.
-// Always returns a full flat object with all 14 keys.
+// Always returns a full flat object with all keys.
 export function resolvePermissions(user) {
   if (!user) return {}
   const defaults = getDefaultsForRole(user.role)

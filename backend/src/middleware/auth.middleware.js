@@ -22,11 +22,11 @@ async function authenticate(req, res, next) {
       if (!user) return errorResponse(res, 'User not found', 401);
       req.user = { ...user, role: 'SUPER_ADMIN', isSuperAdmin: true };
     } else {
-      user = await prisma.user.findUnique({
+       user = await prisma.user.findUnique({
         where: { id: decoded.id },
-        include: { clinic: { select: { id: true, name: true, logo: true, headerImageUrl: true, hideTextOnHeader: true, footerImageUrl: true, letterheadUrl: true, letterheadMode: true, status: true, subscriptionPlan: true, settings: true } } },
+        include: { clinic: { select: { id: true, name: true, logo: true, headerImageUrl: true, hideTextOnHeader: true, footerImageUrl: true, letterheadUrl: true, letterheadMode: true, status: true, subscriptionPlan: true, settings: true, facilityType: true, ipdEnabled: true, ipdSettings: true } } },
       });
-
+      
       if (!user || !user.isActive) return errorResponse(res, 'User not found or inactive', 401);
       if (user.clinic.status !== 'Active') return errorResponse(res, 'Clinic is not active', 403);
 

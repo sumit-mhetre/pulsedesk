@@ -33,6 +33,17 @@ import SuperDashboard      from './pages/super/SuperDashboard'
 import SuperClinics        from './pages/super/SuperClinics'
 import SuperCreateClinic   from './pages/super/SuperCreateClinic'
 
+// IPD pages
+import BedBoardPage              from './pages/ipd/BedBoardPage'
+import BedManagementPage         from './pages/ipd/BedManagementPage'
+import AdmissionsListPage        from './pages/ipd/AdmissionsListPage'
+import NewAdmissionPage          from './pages/ipd/NewAdmissionPage'
+import AdmissionDetailPage       from './pages/ipd/AdmissionDetailPage'
+import DischargeSummaryPrint     from './pages/ipd/DischargeSummaryPrint'
+import IPDDashboardPage          from './pages/ipd/IPDDashboardPage'
+import ProcurementSlipPrint      from './pages/ipd/ProcurementSlipPrint'
+import SampleCollectionSlipPrint from './pages/ipd/SampleCollectionSlipPrint'
+
 import PrivateRoute  from './components/guards/PrivateRoute'
 import SuperRoute    from './components/guards/SuperRoute'
 import RoleRoute     from './components/guards/RoleRoute'
@@ -59,6 +70,17 @@ export default function App() {
         </Route>
       </Route>
 
+      {/* Print routes — full screen, no DashLayout wrapper.
+          Authenticated but no sidebar / header so window.print() outputs only
+          the document. Pattern matches existing prescription/bill print pages. */}
+      <Route element={<PrivateRoute />}>
+        <Route element={<RoleRoute requires={['manageIPD']} />}>
+          <Route path="/ipd/admissions/:id/discharge-summary/print" element={<DischargeSummaryPrint />} />
+          <Route path="/ipd/admissions/:id/procurement-slip/print"  element={<ProcurementSlipPrint />} />
+          <Route path="/ipd/admissions/:id/sample-slip/print"       element={<SampleCollectionSlipPrint />} />
+        </Route>
+      </Route>
+
       <Route element={<PrivateRoute />}>
         <Route element={<DashLayout />}>
           <Route path="/dashboard"              element={<DashboardPage />} />
@@ -67,7 +89,7 @@ export default function App() {
           <Route path="/patients/:id"           element={<PatientDetailPage />} />
           <Route path="/queue"                  element={<QueuePage />} />
 
-          {/* Prescriptions — viewPrescriptions to list/view; createPrescriptions to add/edit */}
+          {/* Prescriptions */}
           <Route element={<RoleRoute requires={['viewPrescriptions']} />}>
             <Route path="/prescriptions"       element={<PrescriptionsPage />} />
             <Route path="/prescriptions/:id"   element={<ViewPrescriptionPage />} />
@@ -91,7 +113,7 @@ export default function App() {
             <Route path="/reports"         element={<ReportsPage />} />
           </Route>
 
-          {/* Documents — fitness certs, medical leave certs, referrals */}
+          {/* Documents */}
           <Route element={<RoleRoute requires={['viewDocuments']} />}>
             <Route path="/documents"          element={<DocumentsListPage />} />
             <Route path="/documents/:id/view" element={<ViewDocumentPage />} />
@@ -110,11 +132,11 @@ export default function App() {
             <Route path="/templates/:id/edit"  element={<TemplateEditorPage />} />
           </Route>
 
-          {/* Old URLs redirected to /settings for backwards compatibility */}
+          {/* Old URL redirects */}
           <Route path="/page-designer" element={<Navigate to="/settings" replace />} />
           <Route path="/clinic/setup"  element={<Navigate to="/settings" replace />} />
 
-          {/* Admin area — permission-gated */}
+          {/* Admin area */}
           <Route element={<RoleRoute requires={['manageSettings']} />}>
             <Route path="/settings"             element={<SettingsPage />} />
           </Route>
@@ -123,6 +145,23 @@ export default function App() {
           </Route>
           <Route element={<RoleRoute requires={['manageMasterData']} />}>
             <Route path="/master-data"          element={<MasterDataPage />} />
+          </Route>
+
+          {/* IPD module — sidebar hides routes when ipdEnabled=false; backend
+              re-enforces with requireIPD middleware. */}
+          <Route element={<RoleRoute requires={['manageIPD']} />}>
+            <Route path="/ipd/dashboard"           element={<IPDDashboardPage />} />
+            <Route path="/ipd/beds"                element={<BedBoardPage />} />
+          </Route>
+          <Route element={<RoleRoute requires={['manageBeds']} />}>
+            <Route path="/ipd/bed-management"      element={<BedManagementPage />} />
+          </Route>
+          <Route element={<RoleRoute requires={['manageIPD']} />}>
+            <Route path="/ipd/admissions"          element={<AdmissionsListPage />} />
+            <Route path="/ipd/admissions/:id"      element={<AdmissionDetailPage />} />
+          </Route>
+          <Route element={<RoleRoute requires={['manageAdmissions']} />}>
+            <Route path="/ipd/admissions/new"      element={<NewAdmissionPage />} />
           </Route>
         </Route>
       </Route>

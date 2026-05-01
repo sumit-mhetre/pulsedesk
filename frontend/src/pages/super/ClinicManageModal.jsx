@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   X, Save, Building2, Users as UsersIcon, BarChart3, ShieldAlert,
   Mail, Phone, FileText, KeyRound, Power, Crown, Copy, AlertTriangle,
-  UserPlus, Pencil, History, Database,
+  UserPlus, Pencil, History, Database,BedDouble,
 } from 'lucide-react'
 import { Modal, Card, Button, Badge, ConfirmDialog } from '../../components/ui'
 import api from '../../lib/api'
@@ -12,10 +12,12 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import SuperUserFormModal from './SuperUserFormModal'
+import ClinicIPDTab       from './ClinicIPDTab'
 
 const TABS = [
   { key: 'info',    label: 'Info',    icon: Building2 },
   { key: 'users',   label: 'Users',   icon: UsersIcon },
+  { key: 'ipd',     label: 'IPD',     icon: BedDouble },
   { key: 'stats',   label: 'Stats',   icon: BarChart3 },
   { key: 'audit',   label: 'Audit',   icon: History },
   { key: 'actions', label: 'Actions', icon: ShieldAlert },
@@ -360,10 +362,16 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
                           </tbody>
                         </table>
                       </div>
+                   
                     )}
                   </div>
                 )}
-
+ 
+                {/* ─── IPD TAB ─── */}
+                {tab === 'ipd' && (
+                  <ClinicIPDTab clinicId={clinicId} onChanged={onChanged}/>
+                )}
+ 
                 {/* ─── STATS TAB ─── */}
                 {tab === 'stats' && (
                   <div className="space-y-4">

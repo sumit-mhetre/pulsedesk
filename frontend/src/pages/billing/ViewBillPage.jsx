@@ -6,6 +6,8 @@ import api from '../../lib/api'
 import { format } from 'date-fns'
 import useAuthStore from '../../store/authStore'
 import toast from 'react-hot-toast'
+import { usePrintTitle } from '../../hooks/usePrintTitle'
+import { buildPrintTitle } from '../../lib/slug'
 
 const STATUS = {
   Paid:    { color: 'text-success', bg: 'bg-green-50', border: 'border-success' },
@@ -13,7 +15,6 @@ const STATUS = {
   Pending: { color: 'text-danger',  bg: 'bg-red-50',   border: 'border-danger' },
 }
 
-// Line-spacing dropdown → numeric line-height multiplier
 function lineHeightFor(mode) {
   switch (mode) {
     case 'tight':       return 1.2
@@ -36,7 +37,13 @@ export default function ViewBillPage() {
   const [saving,   setSaving]   = useState(false)
   const [cfg,      setCfg]      = useState(null)
 
-  // show(key) returns true unless cfg explicitly disables it. Backward-compat for old configs.
+  // PDF/print filename: Bill_BL-2026-0006_SHA0001_Sumit-Mhetre
+  usePrintTitle(bill ? buildPrintTitle('Bill', {
+    id:   bill.billNo,
+    code: bill.patient?.patientCode,
+    name: bill.patient?.name,
+  }) : null)
+
   const show = (key) => cfg ? (cfg[key] !== false) : true
 
   useEffect(() => {
@@ -65,13 +72,12 @@ export default function ViewBillPage() {
 
   return (
     <div className="fade-in">
-      {/* Action bar */}
       <div className="flex items-center justify-between mb-6 no-print">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/billing')} className="btn-ghost btn-icon"><ArrowLeft className="w-5 h-5"/></button>
           <div>
             <h1 className="page-title">{bill.billNo}</h1>
-            <p className="page-subtitle">{bill.patient?.name} • {format(new Date(bill.date), 'dd MMM yyyy')}</p>
+            <p className="page-subtitle">{bill.patient?.name} &bull; {format(new Date(bill.date), 'dd MMM yyyy')}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -84,13 +90,12 @@ export default function ViewBillPage() {
         </div>
       </div>
 
-      {/* Update payment panel */}
       {editing && (
         <Card className="mb-4 no-print border-2 border-primary/20">
           <h3 className="font-bold text-slate-700 mb-3">Update Payment</h3>
           <div className="flex flex-wrap gap-4 items-end">
             <div className="form-group">
-              <label className="form-label">Amount Paid (₹)</label>
+              <label className="form-label">Amount Paid (&#8377;)</label>
               <input type="number" className="form-input w-36 text-lg font-bold"
                 value={paid} onChange={e => setPaid(e.target.value)} />
             </div>
@@ -103,7 +108,7 @@ export default function ViewBillPage() {
             <div className="flex gap-2 mb-1">
               <button type="button" onClick={() => setPaid(bill.total)}
                 className="text-xs px-3 py-2 bg-success/10 text-success rounded-lg hover:bg-success/20 font-medium">
-                Full ₹{bill.total.toLocaleString('en-IN')}
+                Full &#8377;{bill.total.toLocaleString('en-IN')}
               </button>
               <Button variant="primary" size="sm" loading={saving} onClick={handleUpdatePayment}>Save</Button>
               <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
@@ -112,10 +117,8 @@ export default function ViewBillPage() {
         </Card>
       )}
 
-      {/* ── Receipt Print Layout ── */}
       <div className="relative bg-white rounded-2xl shadow-card border border-blue-50 p-8 max-w-2xl mx-auto print-area" style={{ lineHeight: lineHeightFor(cfg?.lineSpacing) }}>
 
-        {/* Letterhead background — covers full receipt */}
         {clinic?.letterheadMode && clinic?.letterheadUrl && (
           <img
             src={clinic.letterheadUrl}
@@ -127,8 +130,6 @@ export default function ViewBillPage() {
 
         <div className="relative" style={{ zIndex: 1 }}>
 
-        {/* Header banner — full-width image. Replaces text header below if uploaded.
-            Skipped when letterhead mode is on. */}
         {!clinic?.letterheadMode && clinic?.headerImageUrl && (
           <div className="mb-3 border-b-2 border-primary pb-2">
             <img
@@ -145,7 +146,6 @@ export default function ViewBillPage() {
           </div>
         )}
 
-        {/* Text-based header — shown when no banner OR hideTextOnHeader is OFF */}
         {!clinic?.letterheadMode && (!clinic?.headerImageUrl || !clinic?.hideTextOnHeader) && (
         <div className="border-b-2 border-primary pb-4 mb-5">
           <div className="flex justify-between items-start">
@@ -156,7 +156,7 @@ export default function ViewBillPage() {
               <div className="min-w-0">
                 <h1 className="text-2xl font-bold text-primary">{clinic?.name || 'SimpleRx EMR'}</h1>
                 {clinic?.address && <p className="text-xs text-slate-400 mt-0.5">{clinic.address}</p>}
-                {clinic?.mobile  && <p className="text-xs text-slate-400">📞 {clinic.mobile}</p>}
+                {clinic?.mobile  && <p className="text-xs text-slate-400">{clinic.mobile}</p>}
               </div>
             </div>
             <div className="text-right flex-shrink-0">
@@ -168,10 +168,8 @@ export default function ViewBillPage() {
         </div>
         )}
 
-        {/* Spacer — paddingTop after header */}
         <div style={{ height: `${(cfg?.paddingTop ?? 8) * 3.78}px` }} aria-hidden/>
 
-        {/* Patient + status */}
         <div className="flex justify-between items-start mb-5">
           <div className="bg-background rounded-xl p-3 flex-1 mr-4">
             <p className="text-xs text-slate-400 mb-1">Billed To</p>
@@ -186,7 +184,7 @@ export default function ViewBillPage() {
                 show('showAge')    && bill.patient?.age    != null ? `${bill.patient.age}y` : null,
                 show('showGender') && bill.patient?.gender,
                 show('showPhone')  && bill.patient?.phone,
-              ].filter(Boolean).join(' • ')}
+              ].filter(Boolean).join(' \u2022 ')}
             </p>
             {(show('showEmail') && bill.patient?.email) && (
               <p className="text-xs text-slate-500 mt-0.5">{bill.patient.email}</p>
@@ -204,7 +202,6 @@ export default function ViewBillPage() {
           </div>
         </div>
 
-        {/* Items table */}
         <table className="w-full text-sm mb-5">
           <thead>
             <tr className="border-b-2 border-primary/20">
@@ -221,59 +218,54 @@ export default function ViewBillPage() {
                 <td className="py-2.5 text-slate-400 text-xs">{i+1}</td>
                 <td className="py-2.5 font-medium text-slate-800">{item.name}</td>
                 <td className="py-2.5 text-center text-slate-600">{item.qty}</td>
-                <td className="py-2.5 text-right text-slate-600">₹{item.rate.toLocaleString('en-IN')}</td>
-                <td className="py-2.5 text-right font-bold text-slate-800">₹{item.amount.toLocaleString('en-IN')}</td>
+                <td className="py-2.5 text-right text-slate-600">&#8377;{item.rate.toLocaleString('en-IN')}</td>
+                <td className="py-2.5 text-right font-bold text-slate-800">&#8377;{item.amount.toLocaleString('en-IN')}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* Totals */}
         <div className="flex justify-end mb-5">
           <div className="w-60 space-y-1.5">
             <div className="flex justify-between text-sm text-slate-500">
               <span>Subtotal</span>
-              <span>₹{bill.subtotal.toLocaleString('en-IN')}</span>
+              <span>&#8377;{bill.subtotal.toLocaleString('en-IN')}</span>
             </div>
             {bill.discount > 0 && (
               <div className="flex justify-between text-sm text-success">
                 <span>Discount</span>
-                <span>- ₹{bill.discount.toLocaleString('en-IN')}</span>
+                <span>- &#8377;{bill.discount.toLocaleString('en-IN')}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-bold text-slate-800 pt-1.5 border-t border-slate-200">
               <span>Total</span>
-              <span>₹{bill.total.toLocaleString('en-IN')}</span>
+              <span>&#8377;{bill.total.toLocaleString('en-IN')}</span>
             </div>
             <div className="flex justify-between text-sm text-success font-semibold">
               <span>Paid ({bill.paymentMode})</span>
-              <span>₹{bill.amountPaid.toLocaleString('en-IN')}</span>
+              <span>&#8377;{bill.amountPaid.toLocaleString('en-IN')}</span>
             </div>
             {bill.balance > 0 && (
               <div className="flex justify-between text-sm text-danger font-bold pt-1 border-t border-slate-200">
                 <span>Balance Due</span>
-                <span>₹{bill.balance.toLocaleString('en-IN')}</span>
+                <span>&#8377;{bill.balance.toLocaleString('en-IN')}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Notes */}
         {bill.notes && (
           <p className="text-xs text-slate-400 mb-4 italic">{bill.notes}</p>
         )}
 
-        {/* Spacer — paddingBottom before footer area */}
         <div style={{ height: `${(cfg?.paddingBottom ?? 8) * 3.78}px` }} aria-hidden/>
 
-        {/* Optional clinic footer image */}
         {show('showFooterImage') && clinic?.footerImageUrl && (
           <div className="border-t border-slate-100 pt-3 mt-4 flex justify-center">
             <img src={clinic.footerImageUrl} alt="footer" className="max-h-14 object-contain" style={{ maxWidth: '90%' }}/>
           </div>
         )}
 
-        {/* Footer */}
         <div className="border-t border-slate-100 pt-4 flex justify-between items-end text-xs text-slate-400">
           <div>
             <p>Generated by SimpleRx EMR</p>
@@ -283,7 +275,7 @@ export default function ViewBillPage() {
             <p className="font-semibold text-slate-600">Thank you!</p>
           </div>
         </div>
-        </div>{/* end relative wrapper */}
+        </div>
       </div>
 
       <style>{`

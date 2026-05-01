@@ -16,6 +16,16 @@ enum UserRole {
   ADMIN
   DOCTOR
   RECEPTIONIST
+  NURSE
+}
+
+enum ConditionAtDischarge {
+  STABLE
+  IMPROVED
+  STATUS_QUO
+  REFERRED
+  DAMA
+  DECEASED
 }
 
 enum Gender {
@@ -69,6 +79,114 @@ enum ClinicStatus {
 }
 
 // ─────────────────────────────────────────────
+// IPD ENUMS
+// ─────────────────────────────────────────────
+
+enum FacilityType {
+  CLINIC_ONLY
+  NURSING_HOME
+  HOSPITAL
+}
+
+enum BedType {
+  GENERAL
+  SEMI_PRIVATE
+  PRIVATE
+  ICU
+  HDU
+  LABOUR
+  DAY_CARE
+  ISOLATION
+  OTHER
+}
+
+enum BedStatus {
+  VACANT
+  OCCUPIED
+  CLEANING
+  BLOCKED
+  RESERVED
+}
+
+enum AdmissionStatus {
+  ADMITTED
+  DISCHARGED
+  DAMA
+  DEATH
+  TRANSFERRED_OUT
+  CANCELLED
+}
+
+enum IPDChargeType {
+  BED_RENT
+  DOCTOR_VISIT
+  CONSULTATION
+  NURSING_CARE
+  MEDICINE
+  CONSUMABLE
+  LAB_TEST
+  IMAGING
+  PROCEDURE
+  OT_CHARGE
+  PACKAGE
+  PACKAGE_EXTRA
+  DEPOSIT_REFUND
+  ADJUSTMENT
+  OTHER
+}
+
+enum IPDOrderType {
+  LAB_TEST
+  IMAGING
+  DIET
+  NURSING_INSTRUCTION
+  PHYSIOTHERAPY
+  CONSULTATION_REFERRAL
+  OTHER
+}
+
+enum IPDOrderStatus {
+  ORDERED
+  ACKNOWLEDGED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  HELD
+}
+
+enum NursingShift {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
+
+enum ConsentType {
+  ADMISSION
+  SURGERY
+  ANESTHESIA
+  BLOOD_TRANSFUSION
+  HIGH_RISK
+  HIV_TEST
+  PHOTOGRAPHY
+  OTHER
+}
+
+enum MARStatus {
+  PENDING
+  GIVEN
+  REFUSED
+  HELD
+  MISSED
+}
+
+enum MedicationOrderStatus {
+  ACTIVE
+  STOPPED
+  COMPLETED
+  CANCELLED
+}
+
+// ─────────────────────────────────────────────
 // SUPER ADMIN / PLATFORM
 // ─────────────────────────────────────────────
 
@@ -90,48 +208,61 @@ model SuperAdmin {
 model Clinic {
   id               String           @id @default(uuid())
   name             String
+  code             String?          @unique
   address          String?
   phone            String?
   mobile           String?
   email            String?
-  logo             String?  // clinic logo image URL (Cloudinary) — small, in header corner
-  headerImageUrl   String?  // full-width banner that replaces logo+name+address+phone
-  hideTextOnHeader Boolean  @default(true)  // when header image uploaded, hide clinic name/address/phone text
-  footerImageUrl   String?  // optional footer image URL
-  letterheadUrl    String?  // pre-printed letterhead background image URL
-  letterheadMode   Boolean  @default(false)  // when true, hides clinic header on print
+  logo             String?
+  headerImageUrl   String?
+  hideTextOnHeader Boolean          @default(true)
+  footerImageUrl   String?
+  letterheadUrl    String?
+  letterheadMode   Boolean          @default(false)
   tagline          String?
   gst              String?
-  opdSeriesPrefix  String?  // custom OPD number prefix e.g. MH, JK
+  opdSeriesPrefix  String?
   status           ClinicStatus     @default(Active)
   subscriptionPlan SubscriptionPlan @default(Basic)
   subscriptionEnd  DateTime?
-  settings         Json?            // Misc per-clinic config flags (e.g., flagOutOfRangeLabValues). Schemaless on purpose.
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  settings         Json?
+
+  // ── IPD configuration ──
+  facilityType      FacilityType @default(CLINIC_ONLY)
+  ipdEnabled        Boolean      @default(false)
+  ipdNumberCounters Json?
+  ipdSettings       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  users            User[]
-  patients         Patient[]
-  appointments     Appointment[]
-  prescriptions    Prescription[]
-  bills            Bill[]
-  medicines        Medicine[]
-  labTests         LabTest[]
-  complaints       Complaint[]
-  diagnoses        Diagnosis[]
-  adviceOptions    AdviceOption[]
-  medicineNotes    MedicineNote[]
-  billingItems     BillingItem[]
-  templates        PrescriptionTemplate[]
-  dosageOptions    DosageOption[]
-  timingOptions    TimingOption[]
-  pageDesigns      PageDesign[]
-  customFieldValues CustomFieldValue[]
-  auditLogs        AuditLog[]
+  users                    User[]
+  patients                 Patient[]
+  appointments             Appointment[]
+  prescriptions            Prescription[]
+  bills                    Bill[]
+  medicines                Medicine[]
+  labTests                 LabTest[]
+  complaints               Complaint[]
+  diagnoses                Diagnosis[]
+  adviceOptions            AdviceOption[]
+  medicineNotes            MedicineNote[]
+  billingItems             BillingItem[]
+  templates                PrescriptionTemplate[]
+  dosageOptions            DosageOption[]
+  timingOptions            TimingOption[]
+  pageDesigns              PageDesign[]
+  customFieldValues        CustomFieldValue[]
+  auditLogs                AuditLog[]
   medicalDocuments         MedicalDocument[]
   medicalDocumentTemplates MedicalDocumentTemplate[]
-  labResults       LabResult[]
+  labResults               LabResult[]
+
+  // ── IPD reverse relations ──
+  beds            Bed[]
+  admissions      Admission[]
+  billingPackages BillingPackage[]
 
   @@map("clinics")
 }
@@ -141,32 +272,45 @@ model Clinic {
 // ─────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(uuid())
-  clinicId     String
-  name         String
-  email        String
-  password     String
-  role         UserRole
-  phone        String?
-  qualification String?
+  id             String   @id @default(uuid())
+  clinicId       String
+  name           String
+  email          String
+  password       String
+  role           UserRole
+  phone          String?
+  qualification  String?
   specialization String?
-  regNo        String?
-  signature    String?  // doctor signature image URL (Cloudinary)
-  stamp        String?  // optional doctor stamp/seal image URL
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  regNo          String?
+  signature      String?
+  stamp          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  // Flexible permissions (JSON object of booleans)
-  permissions  Json     @default("{}")
+  permissions Json @default("{}")
 
   // Relations
-  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  prescriptions Prescription[]
-  medicalDocuments MedicalDocument[]
-  auditLogs    AuditLog[]
-  refreshTokens RefreshToken[]
+  clinic              Clinic               @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  prescriptions       Prescription[]
+  medicalDocuments    MedicalDocument[]
+  auditLogs           AuditLog[]
+  refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+
+  // ── IPD reverse relations ──
+  primaryAdmissions       Admission[]                @relation("AdmissionPrimaryDoctor")
+  bedTransfers            BedTransfer[]              @relation("BedTransferUser")
+  ipdChargesAdded         IPDCharge[]                @relation("IPDChargeAddedBy")
+  packagesApplied         AdmissionPackage[]         @relation("PackageAppliedBy")
+  roundNotes              RoundNote[]                @relation("RoundNoteDoctor")
+  vitalsRecorded          IPDVitalRecord[]           @relation("IPDVitalRecordedBy")
+  nursingNotes            NursingNote[]              @relation("NursingNoteNurse")
+  medicationOrders        MedicationOrder[]          @relation("MedicationOrderPrescriber")
+  medicationsAdministered MedicationAdministration[] @relation("MARGivenBy")
+  ipdOrders               IPDOrder[]                 @relation("IPDOrderOrderedBy")
+  intakeOutputRecords     IntakeOutputRecord[]       @relation("IntakeOutputRecordedBy")
+  consultations           Consultation[]             @relation("ConsultationDoctor")
 
   @@unique([email])
   @@map("users")
@@ -179,22 +323,20 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
 }
 
-// Password reset tokens — one-time use, 1-hour expiry.
-// Scoped to clinic users only (SuperAdmin uses separate contact-based recovery).
 model PasswordResetToken {
   id        String    @id @default(uuid())
   userId    String
   token     String    @unique
   expiresAt DateTime
-  usedAt    DateTime?  // null = still valid, set = consumed
+  usedAt    DateTime?
   createdAt DateTime  @default(now())
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("password_reset_tokens")
@@ -205,10 +347,10 @@ model PasswordResetToken {
 // ─────────────────────────────────────────────
 
 model Patient {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   clinicId          String
   patientCode       String
-  prefix            String?  // Mr, Mrs, Ms, Dr, Baby etc.
+  prefix            String?
   name              String
   age               Int?
   dob               DateTime?
@@ -218,20 +360,23 @@ model Patient {
   address           String?
   bloodGroup        String?
   photo             String?
-  existingId        String?  // old patient ID from previous system
-  allergies         String[] @default([])
-  chronicConditions String[] @default([])
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  existingId        String?
+  allergies         String[]  @default([])
+  chronicConditions String[]  @default([])
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  clinic            Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  appointments      Appointment[]
-  prescriptions     Prescription[]
-  bills             Bill[]
-  vitalRecords      VitalRecord[]
-  medicalDocuments  MedicalDocument[]
-  labResults        LabResult[]
+  clinic           Clinic            @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments     Appointment[]
+  prescriptions    Prescription[]
+  bills            Bill[]
+  vitalRecords     VitalRecord[]
+  medicalDocuments MedicalDocument[]
+  labResults       LabResult[]
+
+  // ── IPD reverse relation ──
+  admissions Admission[]
 
   @@unique([clinicId, patientCode])
   @@map("patients")
@@ -249,7 +394,7 @@ model VitalRecord {
   pulse     String?
   notes     String?
 
-  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@map("vital_records")
 }
@@ -259,19 +404,19 @@ model VitalRecord {
 // ─────────────────────────────────────────────
 
 model Appointment {
-  id          String      @id @default(uuid())
-  clinicId    String
-  patientId   String
-  doctorId    String?
-  tokenNo     Int
-  tokenDate   DateTime    @db.Date
-  status      TokenStatus @default(Waiting)
-  notes       String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id        String      @id @default(uuid())
+  clinicId  String
+  patientId String
+  doctorId  String?
+  tokenNo   Int
+  tokenDate DateTime    @db.Date
+  status    TokenStatus @default(Waiting)
+  notes     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
-  clinic      Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  patient     Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinic  Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, tokenDate, tokenNo])
   @@map("appointments")
@@ -282,40 +427,44 @@ model Appointment {
 // ─────────────────────────────────────────────
 
 model Medicine {
-  id             String       @id @default(uuid())
-  clinicId       String
-  name           String
-  genericName    String?      // Active ingredient / composition, e.g. "Paracetamol 500mg" — clinic-wide, editable by Doctor/Admin
-  type           MedicineType @default(tablet)
-  category       String?
-  defaultDosage  String?
-  defaultDays    Int?
-  defaultTiming  String?
-  notesEn        String?
-  notesHi        String?
-  notesMr        String?
-  usageCount     Int          @default(0)
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
+  id            String       @id @default(uuid())
+  clinicId      String
+  name          String
+  genericName   String?
+  type          MedicineType @default(tablet)
+  category      String?
+  defaultDosage String?
+  defaultDays   Int?
+  defaultTiming String?
+  notesEn       String?
+  notesHi       String?
+  notesMr       String?
+  usageCount    Int          @default(0)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
 
-  clinic         Clinic       @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic                Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   prescriptionMedicines PrescriptionMedicine[]
+
+  // ── IPD reverse relations ──
+  medicationOrders     MedicationOrder[]     @relation("MedicationOrderMedicine")
+  dischargeMedications DischargeMedication[] @relation("DischargeMedicineLink")
 
   @@unique([clinicId, name])
   @@map("medicines")
 }
 
 model LabTest {
-  id        String   @id @default(uuid())
-  clinicId  String
-  name      String
-  category  String?
-  expectedFields Json?  // Array of { key, label, unit, normalLow, normalHigh } — see lib/labTestFields.js
-  usageCount Int     @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id             String   @id @default(uuid())
+  clinicId       String
+  name           String
+  category       String?
+  expectedFields Json?
+  usageCount     Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
 
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic               Clinic                @relation(fields: [clinicId], references: [id], onDelete: Cascade)
   prescriptionLabTests PrescriptionLabTest[]
   labResults           LabResult[]
 
@@ -324,64 +473,64 @@ model LabTest {
 }
 
 model Complaint {
-  id        String   @id @default(uuid())
-  clinicId  String
-  nameEn    String
-  nameHi    String?
-  nameMr    String?
-  usageCount Int     @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  clinicId   String
+  nameEn     String
+  nameHi     String?
+  nameMr     String?
+  usageCount Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
 
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, nameEn])
   @@map("complaints")
 }
 
 model Diagnosis {
-  id        String   @id @default(uuid())
-  clinicId  String
-  nameEn    String
-  nameHi    String?
-  nameMr    String?
-  usageCount Int     @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  clinicId   String
+  nameEn     String
+  nameHi     String?
+  nameMr     String?
+  usageCount Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
 
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, nameEn])
   @@map("diagnoses")
 }
 
 model AdviceOption {
-  id        String   @id @default(uuid())
-  clinicId  String
-  nameEn    String
-  nameHi    String?
-  nameMr    String?
-  usageCount Int     @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  clinicId   String
+  nameEn     String
+  nameHi     String?
+  nameMr     String?
+  usageCount Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
 
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, nameEn])
   @@map("advice_options")
 }
 
 model MedicineNote {
-  id        String   @id @default(uuid())
-  clinicId  String
-  nameEn    String
-  nameHi    String?
-  nameMr    String?
-  usageCount Int     @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  clinicId   String
+  nameEn     String
+  nameHi     String?
+  nameMr     String?
+  usageCount Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
 
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, nameEn])
   @@map("medicine_notes")
@@ -396,37 +545,37 @@ model BillingItem {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  billItems    BillItem[]
+  clinic    Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  billItems BillItem[]
 
   @@unique([clinicId, name])
   @@map("billing_items")
 }
 
 model DosageOption {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   clinicId    String
   code        String
   label       String
   timesPerDay Int?
-  isActive    Boolean  @default(true)
+  isActive    Boolean @default(true)
 
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, code])
   @@map("dosage_options")
 }
 
 model TimingOption {
-  id           String   @id @default(uuid())
-  clinicId     String
-  code         String
-  labelEn      String
-  labelHi      String?
-  labelMr      String?
-  isActive     Boolean  @default(true)
+  id       String  @id @default(uuid())
+  clinicId String
+  code     String
+  labelEn  String
+  labelHi  String?
+  labelMr  String?
+  isActive Boolean @default(true)
 
-  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, code])
   @@map("timing_options")
@@ -437,45 +586,42 @@ model TimingOption {
 // ─────────────────────────────────────────────
 
 model PrescriptionTemplate {
-  id          String   @id @default(uuid())
-  clinicId    String
-  name        String
-  complaint   String?
-  diagnosis   String?
-  advice      String?
-  nextVisit   Int?
-  labTests    String[] @default([])
-  // Stores custom field values captured when the doctor saved this template.
-  // Same shape as Prescription.customData: { [cfId]: string[] }. Loaded back into
-  // the form when the template is applied, so custom fields round-trip via templates.
-  customData  Json?
-  usageCount  Int      @default(0)
-  version     Int      @default(1)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid())
+  clinicId   String
+  name       String
+  complaint  String?
+  diagnosis  String?
+  advice     String?
+  nextVisit  Int?
+  labTests   String[] @default([])
+  customData Json?
+  usageCount Int      @default(0)
+  version    Int      @default(1)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  medicines   TemplateMedicine[]
+  clinic    Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  medicines TemplateMedicine[]
 
   @@unique([clinicId, name])
   @@map("prescription_templates")
 }
 
 model TemplateMedicine {
-  id          String   @id @default(uuid())
-  templateId  String
-  medicineId  String
-  dosage      String?
-  days        String?  // e.g. '7 days', '2 weeks', '1 month'
-  timing      String?
-  frequency   String?  // DAILY, ALT_DAYS, EVERY_3D, WEEKLY, SOS
-  notesEn     String?
-  notesHi     String?
-  notesMr     String?
-  sortOrder   Int      @default(0)
+  id         String  @id @default(uuid())
+  templateId String
+  medicineId String
+  dosage     String?
+  days       String?
+  timing     String?
+  frequency  String?
+  notesEn    String?
+  notesHi    String?
+  notesMr    String?
+  sortOrder  Int     @default(0)
 
-  template    PrescriptionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  template PrescriptionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
   @@map("template_medicines")
 }
@@ -485,10 +631,10 @@ model TemplateMedicine {
 // ─────────────────────────────────────────────
 
 model Prescription {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   clinicId     String
   rxNo         String
-  date         DateTime @default(now())
+  date         DateTime  @default(now())
   doctorId     String
   patientId    String
   complaint    String?
@@ -496,111 +642,112 @@ model Prescription {
   advice       String?
   nextVisit    DateTime?
   templateUsed String?
-  printLang    String   @default("en")
-  // Stores clinic-defined custom field values for this Rx.
-  // Shape: { [cfId]: string[] } where cfId matches a CustomFieldValue.fieldId.
-  // Example: { "cf_abc123": ["Diabetes (mother)", "Hypertension (father)"] }
+  printLang    String    @default("en")
   customData   Json?
-  // Snapshot of vitals captured at the moment this Rx was written. Independent of
-  // VitalRecord rows on the patient timeline so the printed Rx always reflects the
-  // values the doctor saw, even if the patient's later vitals diverge. Shape mirrors
-  // the form fields: { systolicBP, diastolicBP, sugar, weight, temp, spo2, pulse, height, bmi }.
   vitals       Json?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 
-  clinic       Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  doctor       User     @relation(fields: [doctorId], references: [id])
-  patient      Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  medicines    PrescriptionMedicine[]
-  labTests     PrescriptionLabTest[]
-  labResults   LabResult[]
-  bills        Bill[]
+  // ── IPD link ──
+  admissionId      String?
+  prescriptionType String  @default("OPD")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clinic     Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  doctor     User                   @relation(fields: [doctorId], references: [id])
+  patient    Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  admission  Admission?             @relation(fields: [admissionId], references: [id])
+  medicines  PrescriptionMedicine[]
+  labTests   PrescriptionLabTest[]
+  labResults LabResult[]
+  bills      Bill[]
 
   @@unique([clinicId, rxNo])
   @@map("prescriptions")
 }
 
 model PrescriptionMedicine {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   prescriptionId String
   medicineId     String
   medicineName   String
-  genericName    String?       // Snapshot of Medicine.genericName at save time (keeps old prescriptions stable if master edited later)
+  genericName    String?
   medicineType   MedicineType @default(tablet)
   dosage         String?
-  days           String?  // e.g. '7 days', '2 weeks', '1 month'
+  days           String?
   timing         String?
-  frequency      String?  @default("DAILY")  // DAILY, ALT_DAYS, EVERY_3D, WEEKLY, SOS
-  qty            String?  // String to support '1' for syrups and calculated values
+  frequency      String?      @default("DAILY")
+  qty            String?
   notesEn        String?
   notesHi        String?
   notesMr        String?
-  sortOrder      Int      @default(0)
+  sortOrder      Int          @default(0)
 
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  medicine       Medicine     @relation(fields: [medicineId], references: [id])
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicine     Medicine     @relation(fields: [medicineId], references: [id])
 
   @@map("prescription_medicines")
 }
 
 model PrescriptionLabTest {
-  id             String   @id @default(uuid())
+  id             String  @id @default(uuid())
   prescriptionId String
   labTestId      String
   labTestName    String
   referredTo     String?
 
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  labTest        LabTest      @relation(fields: [labTestId], references: [id])
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  labTest      LabTest      @relation(fields: [labTestId], references: [id])
 
   @@map("prescription_lab_tests")
 }
 
 // ─────────────────────────────────────────────
-// LAB RESULTS (Test Outcomes — recorded by doctor on a prescription)
-// Hybrid storage: anchored to prescription (so it prints with the Rx) AND keyed to patient
-// (so we can query historical trends across visits for charts).
+// LAB RESULTS
 // ─────────────────────────────────────────────
 
 model LabResult {
   id             String   @id @default(uuid())
   clinicId       String
   patientId      String
-  prescriptionId String?            // Null when recorded outside an Rx (future-proof)
-  labTestId      String?            // Null when test isn't in catalog (free-text)
-  testName       String             // Always denormalized for display
-  testCategory   String?            // e.g., "Haematology"
-  resultDate     DateTime           // The date the test was actually performed
-  freeTextResult String?            // Used when labTest has no expectedFields (simple tests)
+  prescriptionId String?
+  labTestId      String?
+  testName       String
+  testCategory   String?
+  resultDate     DateTime
+  freeTextResult String?
   notes          String?
-  recordedById   String?            // User who recorded (doctor)
+  recordedById   String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  clinic         Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  prescription   Prescription? @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
-  labTest        LabTest?      @relation(fields: [labTestId], references: [id], onDelete: SetNull)
-  values         LabResultValue[]
+  admissionId    String?
+  admission      Admission? @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+
+  clinic       Clinic           @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient      Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescription Prescription?    @relation(fields: [prescriptionId], references: [id], onDelete: SetNull)
+  labTest      LabTest?         @relation(fields: [labTestId], references: [id], onDelete: SetNull)
+  values       LabResultValue[]
 
   @@index([patientId, resultDate])
   @@index([clinicId, resultDate])
   @@index([prescriptionId])
+  @@index([admissionId])
   @@map("lab_results")
 }
 
 model LabResultValue {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   labResultId String
-  fieldKey    String   // matches LabTest.expectedFields[].key — e.g., "hemoglobin"
-  fieldLabel  String   // denormalized label e.g., "Hb"
-  fieldUnit   String?  // e.g., "g/dL"
-  value       String   // stored as string to support ranges, "Negative", numbers, etc.
-  normalLow   Float?   // copied from expectedFields at record time (so trend charts have ranges)
+  fieldKey    String
+  fieldLabel  String
+  fieldUnit   String?
+  value       String
+  normalLow   Float?
   normalHigh  Float?
 
-  labResult   LabResult @relation(fields: [labResultId], references: [id], onDelete: Cascade)
+  labResult LabResult @relation(fields: [labResultId], references: [id], onDelete: Cascade)
 
   @@index([labResultId])
   @@index([fieldKey])
@@ -626,29 +773,37 @@ model Bill {
   amountPaid     Float         @default(0)
   balance        Float         @default(0)
   notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  voidedAt       DateTime?
+  voidReason     String?
 
-  clinic         Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  prescription   Prescription? @relation(fields: [prescriptionId], references: [id])
-  items          BillItem[]
+  // ── IPD link ──
+  admissionId String?
+  billType    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescription Prescription? @relation(fields: [prescriptionId], references: [id])
+  admission    Admission?    @relation(fields: [admissionId], references: [id])
+  items        BillItem[]
 
   @@unique([clinicId, billNo])
   @@map("bills")
 }
 
 model BillItem {
-  id            String   @id @default(uuid())
+  id            String  @id @default(uuid())
   billId        String
   billingItemId String?
   name          String
-  qty           Int      @default(1)
+  qty           Int     @default(1)
   rate          Float
   amount        Float
 
-  bill          Bill        @relation(fields: [billId], references: [id], onDelete: Cascade)
-  billingItem   BillingItem? @relation(fields: [billingItemId], references: [id])
+  bill        Bill         @relation(fields: [billId], references: [id], onDelete: Cascade)
+  billingItem BillingItem? @relation(fields: [billingItemId], references: [id])
 
   @@map("bill_items")
 }
@@ -658,38 +813,32 @@ model BillItem {
 // ─────────────────────────────────────────────
 
 model PageDesign {
-  id         String   @id @default(uuid())
-  clinicId   String
-  name       String
-  type       String   // prescription | bill | lab_referral
-  isDefault  Boolean  @default(false)
-  config     Json     @default("{}")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(uuid())
+  clinicId  String
+  name      String
+  type      String
+  isDefault Boolean  @default(false)
+  config    Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  clinic     Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@map("page_designs")
 }
 
 // ─────────────────────────────────────────────
-// CUSTOM FIELD VALUES — autocomplete suggestions for clinic-defined Rx custom fields
+// CUSTOM FIELD VALUES
 // ─────────────────────────────────────────────
-// One row per (clinic, fieldId, value) triple. Acts as the master/suggestion list
-// for each custom field. When a doctor types a brand-new value on an Rx and saves,
-// we upsert a row here so it becomes a suggestion for the next Rx.
-//
-// fieldId matches the cf_xxx id stored in the rx_form PageDesign config; values
-// are not deleted when a custom field is renamed or removed (orphaned rows just
-// stop being shown).
+
 model CustomFieldValue {
   id        String   @id @default(uuid())
   clinicId  String
-  fieldId   String   // cf_* id matching a custom field configured in rx_form config
+  fieldId   String
   value     String
   createdAt DateTime @default(now())
 
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, fieldId, value])
   @@index([clinicId, fieldId])
@@ -701,42 +850,43 @@ model CustomFieldValue {
 // ─────────────────────────────────────────────
 
 model AuditLog {
-  id        String   @id @default(uuid())
-  clinicId  String
-  userId    String?
-  actorEmail String?            // For super admin entries (no User record)
-  actorIsSuperAdmin Boolean @default(false)
-  action    String
-  entity    String
-  entityId  String?
-  details   Json?
-  ip        String?
-  createdAt DateTime @default(now())
+  id                String   @id @default(uuid())
+  clinicId          String
+  userId            String?
+  actorEmail        String?
+  actorIsSuperAdmin Boolean  @default(false)
+  action            String
+  entity            String
+  entityId          String?
+  details           Json?
+  ip                String?
+  createdAt         DateTime @default(now())
 
-  clinic    Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [userId], references: [id])
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
 
   @@index([clinicId, createdAt])
   @@map("audit_logs")
 }
 
 // ─────────────────────────────────────────────
-// DOCTOR MEDICINE PREFERENCES (smart auto-fill)
+// DOCTOR MEDICINE PREFERENCES
 // ─────────────────────────────────────────────
+
 model DoctorMedicinePreference {
-  id          String   @id @default(uuid())
-  clinicId    String
-  doctorId    String
-  medicineId  String
-  dosage      String?
-  timing      String?
-  days        String?  // e.g. '7 days', '2 weeks', '1 month'
-  frequency   String?  // DAILY, ALT_DAYS, EVERY_3D, WEEKLY, SOS
-  notesEn     String?
-  notesHi     String?
-  notesMr     String?
-  usageCount  Int      @default(1)
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(uuid())
+  clinicId   String
+  doctorId   String
+  medicineId String
+  dosage     String?
+  timing     String?
+  days       String?
+  frequency  String?
+  notesEn    String?
+  notesHi    String?
+  notesMr    String?
+  usageCount Int      @default(1)
+  updatedAt  DateTime @updatedAt
 
   @@unique([clinicId, doctorId, medicineId])
   @@index([clinicId, doctorId, updatedAt])
@@ -744,22 +894,22 @@ model DoctorMedicinePreference {
 }
 
 // ─────────────────────────────────────────────
-// SAVED REPORTS — custom report configs admins can save + rerun
+// SAVED REPORTS
 // ─────────────────────────────────────────────
 
 model SavedReport {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   clinicId    String
-  userId      String   // creator
+  userId      String
   name        String
   description String?
-  reportType  String   // 'patients' | 'prescriptions' | 'bills' | 'appointments'
-  config      Json     // full filter / columns / sort / groupBy config
-  isShared    Boolean  @default(true)  // false = private to creator
+  reportType  String
+  config      Json
+  isShared    Boolean   @default(true)
   lastRunAt   DateTime?
-  runCount    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  runCount    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([clinicId, userId])
   @@index([clinicId, reportType])
@@ -767,21 +917,18 @@ model SavedReport {
 }
 
 // ─────────────────────────────────────────────
-// PRESCRIPTION DRAFTS — in-flight autosave snapshots
+// PRESCRIPTION DRAFTS
 // ─────────────────────────────────────────────
-// Upserted every ~10s while doctor is editing an unsaved prescription.
-// One active draft per (doctor, patient) pair — newer writes overwrite older.
-// Auto-deleted when prescription is saved, or by cleanup cron after 7 days.
 
 model PrescriptionDraft {
-  id         String   @id @default(uuid())
-  clinicId   String
-  doctorId   String
-  patientId  String
-  formState  Json     // full form snapshot { complaint, diagnosis, medicines, labTests, advice, vitals, nextVisit, ... }
-  version    Int      @default(1)  // increments on each save (for optimistic concurrency in future)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(uuid())
+  clinicId  String
+  doctorId  String
+  patientId String
+  formState Json
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([doctorId, patientId])
   @@index([clinicId, updatedAt])
@@ -789,55 +936,45 @@ model PrescriptionDraft {
 }
 
 // ─────────────────────────────────────────────
-// MEDICAL DOCUMENTS — fitness certs, medical certs (sick leave), referrals
+// MEDICAL DOCUMENTS
 // ─────────────────────────────────────────────
-// Single table, type-discriminated. The `data` JSON holds type-specific fields
-// (verdict for fitness, restFrom/restTo for medical leave, referredTo for referral).
 
 enum DocType {
-  FITNESS_CERT     // "Patient is medically fit for X"
-  MEDICAL_CERT     // "Patient was sick from A to B, advised rest"
-  REFERRAL         // "Please see this patient — clinical context attached"
+  FITNESS_CERT
+  MEDICAL_CERT
+  REFERRAL
 }
 
 model MedicalDocument {
-  id              String   @id @default(uuid())
-  clinicId        String
-  docNo           String   // e.g. MH-FC-0001, MH-MC-0001, MH-REF-0001
-  type            DocType
-  doctorId        String
-  patientId       String   // required for all 3 types
+  id        String  @id @default(uuid())
+  clinicId  String
+  docNo     String
+  type      DocType
+  doctorId  String
+  patientId String
 
-  // Patient snapshot at time of issue (so doc stays correct if patient is later edited)
   patientName     String
   patientAge      Int?
   patientGender   Gender?
-  patientGuardian String?  // S/o D/o W/o (relation + name)
-  patientEmpId    String?  // employee/student ID (for medical certs)
+  patientGuardian String?
+  patientEmpId    String?
   patientAddress  String?
   patientPhone    String?
 
-  // Common medical fields
-  examDate        DateTime  // when patient was examined
-  diagnosis       String?
-  remarks         String?
+  examDate  DateTime
+  diagnosis String?
+  remarks   String?
 
-  // Type-specific fields stored as JSON
-  // FITNESS_CERT  → { verdict, fitnessFor, restrictions, vitals: {bp,pulse,weight,...}, validityMonths }
-  // MEDICAL_CERT  → { restFromDate, restToDate, totalDays, resumeFromDate, advisedRest }
-  // REFERRAL      → { referredToName, referredToSpecialty, referredToClinic, referredToAddress,
-  //                    referredToPhone, chiefComplaint, clinicalHistory, currentMeds,
-  //                    investigations, provisionalDx, reasonForReferral, sourceRxId }
-  data            Json     @default("{}")
+  data Json @default("{}")
 
-  templateUsed    String?  // refs MedicalDocumentTemplate.id (for analytics)
+  templateUsed String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  clinic          Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  doctor          User     @relation(fields: [doctorId], references: [id])
-  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinic  Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  doctor  User    @relation(fields: [doctorId], references: [id])
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, docNo])
   @@index([clinicId, type, createdAt])
@@ -845,25 +982,575 @@ model MedicalDocument {
   @@map("medical_documents")
 }
 
-// Reusable templates that pre-fill the doc form. Admin manages.
 model MedicalDocumentTemplate {
-  id          String   @id @default(uuid())
-  clinicId    String
-  type        DocType
-  name        String   // e.g. "Sports fitness — adult", "Flu / viral fever (3-day rest)"
-  isDefault   Boolean  @default(false)  // shown highlighted in picker
+  id        String  @id @default(uuid())
+  clinicId  String
+  type      DocType
+  name      String
+  isDefault Boolean @default(false)
 
-  // Pre-fill defaults — same shape as MedicalDocument.data, plus optional diagnosis/remarks
-  diagnosis   String?
-  remarks     String?
-  data        Json     @default("{}")
+  diagnosis String?
+  remarks   String?
+  data      Json    @default("{}")
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  clinic      Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
 
   @@unique([clinicId, type, name])
   @@index([clinicId, type])
   @@map("medical_document_templates")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// IPD MODELS
+// ═══════════════════════════════════════════════════════════════════════
+
+model Bed {
+  id                 String    @id @default(uuid())
+  clinicId           String
+  clinic             Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  bedNumber          String
+  bedType            BedType
+  ward               String?
+  floor              String?
+
+  status             BedStatus @default(VACANT)
+  isActive           Boolean   @default(true)
+
+  dailyRate          Float
+
+  currentAdmissionId String?   @unique
+
+  notes              String?
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  admissions         Admission[]   @relation("BedAdmissions")
+  bedTransfersFrom   BedTransfer[] @relation("FromBed")
+  bedTransfersTo     BedTransfer[] @relation("ToBed")
+
+  @@unique([clinicId, bedNumber])
+  @@index([clinicId, status])
+  @@index([clinicId, isActive])
+  @@map("beds")
+}
+
+model Admission {
+  id                   String          @id @default(uuid())
+  clinicId             String
+  clinic               Clinic          @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  admissionNumber      String
+
+  patientId            String
+  patient              Patient         @relation(fields: [patientId], references: [id])
+
+  primaryDoctorId      String
+  primaryDoctor        User            @relation("AdmissionPrimaryDoctor", fields: [primaryDoctorId], references: [id])
+
+  bedId                String?
+  bed                  Bed?            @relation("BedAdmissions", fields: [bedId], references: [id])
+
+  status               AdmissionStatus @default(ADMITTED)
+  admittedAt           DateTime
+  dischargedAt         DateTime?
+
+  provisionalDiagnosis String?
+  finalDiagnosis       String?
+
+  admissionNotes       String?         @db.Text
+  reasonForAdmission   String?
+
+  isMLC                Boolean         @default(false)
+  mlcNumber            String?
+
+  admissionSource      String?
+  referredFrom         String?
+
+  attendantName        String?
+  attendantRelation    String?
+  attendantPhone       String?
+  attendantAddress     String?
+  attendantIdProof     String?
+
+  paymentMode          String?
+  insuranceProvider    String?
+  insurancePolicy      String?
+
+  initialDeposit       Float           @default(0)
+
+  dischargeNotes       String?         @db.Text
+  dischargeAdvice      String?         @db.Text
+
+  causeOfDeath         String?
+  damaReason           String?
+
+  totalCharges         Float           @default(0)
+  totalPaid            Float           @default(0)
+
+  metadata             Json?
+
+  // ── Structured discharge summary (Phase 1, 15-section format) ──
+
+  // Section 2: Chief complaints (one per line, e.g. "Cough x 5 days")
+  chiefComplaints      String?         @db.Text
+
+  // Section 3: History of present illness
+  historyOfIllness     String?         @db.Text
+
+  // Section 4: Past history -- structured checkboxes for common conditions
+  pastDM               Boolean         @default(false)
+  pastHTN              Boolean         @default(false)
+  pastTB               Boolean         @default(false)
+  pastAsthma           Boolean         @default(false)
+  pastIHD              Boolean         @default(false)
+  pastSurgical         String?         @db.Text
+  pastOther            String?         @db.Text
+
+  // Sections 5 & 10: Vitals at admission and at discharge
+  // JSON shape: { pulse, bp, temp, spo2, rr, weight }
+  admissionVitals      Json?
+  dischargeVitals      Json?
+
+  // Sections 5/6: General + systemic examination
+  generalExam          String?         @db.Text
+  systemicExamCVS      String?         @db.Text
+  systemicExamRS       String?         @db.Text
+  systemicExamCNS      String?         @db.Text
+  systemicExamPA       String?         @db.Text
+
+  // Section 7: Curated key investigation findings
+  keyInvestigations    String?         @db.Text
+
+  // Section 9: Treatment given in hospital -- categorized prose
+  treatmentSummary     String?         @db.Text
+
+  // Section 10: Condition at discharge
+  conditionAtDischarge ConditionAtDischarge?
+
+  // Sections 12, 13: Diet and activity advice
+  dietAdvice           String?         @db.Text
+  activityAdvice       String?         @db.Text
+
+  // Section 14: Follow-up
+  followUpDate         DateTime?
+  followUpInstructions String?         @db.Text
+  warningSigns         String?         @db.Text
+
+  // Section 15: Special instructions
+  specialInstructions  String?         @db.Text
+
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  // Relations
+  charges              IPDCharge[]
+  bills                Bill[]
+  prescriptions        Prescription[]
+  roundNotes           RoundNote[]
+  vitals               IPDVitalRecord[]
+  nursingNotes         NursingNote[]
+  medicationOrders     MedicationOrder[]
+  ipdOrders            IPDOrder[]
+  intakeOutput         IntakeOutputRecord[]
+  bedTransfers         BedTransfer[]
+  consents             Consent[]
+  consultations        Consultation[]
+  packages             AdmissionPackage[]
+  labResults           LabResult[]
+  dischargeMedications DischargeMedication[]
+
+  @@unique([clinicId, admissionNumber])
+  @@index([clinicId, status])
+  @@index([clinicId, admittedAt])
+  @@index([patientId])
+  @@index([primaryDoctorId])
+  @@map("admissions")
+}
+
+// Section 11 of discharge summary: medications prescribed AT discharge.
+// Distinct from MedicationOrder (which tracks doses given DURING stay).
+// One row per discharge medication. brandName/genericName are captured at
+// time of writing so the discharge summary remains accurate even if the
+// linked Medicine is renamed or deleted later.
+model DischargeMedication {
+  id           String     @id @default(uuid())
+  admissionId  String
+  admission    Admission  @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  medicineId   String?
+  medicine     Medicine?  @relation("DischargeMedicineLink", fields: [medicineId], references: [id])
+
+  brandName    String     // "Tab Augmentin 625" -- snapshotted from Medicine.name or free text
+  genericName  String?    // "Amoxicillin + Clavulanic Acid" -- from Medicine.composition
+
+  dose         String     // "625 mg" or "1 tab"
+  frequency    String     // "1-0-1" or "BD" or "TDS"
+  duration     String     // "5 days" or "Continue"
+  instructions String?    // "After food", "Empty stomach", etc.
+
+  sortOrder    Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([admissionId])
+  @@map("discharge_medications")
+}
+
+model BedTransfer {
+  id              String    @id @default(uuid())
+  admissionId     String
+  admission       Admission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  fromBedId       String?
+  fromBed         Bed?      @relation("FromBed", fields: [fromBedId], references: [id])
+
+  toBedId         String
+  toBed           Bed       @relation("ToBed", fields: [toBedId], references: [id])
+
+  nurseHandoverNote String?
+
+  transferredAt   DateTime
+  reason          String?
+
+  transferredById String
+  transferredBy   User      @relation("BedTransferUser", fields: [transferredById], references: [id])
+
+  createdAt       DateTime  @default(now())
+
+  @@index([admissionId])
+  @@index([transferredAt])
+  @@map("bed_transfers")
+}
+
+model IPDCharge {
+  id              String        @id @default(uuid())
+  admissionId     String
+  admission       Admission     @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  chargedAt       DateTime
+  chargeType      IPDChargeType
+
+  description     String
+  quantity        Int           @default(1)
+  unitPrice       Float
+  amount          Float
+
+  medicineId      String?
+  labTestId       String?
+  packageId       String?
+  bedTransferId   String?
+
+  isAutoGenerated Boolean       @default(false)
+
+  voidedAt        DateTime?
+  voidReason      String?
+
+  addedById       String
+  addedBy         User          @relation("IPDChargeAddedBy", fields: [addedById], references: [id])
+
+  notes           String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([admissionId, chargedAt])
+  @@index([admissionId, chargeType])
+  @@index([admissionId, voidedAt])
+  @@map("ipd_charges")
+}
+
+model BillingPackage {
+  id                String             @id @default(uuid())
+  clinicId          String
+  clinic            Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  name              String
+  code              String?
+  category          String?
+
+  description       String?            @db.Text
+  inclusions        String?            @db.Text
+  exclusions        String?            @db.Text
+
+  basePrice         Float
+  durationDays      Int                @default(2)
+
+  isActive          Boolean            @default(true)
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  admissionPackages AdmissionPackage[]
+
+  @@unique([clinicId, name])
+  @@index([clinicId, isActive])
+  @@map("billing_packages")
+}
+
+model AdmissionPackage {
+  id          String         @id @default(uuid())
+  admissionId String
+  admission   Admission      @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  packageId   String
+  package     BillingPackage @relation(fields: [packageId], references: [id])
+
+  agreedPrice Float
+  notes       String?
+
+  appliedAt   DateTime       @default(now())
+  appliedById String
+  appliedBy   User           @relation("PackageAppliedBy", fields: [appliedById], references: [id])
+
+  @@index([admissionId])
+  @@map("admission_packages")
+}
+
+model RoundNote {
+  id            String    @id @default(uuid())
+  admissionId   String
+  admission     Admission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  recordedAt    DateTime
+  doctorId      String
+  doctor        User      @relation("RoundNoteDoctor", fields: [doctorId], references: [id])
+
+  subjective    String?   @db.Text
+  objective     String?   @db.Text
+  assessment    String?   @db.Text
+  plan          String?   @db.Text
+
+  freeText      String?   @db.Text
+
+  isCritical    Boolean   @default(false)
+  needsFollowUp Boolean   @default(false)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([admissionId, recordedAt])
+  @@map("round_notes")
+}
+
+model IPDVitalRecord {
+  id           String    @id @default(uuid())
+  admissionId  String
+  admission    Admission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  recordedAt   DateTime
+  recordedById String
+  recordedBy   User      @relation("IPDVitalRecordedBy", fields: [recordedById], references: [id])
+
+  bp           String?
+  pulse        Int?
+  temperature  Float?
+  spo2         Int?
+  respRate     Int?
+  bloodSugar   Int?
+  painScore    Int?
+
+  notes        String?
+
+  createdAt    DateTime  @default(now())
+
+  @@index([admissionId, recordedAt])
+  @@map("ipd_vital_records")
+}
+
+model NursingNote {
+  id            String       @id @default(uuid())
+  admissionId   String
+  admission     Admission    @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  recordedAt    DateTime
+  shift         NursingShift
+  nurseId       String
+  nurse         User         @relation("NursingNoteNurse", fields: [nurseId], references: [id])
+
+  observations  String?      @db.Text
+  careActions   String?      @db.Text
+
+  handoverNotes String?      @db.Text
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([admissionId, recordedAt])
+  @@map("nursing_notes")
+}
+
+model MedicationOrder {
+  id              String                     @id @default(uuid())
+  admissionId     String
+  admission       Admission                  @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  medicineId      String?
+  medicine        Medicine?                  @relation("MedicationOrderMedicine", fields: [medicineId], references: [id])
+  medicineName    String
+
+  dose            String
+  route           String
+  frequency       String
+  customSchedule  Json?
+
+  startDate       DateTime
+  stopDate        DateTime?
+
+  duration        String?
+  notes           String?
+
+  prescribedById  String
+  prescribedBy    User                       @relation("MedicationOrderPrescriber", fields: [prescribedById], references: [id])
+
+  status          MedicationOrderStatus      @default(ACTIVE)
+  stoppedAt       DateTime?
+  stopReason      String?
+
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+
+  administrations MedicationAdministration[]
+  procurementMode String                     @default("PROCURE")
+  expectedQty     String?
+
+  @@index([admissionId, status])
+  @@map("medication_orders")
+}
+
+model MedicationAdministration {
+  id            String          @id @default(uuid())
+  orderId       String
+  order         MedicationOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  scheduledTime DateTime
+  status        MARStatus       @default(PENDING)
+
+  actualTime    DateTime?
+  givenById     String?
+  givenBy       User?           @relation("MARGivenBy", fields: [givenById], references: [id])
+
+  notes         String?
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([orderId, scheduledTime])
+  @@index([scheduledTime, status])
+  @@map("medication_administrations")
+}
+
+model IPDOrder {
+  id               String         @id @default(uuid())
+  admissionId      String
+  admission        Admission      @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  orderType        IPDOrderType
+  description      String         @db.Text
+  details          Json?
+
+  status           IPDOrderStatus @default(ORDERED)
+
+  orderedAt        DateTime
+  orderedById      String
+  orderedBy        User           @relation("IPDOrderOrderedBy", fields: [orderedById], references: [id])
+
+  acknowledgedAt   DateTime?
+  acknowledgedById String?
+
+  completedAt      DateTime?
+  completedById    String?
+
+  cancelledAt      DateTime?
+  cancelledReason  String?
+
+  notes            String?
+
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([admissionId, status])
+  @@index([admissionId, orderedAt])
+  @@map("ipd_orders")
+}
+
+model IntakeOutputRecord {
+  id            String        @id @default(uuid())
+  admissionId   String
+  admission     Admission     @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  recordedAt    DateTime
+  shift         NursingShift?
+  recordedById  String
+  recordedBy    User          @relation("IntakeOutputRecordedBy", fields: [recordedById], references: [id])
+
+  oralIntake    Int?
+  ivFluids      Int?
+  rylesTubeFeed Int?
+
+  urineOutput   Int?
+  drainOutput   Int?
+  vomit         Int?
+  stoolCount    Int?
+
+  notes         String?
+
+  createdAt     DateTime      @default(now())
+
+  @@index([admissionId, recordedAt])
+  @@map("intake_output_records")
+}
+
+model Consent {
+  id              String      @id @default(uuid())
+  admissionId     String
+  admission       Admission   @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  consentType     ConsentType
+
+  signedByPatient Boolean     @default(false)
+  patientSignDate DateTime?
+
+  signedByWitness Boolean     @default(false)
+  witnessName     String?
+  witnessSignDate DateTime?
+
+  documentUrl     String?
+  consentText     String?     @db.Text
+
+  notes           String?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([admissionId, consentType])
+  @@map("consents")
+}
+
+model Consultation {
+  id                  String    @id @default(uuid())
+  admissionId         String
+  admission           Admission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+
+  consultantDoctorId  String?
+  consultantDoctor    User?     @relation("ConsultationDoctor", fields: [consultantDoctorId], references: [id])
+  consultantName      String
+  consultantSpecialty String?
+
+  requestedAt         DateTime
+  consultedAt         DateTime?
+
+  reason              String    @db.Text
+  notes               String?   @db.Text
+  recommendations     String?   @db.Text
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([admissionId])
+  @@map("consultations")
 }

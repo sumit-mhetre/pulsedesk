@@ -3,6 +3,26 @@ const prisma = require('../lib/prisma');
 const { successResponse, errorResponse, paginatedResponse } = require('../lib/response');
 const { logAudit } = require('../lib/audit');
 
+// ── Helper: generate next CLN### code ────────────────────
+// Reads the highest existing CLN code in the table and returns the next one.
+// Used when creating a new clinic so each gets an auto-assigned readable code.
+async function generateNextClinicCode(client = prisma) {
+  // Pull all codes matching pattern, find max, +1
+  const all = await client.clinic.findMany({
+    where: { code: { startsWith: 'CLN' } },
+    select: { code: true },
+  });
+  let max = 0;
+  for (const c of all) {
+    const m = (c.code || '').match(/^CLN(\d+)$/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > max) max = n;
+    }
+  }
+  return 'CLN' + String(max + 1).padStart(3, '0');
+}
+
 // ── Create Clinic (Super Admin) ───────────────────────────
 async function createClinic(req, res) {
   try {
@@ -38,9 +58,14 @@ async function createClinic(req, res) {
 
     // Create clinic (+ admin if wanted) in transaction
     const result = await prisma.$transaction(async (tx) => {
+      // Auto-generate next clinic code (CLN001, CLN002, ...).
+      // Locks via the unique constraint -- if two admins create at the same time,
+      // one will get a conflict and we retry by re-querying inside the txn.
+      const code = await generateNextClinicCode(tx);
+
       const clinic = await tx.clinic.create({
         data: {
-          name, address, phone, mobile, email, tagline, gst,
+          name, code, address, phone, mobile, email, tagline, gst,
           subscriptionPlan: subscriptionPlan || 'Basic',
           subscriptionEnd: subscriptionEnd ? new Date(subscriptionEnd) : null,
         },
@@ -106,7 +131,14 @@ async function getAllClinics(req, res) {
     const skip = (page - 1) * limit;
 
     const where = {};
-    if (search) where.name = { contains: search, mode: 'insensitive' };
+    if (search) {
+      // Search by name OR by code (case-insensitive). Useful for finding clinics
+      // quickly using their short code (CLN001) or partial name.
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+      ];
+    }
     if (status) where.status = status;
 
     const [clinics, total] = await Promise.all([

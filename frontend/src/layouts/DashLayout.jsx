@@ -2,7 +2,8 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, Settings, LogOut, Database, FileText, Receipt, BookOpen,
-  Menu, X, User, ChevronDown, Building2, CalendarDays, BarChart3, FileCheck,
+  Menu, X, User, ChevronDown, ChevronRight, Building2, CalendarDays, BarChart3, FileCheck,
+  BedDouble, Wrench, ClipboardList,
 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import { can } from '../lib/permissions'
@@ -10,17 +11,27 @@ import { getGlobalDirty, onGlobalDirtyChange } from '../hooks/useUnsavedChanges'
 import { useSessionTimeout } from '../hooks/useSessionTimeout'
 import toast from 'react-hot-toast'
 
+// Top-level nav. IPD is rendered as a special collapsible section -- not in this list.
 const navItems = [
   { label: 'Dashboard',    icon: LayoutDashboard, to: '/dashboard',     requires: 'viewDashboard' },
   { label: 'Appointments', icon: CalendarDays,    to: '/queue',         requires: 'manageQueue' },
   { label: 'Prescriptions',icon: FileText,        to: '/prescriptions', requires: 'viewPrescriptions' },
   { label: 'Certificates', icon: FileCheck,       to: '/documents',     requires: 'viewDocuments' },
   { label: 'Billing',      icon: Receipt,         to: '/billing',       requires: 'viewBilling' },
+  // IPD section inserted here -- see ipdItems below
   { label: 'Reports',      icon: BarChart3,       to: '/reports',       requires: 'viewReports' },
   { label: 'Templates',    icon: BookOpen,        to: '/templates',     requires: 'viewPrescriptions' },
   { label: 'Master Data',  icon: Database,        to: '/master-data',   requires: 'manageMasterData' },
   { label: 'Users',        icon: Users,           to: '/users',         requires: 'manageUsers' },
   { label: 'Settings',     icon: Settings,        to: '/settings',      requires: 'manageSettings' },
+]
+
+// IPD sub-items (shown when the IPD section is expanded).
+// IPD section visibility: ipdEnabled flag on clinic + manageIPD permission.
+const ipdItems = [
+  { label: 'Bed Board',      icon: BedDouble,      to: '/ipd/beds',           requires: 'manageIPD' },
+  { label: 'Bed Management', icon: Wrench,         to: '/ipd/bed-management', requires: 'manageBeds' },
+  { label: 'Admissions',     icon: ClipboardList,  to: '/ipd/admissions',     requires: 'manageIPD' },
 ]
 
 function DiscardDialog({ onConfirm, onCancel }) {
@@ -30,7 +41,7 @@ function DiscardDialog({ onConfirm, onCancel }) {
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
         <div className="p-6 text-center">
           <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">⚠️</span>
+            <span className="text-2xl">!</span>
           </div>
           <h3 className="font-bold text-slate-800 text-lg mb-2">Discard Changes?</h3>
           <p className="text-sm text-slate-500 leading-relaxed">You have unsaved changes. If you leave now, all entered data will be lost.</p>
@@ -48,20 +59,41 @@ export default function DashLayout() {
   const { user, logout } = useAuthStore()
   const navigate         = useNavigate()
   const location         = useLocation()
-  useSessionTimeout()  // Auto-logout after 30 min inactivity
+  useSessionTimeout()
   const [sidebarOpen,   setSidebarOpen]   = useState(false)
   const [profileOpen,   setProfileOpen]   = useState(false)
   const [confirmLogout, setConfirmLogout] = useState(false)
   const [isDirty,       setIsDirty]       = useState(false)
   const [discardTarget, setDiscardTarget] = useState(null)
 
-  // Subscribe to global dirty state
+  // IPD section auto-expands when user is on any IPD page; otherwise remembers
+  // the user's manual toggle via localStorage.
+  const isOnIpdPage = location.pathname.startsWith('/ipd')
+  const [ipdExpanded, setIpdExpanded] = useState(() => {
+    if (isOnIpdPage) return true
+    try {
+      const saved = localStorage.getItem('sidebar_ipd_expanded')
+      return saved === 'true'
+    } catch { return false }
+  })
+
+  // Persist user's expand/collapse choice.
+  useEffect(() => {
+    try {
+      localStorage.setItem('sidebar_ipd_expanded', ipdExpanded ? 'true' : 'false')
+    } catch { /* ignore */ }
+  }, [ipdExpanded])
+
+  // Auto-expand when navigating into IPD.
+  useEffect(() => {
+    if (isOnIpdPage && !ipdExpanded) setIpdExpanded(true)
+  }, [isOnIpdPage])
+
   useEffect(() => {
     const unsub = onGlobalDirtyChange(v => setIsDirty(v))
     return unsub
   }, [])
 
-  // Reset dirty on route change
   useEffect(() => { setIsDirty(false) }, [location.pathname])
 
   const handleLogout = () => setConfirmLogout(true)
@@ -89,6 +121,52 @@ export default function DashLayout() {
   }
 
   const visibleNav = navItems.filter(item => can(user, item.requires))
+  // IPD section is gated by clinic.ipdEnabled AND user has manageIPD permission.
+  const ipdEnabled = !!user?.clinic?.ipdEnabled
+  const visibleIpdItems = ipdItems.filter(item => can(user, item.requires))
+  const showIpdSection = ipdEnabled && visibleIpdItems.length > 0
+
+  // Find the index of "Billing" so we render IPD section right after it.
+  const billingIdx = visibleNav.findIndex(n => n.to === '/billing')
+
+  const renderNav = (item) => (
+    <NavLink key={item.to} to={item.to}
+      onClick={(e) => handleNavClick(e, item.to)}
+      className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+      <item.icon className="w-4 h-4 flex-shrink-0"/>
+      {item.label}
+    </NavLink>
+  )
+
+  const IPDSection = () => {
+    if (!showIpdSection) return null
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setIpdExpanded(v => !v)}
+          className={`sidebar-link w-full ${isOnIpdPage ? 'text-white' : ''}`}>
+          <BedDouble className="w-4 h-4 flex-shrink-0"/>
+          <span className="flex-1 text-left">IPD</span>
+          <ChevronRight
+            className={`w-4 h-4 flex-shrink-0 transition-transform ${ipdExpanded ? 'rotate-90' : ''}`}
+          />
+        </button>
+        {ipdExpanded && (
+          <div className="mt-1 ml-3 pl-3 border-l border-white/10 space-y-1">
+            {visibleIpdItems.map(item => (
+              <NavLink key={item.to} to={item.to}
+                onClick={(e) => handleNavClick(e, item.to)}
+                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+                <item.icon className="w-3.5 h-3.5 flex-shrink-0"/>
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   const Sidebar = ({ mobile = false }) => (
     <aside className={`${mobile ? 'w-full h-full' : 'w-64 min-h-screen'} bg-primary flex flex-col`}>
@@ -105,14 +183,18 @@ export default function DashLayout() {
 
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         <p className="text-blue-300 text-xs font-semibold uppercase tracking-wider px-4 mb-2">Menu</p>
-        {visibleNav.map((item) => (
-          <NavLink key={item.to} to={item.to}
-            onClick={(e) => handleNavClick(e, item.to)}
-            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-            <item.icon className="w-4 h-4 flex-shrink-0"/>
-            {item.label}
-          </NavLink>
+
+        {visibleNav.map((item, idx) => (
+          <div key={item.to}>
+            {renderNav(item)}
+            {/* Insert IPD section right after Billing */}
+            {idx === billingIdx && <IPDSection/>}
+          </div>
         ))}
+
+        {/* Fallback: if Billing is hidden for this user but IPD is visible,
+            render IPD at the end so it doesn't disappear. */}
+        {billingIdx === -1 && <IPDSection/>}
       </nav>
 
       <div className="p-4 border-t border-white/10">
@@ -171,7 +253,7 @@ export default function DashLayout() {
               <div className="hidden sm:flex items-center gap-2 text-sm text-slate-400">
                 <Building2 className="w-4 h-4"/>
                 <span>{user?.clinic?.name}</span>
-                <span className="text-slate-200">•</span>
+                <span className="text-slate-200">&bull;</span>
                 <span className="badge-primary badge capitalize">{user?.clinic?.subscriptionPlan}</span>
               </div>
             </div>
@@ -202,7 +284,9 @@ export default function DashLayout() {
               )}
             </div>
           </header>
-          <main className="flex-1 p-3 sm:p-6 fade-in"><Outlet/></main>
+          <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
+            <Outlet/>
+          </main>
         </div>
       </div>
     </>
