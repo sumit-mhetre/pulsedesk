@@ -6,6 +6,29 @@ const { generateAccessToken, generateRefreshToken, verifyToken } = require('../l
 const { successResponse, errorResponse } = require('../lib/response');
 const { resolvePermissions } = require('../lib/permissions');
 
+// Shape of the `clinic` relation we expose to authenticated clients.
+// MUST stay in sync with backend/src/middleware/auth.middleware.js
+// authenticate() — both endpoints (POST /auth/login and GET /auth/me)
+// must return the same fields, otherwise the frontend's user shape
+// changes after a refresh (e.g., IPD sidebar disappears on first login
+// then reappears on refresh because ipdEnabled was missing).
+const CLINIC_SELECT = {
+  id: true,
+  name: true,
+  logo: true,
+  headerImageUrl: true,
+  hideTextOnHeader: true,
+  footerImageUrl: true,
+  letterheadUrl: true,
+  letterheadMode: true,
+  status: true,
+  subscriptionPlan: true,
+  settings: true,
+  facilityType: true,
+  ipdEnabled: true,
+  ipdSettings: true,
+};
+
 async function login(req, res) {
   try {
     const { email, password } = req.body;
@@ -30,7 +53,7 @@ async function login(req, res) {
     // Clinic user — email globally unique
     const user = await prisma.user.findUnique({
       where: { email: emailNorm },
-      include: { clinic: { select: { id: true, name: true, logo: true, headerImageUrl: true, hideTextOnHeader: true, footerImageUrl: true, letterheadUrl: true, letterheadMode: true, status: true, subscriptionPlan: true } } },
+      include: { clinic: { select: CLINIC_SELECT } },
     });
 
     if (!user) {
