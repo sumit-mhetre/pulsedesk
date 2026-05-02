@@ -32,6 +32,7 @@ import ViewDocumentPage   from './pages/documents/ViewDocumentPage'
 import SuperDashboard      from './pages/super/SuperDashboard'
 import SuperClinics        from './pages/super/SuperClinics'
 import SuperCreateClinic   from './pages/super/SuperCreateClinic'
+import SuperActivity       from './pages/super/SuperActivity'
 
 // IPD pages
 import BedBoardPage              from './pages/ipd/BedBoardPage'
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/super/dashboard"   element={<SuperDashboard />} />
           <Route path="/super/clinics"     element={<SuperClinics />} />
           <Route path="/super/clinics/new" element={<SuperCreateClinic />} />
+          <Route path="/super/activity"    element={<SuperActivity />} />
         </Route>
       </Route>
 
