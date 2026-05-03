@@ -27,17 +27,21 @@ function handleUpload(req, res, next) {
   });
 }
 
-// Note: /file is the ONLY route here that uses query-param auth (?t=jwt).
-// We mount it BEFORE router.use(authenticate) so the global Bearer middleware
-// doesn't reject the request for missing Authorization header. The controller
-// verifies the token internally.
+// IMPORTANT: This router is mounted at `/api` (root). We CANNOT use
+// `router.use(authenticate)` here because it would leak into every
+// /api/* route mounted *after* this one in index.js (health, documents,
+// ipd, etc) and lock them all behind Bearer auth. Instead each route
+// declares its own auth middleware.
+
+// Stream a saved attachment. Uses query-param token (?t=jwt) because
+// <img src> and <a href> can't send Authorization headers. The controller
+// verifies the token internally; this route has NO Bearer middleware.
 router.get('/prescriptions/attachments/:id/file', ctrl.streamAttachment);
 
-router.use(authenticate);
-
 // List attachments for a prescription. viewPrescriptions covers doctor +
-// receptionist (after today's permission change) + admin.
+// receptionist (after the recent permission change) + admin.
 router.get('/prescriptions/:prescriptionId/attachments',
+  authenticate,
   requirePermission('viewPrescriptions'),
   ctrl.listAttachments
 );
@@ -45,6 +49,7 @@ router.get('/prescriptions/:prescriptionId/attachments',
 // Upload a new attachment. createPrescriptions covers doctor + admin only -
 // receptionist can VIEW but not upload (they don't create Rx clinical content).
 router.post('/prescriptions/:prescriptionId/attachments',
+  authenticate,
   requirePermission('createPrescriptions'),
   handleUpload,
   ctrl.uploadAttachment
@@ -53,6 +58,7 @@ router.post('/prescriptions/:prescriptionId/attachments',
 // Delete attachment. Permission gate is loose (createPrescriptions); the
 // controller does an additional check that the user is the uploader OR admin.
 router.delete('/prescriptions/attachments/:id',
+  authenticate,
   requirePermission('createPrescriptions'),
   ctrl.deleteAttachment
 );
