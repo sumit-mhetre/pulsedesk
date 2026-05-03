@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse, paginatedResponse } = require('../lib/response');
+const { doctorPrivacyWhere, getClinicSharingFlags } = require('../lib/dataPrivacy');
 
 // ── Generate Bill Number ──────────────────────────────────
 async function generateBillNo(clinicId) {
@@ -142,7 +143,7 @@ async function createBill(req, res) {
           },
         });
       } catch (e) {
-        // Don't fail the bill if queue insert hits a race condition - log only
+        // Don't fail the bill if queue insert hits a race condition — log only
         console.warn('[createBill] auto-queue failed (non-fatal):', e?.message);
       }
 
@@ -238,8 +239,13 @@ async function getPatientBills(req, res) {
 async function suggestFromPrescription(req, res) {
   try {
     const { prescriptionId } = req.params;
+    const flags = await getClinicSharingFlags(req);
     const rx = await prisma.prescription.findFirst({
-      where: { id: prescriptionId, clinicId: req.clinicId },
+      where: {
+        id: prescriptionId,
+        clinicId: req.clinicId,
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
+      },
       include: { medicines: true, labTests: true },
     });
     if (!rx) return errorResponse(res, 'Prescription not found', 404);

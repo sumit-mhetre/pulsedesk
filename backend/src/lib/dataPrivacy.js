@@ -56,6 +56,33 @@ function canMutate(req, rowUserId) {
 }
 
 /**
+ * Doctor-scoped privacy filter for tables with a `doctorId` field
+ * (Prescription, Appointment). Used for Phase 3+4 of the privacy feature.
+ *
+ * If `shared` is true, no filter (everyone in clinic sees all).
+ * If user is ADMIN or RECEPTIONIST or NURSE, no filter (cross-doctor visibility
+ *   needed for their roles - admin oversight, receptionist booking + bills,
+ *   nurse handles patients across doctors).
+ * Otherwise (DOCTOR), restricts to:
+ *   - rows where doctorId === me, OR
+ *   - rows where doctorId IS NULL (legacy / unassigned - visible to all doctors).
+ */
+function doctorPrivacyWhere(req, shared) {
+  if (shared) return {};
+  const user = req?.user;
+  if (!user) return {};
+  // Roles that always bypass doctor-scoped filtering
+  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') return {};
+  if (user.role === 'RECEPTIONIST' || user.role === 'NURSE') return {};
+  return {
+    OR: [
+      { doctorId: user.id },
+      { doctorId: null },
+    ],
+  };
+}
+
+/**
  * Loads the clinic's sharing flags. Cached per-request to avoid repeat
  * lookups within a single controller. Caller passes req.
  */
@@ -79,4 +106,4 @@ async function getClinicSharingFlags(req) {
   return req._clinicSharingFlags;
 }
 
-module.exports = { privacyWhere, canMutate, getClinicSharingFlags };
+module.exports = { privacyWhere, doctorPrivacyWhere, canMutate, getClinicSharingFlags };

@@ -498,13 +498,13 @@ export default function SettingsPage() {
                 checked={clinic.sharePrescriptions}
                 onChange={v => { setClinic(c => ({ ...c, sharePrescriptions: v })); setGlobalDirty(true) }}
                 label="Share Prescriptions"
-                sub="When ON, doctors can see prescriptions written by others. When OFF, each doctor only sees prescriptions they wrote. (Coming soon - flag is saved but not yet active)"
+                sub="When ON, doctors can see prescriptions written by others. When OFF, each doctor only sees prescriptions they wrote (admin and receptionist always see all)."
               />
               <Toggle
                 checked={clinic.shareAppointments}
                 onChange={v => { setClinic(c => ({ ...c, shareAppointments: v })); setGlobalDirty(true) }}
                 label="Share Appointments"
-                sub="When ON, doctors see each other's appointment queue. When OFF, each doctor's queue is private. (Coming soon - flag is saved but not yet active)"
+                sub="When ON, doctors see each other's appointment queue. When OFF, each doctor's queue is private (admin, receptionist and nurse always see all)."
               />
               <div className="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
                 <p className="text-xs font-semibold text-amber-700 mb-1">Note</p>

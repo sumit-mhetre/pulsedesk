@@ -124,7 +124,9 @@ const ROLE_DEFAULTS = {
   },
   RECEPTIONIST: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
-    viewPrescriptions: false, createPrescriptions: false,
+    // Read-only access to prescriptions so receptionist can view/print Rx
+    // for billing and patient handover. Cannot create or edit (createPrescriptions stays false).
+    viewPrescriptions: true, createPrescriptions: false,
     viewBilling: true,    createBilling: true,
     viewReports: false,   manageTemplates: false,
     manageMasterData: false, loadDefaultMasterData: false,
@@ -159,7 +161,7 @@ function getDefaultsForRole(role) {
   return filled
 }
 
-// Resolves effective permissions for a user - role defaults + per-user overrides.
+// Resolves effective permissions for a user — role defaults + per-user overrides.
 function resolvePermissions(user) {
   if (!user) return {}
   const defaults = getDefaultsForRole(user.role)
@@ -189,7 +191,7 @@ function computeOverrides(role, fullPermissions) {
   return overrides
 }
 
-// Express middleware factory - drop-in for routes.
+// Express middleware factory — drop-in for routes.
 // Use as: router.get('/path', authenticate, requirePermission('manageIPD'), ctrl.handler)
 function requirePermission(permissionKey) {
   return (req, res, next) => {

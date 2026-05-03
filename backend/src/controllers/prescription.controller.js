@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse, paginatedResponse } = require('../lib/response');
+const { doctorPrivacyWhere, getClinicSharingFlags } = require('../lib/dataPrivacy');
 
 // ── Generate Rx Number ────────────────────────────────────
 async function generateRxNo(clinicId, doctorId) {
@@ -15,7 +16,7 @@ async function generateRxNo(clinicId, doctorId) {
 // frequency: DAILY | ALT_DAYS | EVERY_3D | WEEKLY | SOS
 function calcQty(dosageCode, days, frequency = 'DAILY') {
   if (!dosageCode || !days) return null;
-  if (frequency === 'SOS') return null;  // As-needed - doctor fills manually
+  if (frequency === 'SOS') return null;  // As-needed — doctor fills manually
   const dosageMap = {
     '1-0-0': 1, '0-1-0': 1, '0-0-1': 1,
     '1-0-1': 2, '1-1-0': 2, '0-1-1': 2,
@@ -42,15 +43,24 @@ async function getPrescriptions(req, res) {
   try {
     const { page = 1, limit = 20, patientId, doctorId, search } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    const flags = await getClinicSharingFlags(req);
+    const privacy = doctorPrivacyWhere(req, flags.sharePrescriptions);
     const where = { clinicId: req.clinicId };
     if (patientId) where.patientId = patientId;
     if (doctorId)  where.doctorId  = doctorId;
+    // Combine the privacy OR-filter with the search OR-filter via AND so that
+    // both apply (search clauses don't accidentally bypass the privacy clauses).
+    const andClauses = [];
+    if (privacy.OR) andClauses.push({ OR: privacy.OR });
     if (search) {
-      where.OR = [
-        { rxNo:    { contains: search, mode: 'insensitive' } },
-        { patient: { name: { contains: search, mode: 'insensitive' } } },
-      ];
+      andClauses.push({
+        OR: [
+          { rxNo:    { contains: search, mode: 'insensitive' } },
+          { patient: { name: { contains: search, mode: 'insensitive' } } },
+        ],
+      });
     }
+    if (andClauses.length > 0) where.AND = andClauses;
 
     const [prescriptions, total] = await Promise.all([
       prisma.prescription.findMany({
@@ -75,8 +85,13 @@ async function getPrescriptions(req, res) {
 // ── Get single prescription ───────────────────────────────
 async function getPrescription(req, res) {
   try {
+    const flags = await getClinicSharingFlags(req);
     const rx = await prisma.prescription.findFirst({
-      where: { id: req.params.id, clinicId: req.clinicId },
+      where: {
+        id: req.params.id,
+        clinicId: req.clinicId,
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
+      },
       include: {
         patient: true,
         doctor:  { select: { id: true, name: true, qualification: true, specialization: true, regNo: true, signature: true, stamp: true } },
@@ -103,8 +118,8 @@ async function createPrescription(req, res) {
       medicines: rxMeds = [],
       labTests:  rxTests = [],
       customRxNo,
-      customData,   // { fieldId: stringValue, ... } - custom fields added by the clinic
-      vitals,       // snapshot of vitals taken at write-time - { systolicBP, diastolicBP, sugar, ... }
+      customData,   // { fieldId: stringValue, ... } — custom fields added by the clinic
+      vitals,       // snapshot of vitals taken at write-time — { systolicBP, diastolicBP, sugar, ... }
     } = req.body;
 
     const doctorId = req.user.id;
@@ -220,7 +235,7 @@ async function createPrescription(req, res) {
                 where: { id: med.medicineId, clinicId: req.clinicId },
                 data: { usageCount: { increment: 1 } },
               })
-              // Save per-doctor preference (dosage/timing/days/frequency/notes used last time) - non-blocking
+              // Save per-doctor preference (dosage/timing/days/frequency/notes used last time) — non-blocking
               if (med.dosage || med.timing || med.days || med.frequency || med.notesEn) {
                 prisma.doctorMedicinePreference.upsert({
                   where: { clinicId_doctorId_medicineId: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId } },
@@ -233,7 +248,7 @@ async function createPrescription(req, res) {
         }
       }
 
-      // Add lab tests - only include those with valid labTestId
+      // Add lab tests — only include those with valid labTestId
       if (rxTests.length > 0) {
         const validTests = rxTests.filter(t => t.labTestId && t.labTestId !== 'undefined');
         // Deduplicate by labTestId
@@ -416,8 +431,13 @@ async function updatePrescription(req, res) {
 // ── Get patient's prescription history ───────────────────
 async function getPatientPrescriptions(req, res) {
   try {
+    const flags = await getClinicSharingFlags(req);
     const prescriptions = await prisma.prescription.findMany({
-      where: { patientId: req.params.patientId, clinicId: req.clinicId },
+      where: {
+        patientId: req.params.patientId,
+        clinicId: req.clinicId,
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
+      },
       orderBy: { date: 'desc' },
       include: {
         doctor:   { select: { name: true } },
@@ -434,8 +454,13 @@ async function getPatientPrescriptions(req, res) {
 // ── Get last prescription (carry forward) ────────────────
 async function getLastPrescription(req, res) {
   try {
+    const flags = await getClinicSharingFlags(req);
     const last = await prisma.prescription.findFirst({
-      where: { patientId: req.params.patientId, clinicId: req.clinicId },
+      where: {
+        patientId: req.params.patientId,
+        clinicId: req.clinicId,
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
+      },
       orderBy: { date: 'desc' },
       include: {
         medicines: { orderBy: { sortOrder: 'asc' } },
@@ -487,7 +512,7 @@ async function getDoctorPreferences(req, res) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  DRAFTS - autosave snapshots
+//  DRAFTS — autosave snapshots
 // ═══════════════════════════════════════════════════════════
 
 // Upsert draft for (doctor, patient).

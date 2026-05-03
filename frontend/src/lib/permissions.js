@@ -103,7 +103,7 @@ export const ROLE_DEFAULTS = {
     manageMasterData: true, loadDefaultMasterData: true,
     manageSettings: true, manageUsers: true,
     viewDocuments: true,  createDocuments: true,
-    // IPD - admins get all
+    // IPD — admins get all
     manageIPD: true, manageBeds: true, manageAdmissions: true,
     recordRoundNotes: true, recordIPDVitals: true, recordNursingNotes: true,
     manageMedicationOrders: true, recordMAR: true, manageIPDOrders: true,
@@ -118,7 +118,7 @@ export const ROLE_DEFAULTS = {
     manageMasterData: true, loadDefaultMasterData: false,
     manageSettings: true, manageUsers: false,
     viewDocuments: true,  createDocuments: true,
-    // IPD - doctors get clinical + admin functions, not nursing-specific
+    // IPD — doctors get clinical + admin functions, not nursing-specific
     manageIPD: true, manageBeds: true, manageAdmissions: true,
     recordRoundNotes: true, recordIPDVitals: true, recordNursingNotes: false,
     manageMedicationOrders: true, recordMAR: false, manageIPDOrders: true,
@@ -127,13 +127,15 @@ export const ROLE_DEFAULTS = {
   },
   RECEPTIONIST: {
     viewDashboard: true,  managePatients: true,   manageQueue: true,
-    viewPrescriptions: false, createPrescriptions: false,
+    // Read-only access to prescriptions: receptionist can view/print Rx for
+    // billing/handover but cannot create or edit them (createPrescriptions=false).
+    viewPrescriptions: true, createPrescriptions: false,
     viewBilling: true,    createBilling: true,
     viewReports: false,   manageTemplates: false,
     manageMasterData: false, loadDefaultMasterData: false,
     manageSettings: false, manageUsers: false,
     viewDocuments: false, createDocuments: false,
-    // IPD - receptionists handle admission paperwork + billing
+    // IPD — receptionists handle admission paperwork + billing
     manageIPD: true, manageBeds: true, manageAdmissions: true,
     recordRoundNotes: false, recordIPDVitals: false, recordNursingNotes: false,
     manageMedicationOrders: false, recordMAR: false, manageIPDOrders: false,
@@ -141,7 +143,7 @@ export const ROLE_DEFAULTS = {
     manageIPDBilling: true, manageBillingPackages: false, dischargePatient: false,
   },
   NURSE: {
-    // OPD permissions - minimal access
+    // OPD permissions — minimal access
     viewDashboard: true,  managePatients: false,  manageQueue: false,
     viewPrescriptions: true, createPrescriptions: false,
     viewBilling: false,   createBilling: false,
@@ -149,7 +151,7 @@ export const ROLE_DEFAULTS = {
     manageMasterData: false, loadDefaultMasterData: false,
     manageSettings: false, manageUsers: false,
     viewDocuments: false, createDocuments: false,
-    // IPD - nursing core duties
+    // IPD — nursing core duties
     manageIPD: true, manageBeds: false, manageAdmissions: false,
     recordRoundNotes: false, recordIPDVitals: true, recordNursingNotes: true,
     manageMedicationOrders: false, recordMAR: true, manageIPDOrders: false,
@@ -165,7 +167,7 @@ export function getDefaultsForRole(role) {
   return filled
 }
 
-// Resolves effective permissions for a user - role defaults + per-user overrides.
+// Resolves effective permissions for a user — role defaults + per-user overrides.
 // Always returns a full flat object with all keys.
 export function resolvePermissions(user) {
   if (!user) return {}
@@ -191,7 +193,7 @@ export function can(user, permissionKey) {
 }
 
 // For the edit-user form: returns the list of override keys (those differing from role defaults).
-// Sent back to backend on save - keeps DB clean.
+// Sent back to backend on save — keeps DB clean.
 export function computeOverrides(role, fullPermissions) {
   const defaults = getDefaultsForRole(role)
   const overrides = {}

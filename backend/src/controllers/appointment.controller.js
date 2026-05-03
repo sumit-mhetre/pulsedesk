@@ -1,5 +1,6 @@
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse } = require('../lib/response');
+const { doctorPrivacyWhere, getClinicSharingFlags } = require('../lib/dataPrivacy');
 
 // ── Get today's token number ──────────────────────────────
 async function getNextToken(clinicId, date) {
@@ -29,16 +30,18 @@ async function getTodayQueue(req, res) {
 
     const { doctorId, status } = req.query;
 
+    const flags = await getClinicSharingFlags(req);
     const where = {
       clinicId: req.clinicId,
       tokenDate: { gte: today, lt: tomorrow },
+      ...doctorPrivacyWhere(req, flags.shareAppointments),
     };
     if (doctorId) where.doctorId = doctorId;
     if (status)   where.status   = status;
 
     const appointments = await prisma.appointment.findMany({
       where,
-      orderBy: { tokenNo: 'desc' },   // newest first - latest token at top, no scrolling
+      orderBy: { tokenNo: 'desc' },   // newest first — latest token at top, no scrolling
       include: {
         patient: {
           select: {
@@ -50,7 +53,8 @@ async function getTodayQueue(req, res) {
       },
     });
 
-    // Stats
+    // Stats reflect the (filtered) appointments the user can actually see -
+    // not clinic-wide totals - so the numbers always match the visible list.
     const stats = {
       total:          appointments.length,
       waiting:        appointments.filter(a => a.status === 'Waiting').length,
@@ -82,16 +86,22 @@ async function addToQueue(req, res) {
     });
     if (!patient) return errorResponse(res, 'Patient not found', 404);
 
-    // Check not already in today's queue
-    const alreadyIn = await prisma.appointment.findFirst({
-      where: {
-        clinicId:  req.clinicId,
-        patientId,
-        tokenDate: { gte: today, lt: tomorrow },
-        status:    { notIn: ['Done', 'Skipped'] },
-      },
-    });
-    if (alreadyIn) return errorResponse(res, `Patient already in queue - Token #${alreadyIn.tokenNo}`, 409);
+    // Check not already in today's queue.
+    // Under privacy mode, this check is scoped to the booking-doctor: a patient
+    // can be booked with Dr B even if they already have a Waiting appointment
+    // with Dr A. Without privacy, the original clinic-wide rule applies.
+    const flags = await getClinicSharingFlags(req);
+    const alreadyInWhere = {
+      clinicId:  req.clinicId,
+      patientId,
+      tokenDate: { gte: today, lt: tomorrow },
+      status:    { notIn: ['Done', 'Skipped'] },
+    };
+    if (!flags.shareAppointments && doctorId) {
+      alreadyInWhere.doctorId = doctorId;
+    }
+    const alreadyIn = await prisma.appointment.findFirst({ where: alreadyInWhere });
+    if (alreadyIn) return errorResponse(res, `Patient already in queue — Token #${alreadyIn.tokenNo}`, 409);
 
     const tokenNo = await getNextToken(req.clinicId, new Date());
 
@@ -159,10 +169,12 @@ async function callNext(req, res) {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const { doctorId } = req.query;
+    const flags = await getClinicSharingFlags(req);
     const where = {
       clinicId:  req.clinicId,
       status:    'Waiting',
       tokenDate: { gte: today, lt: tomorrow },
+      ...doctorPrivacyWhere(req, flags.shareAppointments),
     };
     if (doctorId) where.doctorId = doctorId;
 
@@ -229,7 +241,7 @@ async function getQueueByDate(req, res) {
   try {
     const { date } = req.params;
 
-    // Reject reserved words (defensive - shouldn't happen with correct route order)
+    // Reject reserved words (defensive — shouldn't happen with correct route order)
     if (['today', 'next', 'tomorrow'].includes(date)) {
       return errorResponse(res, `Invalid date: "${date}" is a reserved word`, 400);
     }
@@ -243,10 +255,12 @@ async function getQueueByDate(req, res) {
     const endOfDay = new Date(startOfDay);
     endOfDay.setHours(23, 59, 59, 999);
 
+    const flags = await getClinicSharingFlags(req);
     const appointments = await prisma.appointment.findMany({
       where: {
         clinicId:  req.clinicId,
         tokenDate: { gte: startOfDay, lte: endOfDay },
+        ...doctorPrivacyWhere(req, flags.shareAppointments),
       },
       orderBy: { tokenNo: 'asc' },
       include: {
@@ -280,12 +294,18 @@ async function startConsultation(req, res) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Pick today's earliest non-Done appointment for this patient (Waiting beats InConsultation)
+    const flags = await getClinicSharingFlags(req);
+
+    // Pick today's earliest non-Done appointment for this patient (Waiting beats InConsultation).
+    // Privacy filter applies: under strict mode a doctor only matches their own
+    // (or unassigned) appointments - they don't accidentally take over another
+    // doctor's appointment.
     const appt = await prisma.appointment.findFirst({
       where: {
         clinicId: req.clinicId, patientId,
         tokenDate: { gte: today, lt: tomorrow },
         status: { in: ['Waiting', 'InConsultation'] },
+        ...doctorPrivacyWhere(req, flags.shareAppointments),
       },
       orderBy: [{ status: 'asc' }, { tokenNo: 'asc' }],   // Waiting < InConsultation alphabetically
     });
@@ -299,7 +319,7 @@ async function startConsultation(req, res) {
         });
         if (!patient) return errorResponse(res, 'Patient not found in this clinic', 404);
 
-        // Allocate next token for today
+        // Allocate next token for today (token series is clinic-wide regardless of privacy)
         const lastToken = await prisma.appointment.findFirst({
           where: { clinicId: req.clinicId, tokenDate: { gte: today, lt: tomorrow } },
           orderBy: { tokenNo: 'desc' },
@@ -307,19 +327,24 @@ async function startConsultation(req, res) {
         });
         const nextToken = lastToken ? lastToken.tokenNo + 1 : 1;
 
+        // Stamp the consulting doctor on the new appointment so that when
+        // privacy is on, this appointment is properly attributed.
+        const consultingDoctorId = req.user?.role === 'DOCTOR' ? req.user.id : null;
+
         const created = await prisma.appointment.create({
           data: {
             clinicId:  req.clinicId,
             patientId,
+            doctorId:  consultingDoctorId,
             tokenNo:   nextToken,
             tokenDate: today,
             status:    'InConsultation',
-            notes:     'Direct prescription - no bill',
+            notes:     'Direct prescription — no bill',
           },
         });
         return successResponse(res, created, 'Queue entry created in consultation');
       }
-      return successResponse(res, null, 'No active queue entry - nothing to transition');
+      return successResponse(res, null, 'No active queue entry — nothing to transition');
     }
     if (appt.status === 'InConsultation') {
       return successResponse(res, appt, 'Already in consultation');
@@ -344,17 +369,19 @@ async function completeConsultation(req, res) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    const flags = await getClinicSharingFlags(req);
     const appt = await prisma.appointment.findFirst({
       where: {
         clinicId: req.clinicId, patientId,
         tokenDate: { gte: today, lt: tomorrow },
         status: { in: ['Waiting', 'InConsultation'] },
+        ...doctorPrivacyWhere(req, flags.shareAppointments),
       },
       orderBy: { tokenNo: 'asc' },
     });
 
     if (!appt) {
-      return successResponse(res, null, 'No active queue entry - nothing to complete');
+      return successResponse(res, null, 'No active queue entry — nothing to complete');
     }
 
     const updated = await prisma.appointment.update({
