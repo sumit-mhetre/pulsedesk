@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   LayoutDashboard, Users, Settings, LogOut, Database, FileText, Receipt, BookOpen,
   Menu, X, User, ChevronDown, ChevronRight, Building2, CalendarDays, BarChart3, FileCheck,
@@ -62,9 +62,29 @@ export default function DashLayout() {
   useSessionTimeout()
   const [sidebarOpen,   setSidebarOpen]   = useState(false)
   const [profileOpen,   setProfileOpen]   = useState(false)
+  const profileRef                        = useRef(null)
   const [confirmLogout, setConfirmLogout] = useState(false)
   const [isDirty,       setIsDirty]       = useState(false)
   const [discardTarget, setDiscardTarget] = useState(null)
+
+  // Close the profile dropdown when clicking outside it, or pressing Escape.
+  // Standard popover UX -- avoids the menu lingering open after the user
+  // moves on to something else.
+  useEffect(() => {
+    if (!profileOpen) return
+    const onClick = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false)
+      }
+    }
+    const onKey = (e) => { if (e.key === 'Escape') setProfileOpen(false) }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown',   onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown',   onKey)
+    }
+  }, [profileOpen])
 
   // IPD section auto-expands when user is on any IPD page; otherwise remembers
   // the user's manual toggle via localStorage.
@@ -241,7 +261,7 @@ export default function DashLayout() {
                 <span className="badge-primary badge capitalize">{user?.clinic?.subscriptionPlan}</span>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative" ref={profileRef}>
               <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors">
                 <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-sm">{user?.name?.charAt(0)?.toUpperCase()}</div>
                 <div className="hidden sm:block text-left">
