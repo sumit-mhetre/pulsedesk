@@ -11,6 +11,7 @@ const prisma = require('../lib/prisma');
 const { successResponse, errorResponse } = require('../lib/response');
 const { uploadRaw, deleteByPublicId } = require('../lib/cloudinary');
 const { doctorPrivacyWhere, getClinicSharingFlags } = require('../lib/dataPrivacy');
+const { verifyToken } = require('../lib/jwt');
 
 const ALLOWED_MIME = new Set([
   'image/jpeg', 'image/jpg', 'image/png',
@@ -139,15 +140,16 @@ async function deleteAttachment(req, res) {
 // can verify the query token here.
 async function streamAttachment(req, res) {
   try {
-    // Verify token from query string. Same payload as the Bearer header path
-    // in auth.middleware.js — sets req.user and req.clinicId so privacy
-    // helpers downstream still work.
-    const jwt = require('jsonwebtoken');
+    // Verify token from query string. Uses the shared verifyToken helper so
+    // we resolve JWT_SECRET the same way as the rest of the auth flow
+    // (auth.middleware.js also uses verifyToken). Direct jwt.verify with
+    // process.env.JWT_SECRET would break when the env var is unset and the
+    // helper falls back to the default secret.
     const token = req.query.t;
     if (!token) return errorResponse(res, 'Token required', 401);
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = verifyToken(token);
     } catch {
       return errorResponse(res, 'Invalid or expired token', 401);
     }
