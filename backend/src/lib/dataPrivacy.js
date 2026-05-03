@@ -64,22 +64,32 @@ function canMutate(req, rowUserId) {
  *   needed for their roles - admin oversight, receptionist booking + bills,
  *   nurse handles patients across doctors).
  * Otherwise (DOCTOR), restricts to:
- *   - rows where doctorId === me, OR
- *   - rows where doctorId IS NULL (legacy / unassigned - visible to all doctors).
+ *   - rows where doctorId === me, AND OPTIONALLY
+ *   - rows where doctorId IS NULL (legacy / unassigned).
+ *
+ * `allowNull` defaults to true. Pass false for tables where doctorId is a
+ * required (non-nullable) column - Prisma rejects `{doctorId: null}` queries
+ * on non-nullable fields. Prescription.doctorId is non-nullable, so the
+ * prescription controller calls this with allowNull=false.
  */
-function doctorPrivacyWhere(req, shared) {
+function doctorPrivacyWhere(req, shared, { allowNull = true } = {}) {
   if (shared) return {};
   const user = req?.user;
   if (!user) return {};
   // Roles that always bypass doctor-scoped filtering
   if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') return {};
   if (user.role === 'RECEPTIONIST' || user.role === 'NURSE') return {};
-  return {
-    OR: [
-      { doctorId: user.id },
-      { doctorId: null },
-    ],
-  };
+  if (allowNull) {
+    return {
+      OR: [
+        { doctorId: user.id },
+        { doctorId: null },
+      ],
+    };
+  }
+  // Non-nullable doctorId column: just filter to user's own. There are no
+  // legacy null rows to consider.
+  return { doctorId: user.id };
 }
 
 /**
