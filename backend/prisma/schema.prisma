@@ -252,6 +252,7 @@ model Clinic {
   patients                 Patient[]
   appointments             Appointment[]
   prescriptions            Prescription[]
+  prescriptionAttachments  PrescriptionAttachment[]
   bills                    Bill[]
   medicines                Medicine[]
   labTests                 LabTest[]
@@ -330,6 +331,7 @@ model User {
   ownedComplaints       Complaint[]
   ownedDiagnoses        Diagnosis[]
   ownedAdviceOptions    AdviceOption[]
+  uploadedAttachments   PrescriptionAttachment[]
 
   @@unique([email])
   @@map("users")
@@ -685,16 +687,39 @@ model Prescription {
   updatedAt DateTime @updatedAt
 
   clinic     Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  doctor     User                   @relation(fields: [doctorId], references: [id])
-  patient    Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  admission  Admission?             @relation(fields: [admissionId], references: [id])
-  medicines  PrescriptionMedicine[]
-  labTests   PrescriptionLabTest[]
-  labResults LabResult[]
-  bills      Bill[]
+  doctor      User                   @relation(fields: [doctorId], references: [id])
+  patient     Patient                @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  admission   Admission?             @relation(fields: [admissionId], references: [id])
+  medicines   PrescriptionMedicine[]
+  labTests    PrescriptionLabTest[]
+  labResults  LabResult[]
+  bills       Bill[]
+  attachments PrescriptionAttachment[]
 
   @@unique([clinicId, rxNo])
   @@map("prescriptions")
+}
+
+model PrescriptionAttachment {
+  id             String   @id @default(uuid())
+  prescriptionId String
+  clinicId       String
+  uploadedById   String?
+  url            String
+  publicId       String?
+  filename       String
+  mimeType       String
+  sizeBytes      Int      @default(0)
+  resourceType   String   @default("image")
+  createdAt      DateTime @default(now())
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  clinic       Clinic       @relation(fields: [clinicId],       references: [id], onDelete: Cascade)
+  uploadedBy   User?        @relation(fields: [uploadedById],   references: [id], onDelete: SetNull)
+
+  @@index([prescriptionId])
+  @@index([clinicId])
+  @@map("prescription_attachments")
 }
 
 model PrescriptionMedicine {

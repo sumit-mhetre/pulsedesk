@@ -900,6 +900,157 @@ function BloodPressureInput({ value = '', onChange }) {
 }
 
 
+// ── Attachments section (only available in edit mode of saved Rx) ──
+// File upload + list + delete. Renders below the Rx form. Hidden on new
+// prescriptions because we don't have a prescriptionId yet to attach to.
+function AttachmentsSection({ prescriptionId, currentUserId, isAdmin, canUpload }) {
+  const [items, setItems]       = useState([])
+  const [loading, setLoading]   = useState(false)
+  const [uploading, setUpload]  = useState(false)
+  const fileInputRef            = useRef(null)
+
+  const load = useCallback(async () => {
+    if (!prescriptionId) return
+    setLoading(true)
+    try {
+      const { data } = await api.get(`/prescriptions/${prescriptionId}/attachments`)
+      setItems(data.data || [])
+    } catch (e) {
+      console.warn('[attachments load]', e?.response?.data?.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [prescriptionId])
+
+  useEffect(() => { load() }, [load])
+
+  const handleFiles = async (files) => {
+    if (!files || files.length === 0) return
+    if (items.length + files.length > 10) {
+      toast.error(`Max 10 attachments per prescription. You have ${items.length} already.`)
+      return
+    }
+    setUpload(true)
+    let okCount = 0
+    let failCount = 0
+    for (const file of files) {
+      const fd = new FormData()
+      fd.append('file', file)
+      try {
+        await api.post(`/prescriptions/${prescriptionId}/attachments`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        okCount++
+      } catch (e) {
+        failCount++
+        const msg = e?.response?.data?.message || 'Upload failed'
+        toast.error(`${file.name}: ${msg}`)
+      }
+    }
+    setUpload(false)
+    if (okCount > 0) toast.success(`${okCount} file${okCount > 1 ? 's' : ''} uploaded`)
+    await load()
+    // Clear the input so the same file can be re-picked
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleDelete = async (att) => {
+    if (!window.confirm(`Delete "${att.filename}"? This cannot be undone.`)) return
+    try {
+      await api.delete(`/prescriptions/attachments/${att.id}`)
+      toast.success('Attachment deleted')
+      await load()
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Delete failed')
+    }
+  }
+
+  const fmtSize = (b) => {
+    if (!b) return ''
+    if (b < 1024) return `${b} B`
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`
+    return `${(b / 1024 / 1024).toFixed(1)} MB`
+  }
+
+  const isImage = (m) => m && m.startsWith('image/')
+  const isPdf   = (m) => m === 'application/pdf'
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          Attachments
+          <span className="text-xs text-slate-400 font-normal">{items.length}/10</span>
+        </h3>
+        {canUpload && (
+          <>
+            <input ref={fileInputRef} type="file" className="hidden" multiple
+              accept="image/jpeg,image/jpg,image/png,application/pdf"
+              onChange={e => handleFiles(Array.from(e.target.files || []))}/>
+            <Button variant="outline" size="sm"
+              icon={<Plus className="w-3.5 h-3.5"/>}
+              loading={uploading}
+              onClick={() => fileInputRef.current?.click()}>
+              Add files
+            </Button>
+          </>
+        )}
+      </div>
+      <p className="text-xs text-slate-400 mb-3">
+        JPEG, PNG or PDF. Max 5 MB per file, up to 10 files.
+      </p>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Loading...</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-slate-400">No attachments yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {items.map(att => {
+            const canDelete = isAdmin || att.uploadedById === currentUserId
+            return (
+              <div key={att.id} className="border border-slate-200 rounded-lg p-3 flex flex-col bg-slate-50">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate" title={att.filename}>{att.filename}</p>
+                    <p className="text-xs text-slate-400">
+                      {fmtSize(att.sizeBytes)}
+                      {att.uploadedBy?.name && ` • by ${att.uploadedBy.name}`}
+                    </p>
+                  </div>
+                  {canDelete && (
+                    <button type="button" onClick={() => handleDelete(att)}
+                      className="text-slate-300 hover:text-danger p-1" title="Delete">
+                      <Trash2 className="w-3.5 h-3.5"/>
+                    </button>
+                  )}
+                </div>
+                <a href={att.url} target="_blank" rel="noopener noreferrer"
+                  className="block bg-white border border-slate-100 rounded overflow-hidden hover:border-primary transition-colors">
+                  {isImage(att.mimeType) ? (
+                    <img src={att.url} alt={att.filename}
+                      className="w-full h-32 object-contain bg-white"
+                      loading="lazy"/>
+                  ) : isPdf(att.mimeType) ? (
+                    <div className="w-full h-32 flex items-center justify-center text-slate-400 text-xs">
+                      <span>PDF — click to open</span>
+                    </div>
+                  ) : (
+                    <div className="w-full h-32 flex items-center justify-center text-slate-400 text-xs">
+                      <span>Click to download</span>
+                    </div>
+                  )}
+                </a>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+
 // ── Main Page ─────────────────────────────────────────────
 export default function NewPrescriptionPage() {
   const navigate   = useNavigate()
@@ -2522,6 +2673,16 @@ export default function NewPrescriptionPage() {
         </div>
 
       </div>{/* end flex-col reorderable sections */}
+
+        {/* Attachments — only available after the prescription is saved (we need the id). */}
+        {isEdit && editId && (
+          <AttachmentsSection
+            prescriptionId={editId}
+            currentUserId={user?.id}
+            isAdmin={user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'}
+            canUpload={true}
+          />
+        )}
 
         <div ref={bottomBarRef} className="flex flex-col sm:flex-row justify-between gap-3 pb-12">
           <Button variant="outline" icon={<BookOpen className="w-4 h-4"/>} onClick={handleSaveAsTemplate}>

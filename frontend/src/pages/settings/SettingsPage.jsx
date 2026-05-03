@@ -931,7 +931,8 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
               <Toggle checked={cfg.showFrequency}    onChange={v => set('showFrequency', v)}    label="Frequency" sub="Daily, Alternate Days, Weekly etc."/>
               <Toggle checked={cfg.showDays}         onChange={v => set('showDays', v)}         label="Duration"/>
               <Toggle checked={cfg.showQty}          onChange={v => set('showQty', v)}          label="Quantity"/>
-              <Toggle checked={cfg.showNotes}        onChange={v => set('showNotes', v)}        label="Notes" sub="Instructions below medicine name"/>
+              <Toggle checked={cfg.showNotes}        onChange={v => set('showNotes', v)}        label="Notes" sub="Instructions for the medicine (visible on print)"/>
+              <Toggle checked={cfg.notesAsColumn === true} onChange={v => set('notesAsColumn', v)} label="Notes as Separate Column" sub="ON: notes print as a separate column. OFF: notes print below medicine name (default)."/>
               <Toggle checked={cfg.showGeneric === true} onChange={v => set('showGeneric', v)} label="Generic Name" sub="Prints active ingredient below medicine name (e.g. Paracetamol 500mg)"/>
               <Toggle checked={cfg.showRxSymbol}     onChange={v => set('showRxSymbol', v)}     label="℞ Symbol"/>
               <Toggle checked={cfg.medicineNameBold} onChange={v => set('medicineNameBold', v)} label="Bold Medicine Names"/>

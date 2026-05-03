@@ -74,7 +74,7 @@ function transformationsFor(processing) {
 /**
  * Upload a buffer to Cloudinary.
  *
- * @param {Buffer} buffer       - file bytes
+ * @param {Buffer} buffer       — file bytes
  * @param {object} opts
  *   - kind        'logo'|'footer'|'letterhead'|'signature'|'stamp'
  *   - entityId    clinicId or userId (used for folder pathing)
@@ -94,7 +94,7 @@ async function uploadBuffer(buffer, { kind, entityId, processing = 'original', f
         folder,
         resource_type: 'image',
         transformation: transformationsFor(processing),
-        // Random unique public_id per upload - avoids stale cached collisions
+        // Random unique public_id per upload — avoids stale cached collisions
         use_filename: false,
         unique_filename: true,
         overwrite: false,
@@ -116,17 +116,68 @@ async function uploadBuffer(buffer, { kind, entityId, processing = 'original', f
   });
 }
 
-/** Delete a file by its public_id. Best-effort - swallows errors. */
-async function deleteByPublicId(publicId) {
+/** Delete a file by its public_id. Best-effort — swallows errors. */
+async function deleteByPublicId(publicId, resourceType = 'image') {
   if (!publicId) return false;
   try {
     ensureConfigured();
-    await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
     return true;
   } catch (err) {
     console.warn('[cloudinary delete]', err?.message || err);
     return false;
   }
+}
+
+/**
+ * Upload an arbitrary file (image OR pdf) without image transformations.
+ * Used for prescription attachments where we want the file preserved as-is.
+ *
+ * @param {Buffer} buffer
+ * @param {object} opts
+ *   - kind        e.g. 'rx-attachment'
+ *   - entityId    prescriptionId
+ *   - mimeType    e.g. 'application/pdf', 'image/jpeg'
+ *   - filename    original filename (preserved in public_id where possible)
+ * @returns {Promise<{secure_url, public_id, bytes, format, resource_type}>}
+ */
+async function uploadRaw(buffer, { kind, entityId, mimeType = '', filename = '' } = {}) {
+  ensureConfigured();
+  if (!kind || !entityId) throw new Error('uploadRaw requires { kind, entityId }');
+
+  const folder = `simplerx/${kind}/${entityId}`;
+  // 'auto' lets Cloudinary pick image vs raw based on the file. PDFs go to
+  // 'image' resource type with format='pdf' (Cloudinary treats PDFs as
+  // image-renderable). For other types (docx etc) we'd use 'raw'.
+  // We stick to image for jpg/png/pdf because that allows preview-via-URL.
+  const resourceType = mimeType === 'application/pdf' || mimeType.startsWith('image/')
+    ? 'image'
+    : 'raw';
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        resource_type: resourceType,
+        // No transformations — preserve the original file.
+        use_filename:    true,
+        unique_filename: true,
+        overwrite:       false,
+      },
+      (err, result) => {
+        if (err) return reject(err);
+        if (!result) return reject(new Error('Cloudinary returned no result'));
+        resolve({
+          secure_url:    result.secure_url,
+          public_id:     result.public_id,
+          bytes:         result.bytes,
+          format:        result.format,
+          resource_type: result.resource_type,
+        });
+      }
+    );
+    stream.end(buffer);
+  });
 }
 
 /**
@@ -141,4 +192,4 @@ function publicIdFromUrl(url) {
   return m ? m[1] : null;
 }
 
-module.exports = { uploadBuffer, deleteByPublicId, publicIdFromUrl };
+module.exports = { uploadBuffer, uploadRaw, deleteByPublicId, publicIdFromUrl };
