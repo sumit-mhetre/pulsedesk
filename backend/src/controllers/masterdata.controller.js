@@ -1,6 +1,7 @@
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse } = require('../lib/response');
 const { privacyWhere, canMutate, getClinicSharingFlags } = require('../lib/dataPrivacy');
+const { detectMedicineType } = require('../lib/medicineType');
 
 // `privateData = true` opts a master-data type into the per-doctor privacy
 // filter (complaint / diagnosis / advice). For shared reference data
@@ -120,18 +121,9 @@ const medicineCtrl = {
         return errorResponse(res, `${name} already exists`, 409);
       }
 
-      // Auto-detect type
-      let detectedType = type || 'tablet';
-      if (!type) {
-        const n = name.toLowerCase();
-        if (n.includes('syrup') || n.includes('suspension') || n.includes('liquid')) detectedType = 'liquid';
-        else if (n.includes('drops') || n.includes('drop'))   detectedType = 'drops';
-        else if (n.includes('cream') || n.includes('gel') || n.includes('ointment')) detectedType = 'cream';
-        else if (n.includes('inhaler') || n.includes('puff')) detectedType = 'inhaler';
-        else if (n.includes('injection') || n.includes('inj')) detectedType = 'injection';
-        else if (n.includes('sachet') || n.includes('powder')) detectedType = 'sachet';
-        else if (n.includes('capsule') || n.includes('cap'))   detectedType = 'capsule';
-      }
+      // Auto-detect type from name prefix when client didn't pass one.
+      // The helper checks tokens, so "Tab. Crocin" -> tablet, "Syp. Crocin" -> liquid.
+      const detectedType = type || detectMedicineType(name) || 'tablet';
 
       const medicine = await prisma.medicine.create({
         data: {

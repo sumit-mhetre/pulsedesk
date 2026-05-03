@@ -9,6 +9,7 @@ import { PageHeader, Button, Badge, Card, EmptyState, Modal } from '../../compon
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import usePermission from '../../hooks/usePermission'
+import { detectMedicineType } from '../../lib/medicineType'
 
 // ── Tab config ────────────────────────────────────────────
 const TABS = [
@@ -75,8 +76,23 @@ function MedicineForm({ form, setForm, onSubmit, onCancel, saving, mode }) {
       <div className="grid grid-cols-2 gap-x-4">
         <div className="col-span-2 form-group">
           <label className="form-label">Medicine Name *</label>
-          <input className="form-input" placeholder="e.g. Crocin 650 Tablet" required
-            value={form.name || ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+          <input className="form-input" placeholder="e.g. Tab. Crocin 650, Cap. Augmentin, Syp. Benadryl" required
+            value={form.name || ''}
+            onChange={e => {
+              const name = e.target.value
+              // Auto-detect type from the prefix of the name (Tab./Cap./Syr./Syp./...)
+              // - but only if the user hasn't already manually picked a type for this row.
+              // typeManuallySet is toggled true by the Type select's onChange below.
+              setForm(f => {
+                const next = { ...f, name }
+                if (!f.typeManuallySet) {
+                  const detected = detectMedicineType(name)
+                  if (detected) next.type = detected
+                }
+                return next
+              })
+            }}
+            autoFocus />
         </div>
         <div className="col-span-2 form-group">
           <label className="form-label">Generic Name / Composition</label>
@@ -86,7 +102,7 @@ function MedicineForm({ form, setForm, onSubmit, onCancel, saving, mode }) {
         <div className="form-group">
           <label className="form-label">Type *</label>
           <select className="form-select" value={form.type || 'tablet'}
-            onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+            onChange={e => setForm(f => ({ ...f, type: e.target.value, typeManuallySet: true }))}>
             {MEDICINE_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
           </select>
         </div>
@@ -376,7 +392,7 @@ export default function MasterDataPage() {
 
   // Gate "Load Default Data" by permission. Admin gets it true by default. Doctors get false
   // by default, but admin can grant it per-doctor via Capabilities editor. SUPER_ADMIN
-  // bypasses this UI - they use the Manage modal's Actions tab instead.
+  // bypasses this UI — they use the Manage modal's Actions tab instead.
   const canSeed   = usePermission('loadDefaultMasterData')
 
   const currentTab = TABS.find(t => t.key === activeTab)
@@ -533,7 +549,7 @@ export default function MasterDataPage() {
     <div className="fade-in">
       <PageHeader title="Master Data" subtitle="Configure medicines, tests, complaints and all reference data" />
 
-      {/* Seed banner - admin only */}
+      {/* Seed banner — admin only */}
       {canSeed && items.length === 0 && !loading && !search && (
         <SeedImporter onDone={fetchItems} />
       )}
@@ -545,7 +561,7 @@ export default function MasterDataPage() {
       )}
       {canSeed && showSeed && <SeedImporter onDone={() => { setShowSeed(false); fetchItems() }} />}
 
-      {/* Doctor/Receptionist with empty data - show simple empty state instead of seed prompt */}
+      {/* Doctor/Receptionist with empty data — show simple empty state instead of seed prompt */}
       {!canSeed && items.length === 0 && !loading && !search && (
         <Card className="mb-4">
           <div className="text-center py-6 text-sm text-slate-500">

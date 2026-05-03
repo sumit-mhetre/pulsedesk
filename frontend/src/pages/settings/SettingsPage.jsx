@@ -440,10 +440,20 @@ export default function SettingsPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">OPD Series Prefix</label>
-                <input className="form-input font-mono" placeholder="e.g. MH, JK or MH1000"
+                <input className="form-input font-mono" placeholder="e.g. MH, MH15 or leave blank"
                   value={clinic.opdSeriesPrefix || ''} onChange={setClinicField('opdSeriesPrefix')}/>
                 <p className="text-xs text-slate-400 mt-1">
-                  Patient codes: <strong className="font-mono">{clinic.opdSeriesPrefix || 'SHA'}0001</strong>, <strong className="font-mono">{clinic.opdSeriesPrefix || 'SHA'}0002</strong>…
+                  {(() => {
+                    // Mirror of backend generator: split letters + optional starting number,
+                    // then preview the first two codes the system will produce.
+                    const raw = (clinic.opdSeriesPrefix || '').trim()
+                    const m = raw.match(/^([a-zA-Z]+)(\d*)$/)
+                    const letters = m ? m[1].toUpperCase() : (raw.toUpperCase() || 'SHA')
+                    const start   = m && m[2] ? parseInt(m[2], 10) : 1
+                    return (
+                      <>Patient codes: <strong className="font-mono">{letters}{start}</strong>, <strong className="font-mono">{letters}{start+1}</strong>, <strong className="font-mono">{letters}{start+2}</strong>…</>
+                    )
+                  })()}
                 </p>
               </div>
             </div>
@@ -1603,7 +1613,14 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
 
           {/* Patient row + date — date on the right matches print page */}
           <div className="border-b border-slate-300 pb-1.5 text-[11px] flex flex-wrap items-baseline gap-x-2">
-            {show('showOPD') && <span className="font-bold tracking-wide">{(clinic?.opdSeriesPrefix || 'SHA') + '0001'}</span>}
+            {show('showOPD') && <span className="font-bold tracking-wide">{(() => {
+              // Match the live preview in the OPD prefix field above.
+              const raw = (clinic?.opdSeriesPrefix || '').trim()
+              const m = raw.match(/^([a-zA-Z]+)(\d*)$/)
+              const letters = m ? m[1].toUpperCase() : (raw.toUpperCase() || 'SHA')
+              const start   = m && m[2] ? parseInt(m[2], 10) : 1
+              return `${letters}${start}`
+            })()}</span>}
             {show('showPatient') && (
               <span className="font-semibold">
                 Sample Patient

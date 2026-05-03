@@ -11,27 +11,55 @@ function normalizeCustomCode(raw) {
 }
 
 // ── Generate unique patient code ──────────────────────────
+// Behaviour:
+//   prefix = "MH"      -> MH1, MH2, MH3, ... (no padding)
+//   prefix = "MH03"    -> starts at MH3, then MH4, MH5, ...
+//   prefix = "MH15"    -> starts at MH15, then MH16, MH17, ...
+//   prefix empty       -> derive 3-letter prefix from clinic name (SHA, etc), no padding
+// We always look up the highest existing code with the same letter prefix in
+// the clinic and return max + 1 (never below the typed starting number).
+// This avoids the old "startNum + count" formula which produced confusing gaps.
 async function generatePatientCode(clinicId) {
   const clinic = await prisma.clinic.findUnique({
     where: { id: clinicId },
-    select: { name: true, opdSeriesPrefix: true }
+    select: { name: true, opdSeriesPrefix: true },
   });
-  // Use custom prefix if set, else derive from clinic name
-  let prefix = clinic.opdSeriesPrefix?.trim() || '';
-  if (!prefix) {
-    prefix = clinic.name.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase() || 'PAT';
+
+  // Resolve the prefix: use admin-configured value or derive from clinic name.
+  let raw = clinic?.opdSeriesPrefix?.trim() || '';
+  if (!raw) {
+    raw = (clinic?.name || '').replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase() || 'PAT';
   }
-  // Extract numeric part if prefix already has numbers (e.g. MH1000)
-  const numMatch = prefix.match(/^([a-zA-Z]+)(\d+)$/);
-  if (numMatch) {
-    // prefix like MH1000 — use as starting counter
-    const letters = numMatch[1];
-    const startNum = parseInt(numMatch[2]);
-    const count = await prisma.patient.count({ where: { clinicId } });
-    return `${letters}${startNum + count}`;
+
+  // Split into the letter prefix and the (optional) numeric starting point.
+  // "MH" -> letters=MH, startNum=1 (default)
+  // "MH03" -> letters=MH, startNum=3 (parseInt strips the leading zero)
+  // "MH100" -> letters=MH, startNum=100
+  const m = raw.match(/^([a-zA-Z]+)(\d*)$/);
+  const letters  = m ? m[1].toUpperCase() : raw.toUpperCase();
+  const startNum = m && m[2] ? parseInt(m[2], 10) : 1;
+
+  // Find the highest existing patient code for this clinic that uses the
+  // same letter prefix. We escape the letters because they go straight into a
+  // SQL LIKE pattern.
+  const escapedLetters = letters.replace(/[%_\\]/g, m => '\\' + m);
+  const rows = await prisma.$queryRaw`
+    SELECT "patientCode" FROM patients
+    WHERE "clinicId" = ${clinicId}
+      AND "patientCode" LIKE ${escapedLetters + '%'} ESCAPE '\\'
+  `;
+  let maxNum = startNum - 1;
+  for (const r of rows) {
+    const tail = (r.patientCode || '').slice(letters.length);
+    // Only consider codes whose tail is a pure number - skip variants like
+    // "MH-OLD-12" if any exist.
+    if (/^\d+$/.test(tail)) {
+      const n = parseInt(tail, 10);
+      if (n > maxNum) maxNum = n;
+    }
   }
-  const count = await prisma.patient.count({ where: { clinicId } });
-  return `${prefix}${String(count + 1).padStart(4, '0')}`;
+  const next = Math.max(maxNum + 1, startNum);
+  return `${letters}${next}`;
 }
 
 // ── Get all patients ──────────────────────────────────────
