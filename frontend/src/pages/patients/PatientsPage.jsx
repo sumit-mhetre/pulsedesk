@@ -492,19 +492,9 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
                 value={form.address} onChange={set('address')}/>
             </div>
 
-            {/* Allergies + Chronic — only in edit mode */}
-            {mode === 'edit' && (
-              <>
-                <div className="border-t border-slate-100 pt-4">
-                  <ChipInput label="Known Allergies" value={form.allergies}
-                    onChange={v=>{ setForm(f=>({...f,allergies:v})); setIsDirty(true) }}
-                    suggestions={COMMON_ALLERGIES}/>
-                </div>
-                <ChipInput label="Chronic Conditions" value={form.chronicConditions}
-                  onChange={v=>{ setForm(f=>({...f,chronicConditions:v})); setIsDirty(true) }}
-                  suggestions={COMMON_CONDITIONS}/>
-              </>
-            )}
+            {/* Allergies + chronic conditions are captured later (during the
+                first consultation), not in this modal - kept out of both
+                add and edit so the form stays focused on identity / contact. */}
 
             {/* Action buttons */}
             <div className="border-t border-slate-100 pt-4">
