@@ -175,7 +175,8 @@ const DEFAULT_RX_FORM = {
 }
 
 const DEFAULT_RX_PRINT = {
-  paperSize: 'A4', showClinicName: true, showClinicAddress: true, showClinicPhone: true,
+  paperSize: 'A4', orientation: 'portrait',  // 'portrait' | 'landscape'
+  showClinicName: true, showClinicAddress: true, showClinicPhone: true,
   showClinicTagline: true, showDoctorName: true, showDoctorQual: true, showDoctorSpec: true,
   showDoctorRegNo: true, headerBorder: true, headerColor: '#1565C0',
   showOPD: true, showPatient: true, showAge: true, showGender: true,
@@ -198,7 +199,8 @@ const DEFAULT_RX_PRINT = {
 }
 
 const DEFAULT_BILL_PRINT = {
-  paperSize: 'A4', showClinicName: true, showClinicAddress: true, showClinicPhone: true,
+  paperSize: 'A4', orientation: 'portrait',  // 'portrait' | 'landscape'
+  showClinicName: true, showClinicAddress: true, showClinicPhone: true,
   showDoctorName: true, showOPD: true, showPatient: true, showAge: true, showGender: true,
   showPhone: true, showEmail: false, showAddress: false,
   showBillNo: true, showDate: true, showItemName: true, showQty: true,
@@ -798,6 +800,8 @@ function PrintDesignPanel({ type, cfg, setCfg, clinic, doctor, rxForm, onSave, o
         <CollapsibleSection id="paper" title="Paper & Typography">
           <RadioGroup label="Paper Size"  value={cfg.paperSize}    onChange={v => set('paperSize', v)}
             options={[{ value: 'A4', label: 'A4' }, { value: 'A5', label: 'A5' }, { value: 'half', label: 'Half Page' }]}/>
+          <RadioGroup label="Orientation" value={cfg.orientation || 'portrait'} onChange={v => set('orientation', v)}
+            options={[{ value: 'portrait', label: 'Portrait' }, { value: 'landscape', label: 'Landscape' }]}/>
           <RadioGroup label="Font Size"   value={cfg.baseFontSize} onChange={v => set('baseFontSize', v)}
             options={[{ value: 'sm', label: 'Small' }, { value: 'md', label: 'Medium' }, { value: 'lg', label: 'Large' }]}/>
           <RadioGroup label="Font Style"  value={cfg.fontFamily}   onChange={v => set('fontFamily', v)}
@@ -1359,8 +1363,14 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
 
   // ── Print Style knobs honored in the live preview ──
   // paperSize affects width proportionally so doctor SEES A5 narrower than A4.
-  const widthByPaper = { A4: '100%', A5: '78%', half: '64%' }
+  // Landscape swaps the aspect: it gets a wider, shorter preview.
+  const isLandscape  = (cfg?.orientation || 'portrait') === 'landscape'
+  const widthByPaper = isLandscape
+    ? { A4: '100%', A5: '95%', half: '85%' }
+    : { A4: '100%', A5: '78%',  half: '64%' }
   const paperWidth   = widthByPaper[cfg?.paperSize] || '100%'
+  // Min-height on the preview gives landscape a flatter aspect cue.
+  const minHeight    = isLandscape ? '180px' : '320px'
   const padTop       = Math.max(0, Math.min(50, cfg?.paddingTop    ?? 8))
   const padBottom    = Math.max(0, Math.min(50, cfg?.paddingBottom ?? 8))
   const lineHeight   = ({ tight: 1.2, normal: 1.5, comfortable: 1.75, airy: 2.0 })[cfg?.lineSpacing || 'normal'] || 1.5
@@ -1374,6 +1384,7 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
       style={{
         fontFamily: cfg.fontFamily === 'serif' ? 'Georgia,serif' : cfg.fontFamily === 'mono' ? 'monospace' : 'inherit',
         width: paperWidth,
+        minHeight,
         lineHeight,
       }}>
 
@@ -1623,14 +1634,13 @@ function BillLivePreview({ cfg, clinic, doctor }) {
   const showTextHeader  = !hasLetterhead && (!clinic?.headerImageUrl || !clinic?.hideTextOnHeader)
 
   // Paper-size visual: subtle proportional width inside the preview pane so
-  // doctor SEES that A5 is narrower than A4. We keep it readable rather than
-  // strictly to scale (true A4 vs A5 width ratio would crush the preview).
-  const widthByPaper = {
-    A4:   '100%',
-    A5:   '78%',
-    half: '64%',
-  }
-  const paperWidth = widthByPaper[cfg?.paperSize] || '100%'
+  // doctor SEES that A5 is narrower than A4. Landscape flips the aspect cue.
+  const isLandscape  = (cfg?.orientation || 'portrait') === 'landscape'
+  const widthByPaper = isLandscape
+    ? { A4: '100%', A5: '95%', half: '85%' }
+    : { A4: '100%', A5: '78%', half: '64%' }
+  const paperWidth   = widthByPaper[cfg?.paperSize] || '100%'
+  const minHeight    = isLandscape ? '180px' : '320px'
 
   // Padding (mm-ish — visualized as px in the preview). Treat as relative.
   const padTop    = Math.max(0, Math.min(50, cfg?.paddingTop    ?? 8))
@@ -1650,7 +1660,7 @@ function BillLivePreview({ cfg, clinic, doctor }) {
   return (
     <div className="bg-slate-50 rounded-xl p-2 flex justify-center">
       <div className={`bg-white rounded-lg border border-slate-100 overflow-hidden relative ${fontClass} transition-all`}
-           style={{ fontFamily, width: paperWidth, lineHeight }}>
+           style={{ fontFamily, width: paperWidth, minHeight, lineHeight }}>
 
         {/* Letterhead background */}
         {hasLetterhead && (
