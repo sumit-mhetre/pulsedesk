@@ -900,14 +900,20 @@ function BloodPressureInput({ value = '', onChange }) {
 }
 
 
-// ── Attachments section (only available in edit mode of saved Rx) ──
-// File upload + list + delete. Renders below the Rx form. Hidden on new
-// prescriptions because we don't have a prescriptionId yet to attach to.
-function AttachmentsSection({ prescriptionId, currentUserId, isAdmin, canUpload }) {
+// ── Attachments section ──────────────────────────────────
+// Two modes:
+//   1) prescriptionId given (edit mode) - upload/list/delete against server
+//      immediately. Existing files come from API.
+//   2) prescriptionId is null (new Rx) - files are held in client memory
+//      and exposed to the parent via onPendingChange. Parent uploads them
+//      on save once it has the new prescriptionId.
+function AttachmentsSection({ prescriptionId, currentUserId, isAdmin, pendingFiles, onPendingChange }) {
   const [items, setItems]       = useState([])
   const [loading, setLoading]   = useState(false)
   const [uploading, setUpload]  = useState(false)
   const fileInputRef            = useRef(null)
+
+  const isEditMode = !!prescriptionId
 
   const load = useCallback(async () => {
     if (!prescriptionId) return
@@ -924,37 +930,64 @@ function AttachmentsSection({ prescriptionId, currentUserId, isAdmin, canUpload 
 
   useEffect(() => { load() }, [load])
 
+  // File-validation helper: shared by both modes so the same constraints apply
+  // before the file is buffered (new mode) or sent to the server (edit mode).
+  const validateFile = (file) => {
+    const ALLOWED = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
+    if (!ALLOWED.includes(file.type)) return `${file.name}: type ${file.type} not allowed (use JPEG, PNG or PDF)`
+    if (file.size > 5 * 1024 * 1024)  return `${file.name}: too large (max 5 MB)`
+    return null
+  }
+
+  // Total existing count = saved-on-server (edit mode) + pending in memory.
+  const totalCount = (isEditMode ? items.length : 0) + (pendingFiles?.length || 0)
+
   const handleFiles = async (files) => {
     if (!files || files.length === 0) return
-    if (items.length + files.length > 10) {
-      toast.error(`Max 10 attachments per prescription. You have ${items.length} already.`)
+    if (totalCount + files.length > 10) {
+      toast.error(`Max 10 attachments per prescription. You have ${totalCount} already.`)
       return
     }
-    setUpload(true)
-    let okCount = 0
-    let failCount = 0
-    for (const file of files) {
-      const fd = new FormData()
-      fd.append('file', file)
-      try {
-        await api.post(`/prescriptions/${prescriptionId}/attachments`, fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
-        okCount++
-      } catch (e) {
-        failCount++
-        const msg = e?.response?.data?.message || 'Upload failed'
-        toast.error(`${file.name}: ${msg}`)
+
+    if (isEditMode) {
+      // Edit mode: upload to server right away.
+      setUpload(true)
+      let okCount = 0
+      for (const file of files) {
+        const err = validateFile(file)
+        if (err) { toast.error(err); continue }
+        const fd = new FormData()
+        fd.append('file', file)
+        try {
+          await api.post(`/prescriptions/${prescriptionId}/attachments`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+          okCount++
+        } catch (e) {
+          toast.error(`${file.name}: ${e?.response?.data?.message || 'Upload failed'}`)
+        }
+      }
+      setUpload(false)
+      if (okCount > 0) toast.success(`${okCount} file${okCount > 1 ? 's' : ''} uploaded`)
+      await load()
+    } else {
+      // New mode: just buffer the files. Parent uploads after Rx save.
+      const valid = []
+      for (const file of files) {
+        const err = validateFile(file)
+        if (err) { toast.error(err); continue }
+        valid.push(file)
+      }
+      if (valid.length > 0) {
+        const next = [...(pendingFiles || []), ...valid]
+        onPendingChange?.(next)
+        toast.success(`${valid.length} file${valid.length > 1 ? 's' : ''} ready - will upload on save`)
       }
     }
-    setUpload(false)
-    if (okCount > 0) toast.success(`${okCount} file${okCount > 1 ? 's' : ''} uploaded`)
-    await load()
-    // Clear the input so the same file can be re-picked
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleDelete = async (att) => {
+  const handleDeleteSaved = async (att) => {
     if (!window.confirm(`Delete "${att.filename}"? This cannot be undone.`)) return
     try {
       await api.delete(`/prescriptions/attachments/${att.id}`)
@@ -963,6 +996,11 @@ function AttachmentsSection({ prescriptionId, currentUserId, isAdmin, canUpload 
     } catch (e) {
       toast.error(e?.response?.data?.message || 'Delete failed')
     }
+  }
+
+  const handleRemovePending = (idx) => {
+    const next = (pendingFiles || []).filter((_, i) => i !== idx)
+    onPendingChange?.(next)
   }
 
   const fmtSize = (b) => {
@@ -980,32 +1018,68 @@ function AttachmentsSection({ prescriptionId, currentUserId, isAdmin, canUpload 
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           Attachments
-          <span className="text-xs text-slate-400 font-normal">{items.length}/10</span>
+          <span className="text-xs text-slate-400 font-normal">{totalCount}/10</span>
         </h3>
-        {canUpload && (
-          <>
-            <input ref={fileInputRef} type="file" className="hidden" multiple
-              accept="image/jpeg,image/jpg,image/png,application/pdf"
-              onChange={e => handleFiles(Array.from(e.target.files || []))}/>
-            <Button variant="outline" size="sm"
-              icon={<Plus className="w-3.5 h-3.5"/>}
-              loading={uploading}
-              onClick={() => fileInputRef.current?.click()}>
-              Add files
-            </Button>
-          </>
-        )}
+        <input ref={fileInputRef} type="file" className="hidden" multiple
+          accept="image/jpeg,image/jpg,image/png,application/pdf"
+          onChange={e => handleFiles(Array.from(e.target.files || []))}/>
+        <Button variant="outline" size="sm"
+          icon={<Plus className="w-3.5 h-3.5"/>}
+          loading={uploading}
+          onClick={() => fileInputRef.current?.click()}>
+          Add files
+        </Button>
       </div>
       <p className="text-xs text-slate-400 mb-3">
         JPEG, PNG or PDF. Max 5 MB per file, up to 10 files.
+        {!isEditMode && ' Files attach when you save the prescription.'}
       </p>
 
       {loading ? (
         <p className="text-sm text-slate-400">Loading...</p>
-      ) : items.length === 0 ? (
+      ) : (totalCount === 0) ? (
         <p className="text-sm text-slate-400">No attachments yet.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* Pending (in-memory) files - shown only when creating a new Rx. */}
+          {(pendingFiles || []).map((file, idx) => {
+            // Local object URL for preview - safe because the component lives
+            // for the whole Rx form and we revoke nothing here (page unmount
+            // clears them anyway). For a long-lived parent we'd track + revoke.
+            const objUrl = URL.createObjectURL(file)
+            return (
+              <div key={`pending-${idx}`} className="border border-amber-200 rounded-lg p-3 flex flex-col bg-amber-50">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate" title={file.name}>{file.name}</p>
+                    <p className="text-xs text-amber-700">
+                      {fmtSize(file.size)} · pending upload
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => handleRemovePending(idx)}
+                    className="text-slate-300 hover:text-danger p-1" title="Remove (won't be uploaded)">
+                    <Trash2 className="w-3.5 h-3.5"/>
+                  </button>
+                </div>
+                <div className="block bg-white border border-slate-100 rounded overflow-hidden">
+                  {isImage(file.type) ? (
+                    <img src={objUrl} alt={file.name}
+                      className="w-full h-32 object-contain bg-white"
+                      loading="lazy"/>
+                  ) : isPdf(file.type) ? (
+                    <div className="w-full h-32 flex items-center justify-center text-slate-400 text-xs">
+                      <span>PDF — uploads on save</span>
+                    </div>
+                  ) : (
+                    <div className="w-full h-32 flex items-center justify-center text-slate-400 text-xs">
+                      <span>Uploads on save</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {/* Saved (server-side) files. */}
           {items.map(att => {
             const canDelete = isAdmin || att.uploadedById === currentUserId
             return (
@@ -1019,7 +1093,7 @@ function AttachmentsSection({ prescriptionId, currentUserId, isAdmin, canUpload 
                     </p>
                   </div>
                   {canDelete && (
-                    <button type="button" onClick={() => handleDelete(att)}
+                    <button type="button" onClick={() => handleDeleteSaved(att)}
                       className="text-slate-300 hover:text-danger p-1" title="Delete">
                       <Trash2 className="w-3.5 h-3.5"/>
                     </button>
@@ -1085,6 +1159,12 @@ export default function NewPrescriptionPage() {
   const [ptSearch,   setPtSearch]   = useState('')
   const [ptResults,  setPtResults]  = useState([])
   const [showPtDrop, setShowPtDrop] = useState(false)
+
+  // In-memory file buffer for attachments added BEFORE the prescription is
+  // saved (new Rx mode). Uploaded after Rx save when we have a savedId.
+  // Cleared after successful upload. AttachmentsSection's onPendingChange
+  // pushes here.
+  const [pendingAttachments, setPendingAttachments] = useState([])
 
   // Flip today's queue entry Waiting → InConsultation when patient is set on Rx page.
   // Idempotent on backend; flag avoids redundant calls within a single Rx session.
@@ -2200,6 +2280,28 @@ export default function NewPrescriptionPage() {
         }
       } catch {}
 
+      // ── Upload any client-buffered attachments. Fire-and-forget per file
+      // so a single failure doesn't lose the rest. Cleared on success so
+      // re-Save doesn't re-upload. The user sees the saved files via the
+      // server fetch the next time AttachmentsSection mounts (in edit mode).
+      if (pendingAttachments.length > 0 && savedId) {
+        let okCount = 0
+        for (const file of pendingAttachments) {
+          const fd = new FormData()
+          fd.append('file', file)
+          try {
+            await api.post(`/prescriptions/${savedId}/attachments`, fd, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            })
+            okCount++
+          } catch (e) {
+            toast.error(`${file.name}: ${e?.response?.data?.message || 'Upload failed'}`)
+          }
+        }
+        if (okCount > 0) toast.success(`${okCount} attachment${okCount > 1 ? 's' : ''} uploaded`)
+        setPendingAttachments([])
+      }
+
       setDirty(false)
       // Mark today's queue entry as Done — fire-and-forget, idempotent on backend
       if (patient?.id) {
@@ -2290,6 +2392,19 @@ export default function NewPrescriptionPage() {
             </div>
           )}
         </Card></div>
+
+      {/* Attachments — sits right under the patient block. Works for both
+          new Rx (files held in memory, uploaded on save) and edit (server
+          round-trip immediately). */}
+      <div className="mb-4">
+        <AttachmentsSection
+          prescriptionId={isEdit && editId ? editId : null}
+          currentUserId={user?.id}
+          isAdmin={user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'}
+          pendingFiles={pendingAttachments}
+          onPendingChange={setPendingAttachments}
+        />
+      </div>
 
       {/* Reorderable section list — flex-col + per-section `order` lets the doctor's
           preferred order (saved in pageDesign.fieldOrder) drive the layout. Patient
@@ -2673,16 +2788,6 @@ export default function NewPrescriptionPage() {
         </div>
 
       </div>{/* end flex-col reorderable sections */}
-
-        {/* Attachments — only available after the prescription is saved (we need the id). */}
-        {isEdit && editId && (
-          <AttachmentsSection
-            prescriptionId={editId}
-            currentUserId={user?.id}
-            isAdmin={user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'}
-            canUpload={true}
-          />
-        )}
 
         <div ref={bottomBarRef} className="flex flex-col sm:flex-row justify-between gap-3 pb-12">
           <Button variant="outline" icon={<BookOpen className="w-4 h-4"/>} onClick={handleSaveAsTemplate}>
