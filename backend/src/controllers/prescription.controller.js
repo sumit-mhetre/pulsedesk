@@ -44,28 +44,23 @@ async function getPrescriptions(req, res) {
     const { page = 1, limit = 20, patientId, doctorId, search } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const flags = await getClinicSharingFlags(req);
-    const privacy = doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false });
+    const privacy = doctorPrivacyWhere(req, flags.sharePrescriptions);
     const where = { clinicId: req.clinicId };
     if (patientId) where.patientId = patientId;
     if (doctorId)  where.doctorId  = doctorId;
-
-    // Merge privacy filter into where. When `search` is also active, both
-    // clauses go under AND so neither overrides the other (Prisma's top-level
-    // OR would otherwise replace any earlier OR).
+    // Combine the privacy OR-filter with the search OR-filter via AND so that
+    // both apply (search clauses don't accidentally bypass the privacy clauses).
+    const andClauses = [];
+    if (privacy.OR) andClauses.push({ OR: privacy.OR });
     if (search) {
-      const andClauses = [];
-      // Only add privacy clause if it's non-empty (admin/receptionist pass {})
-      if (Object.keys(privacy).length > 0) andClauses.push(privacy);
       andClauses.push({
         OR: [
           { rxNo:    { contains: search, mode: 'insensitive' } },
           { patient: { name: { contains: search, mode: 'insensitive' } } },
         ],
       });
-      where.AND = andClauses;
-    } else {
-      Object.assign(where, privacy);
     }
+    if (andClauses.length > 0) where.AND = andClauses;
 
     const [prescriptions, total] = await Promise.all([
       prisma.prescription.findMany({
@@ -95,7 +90,7 @@ async function getPrescription(req, res) {
       where: {
         id: req.params.id,
         clinicId: req.clinicId,
-        ...doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false }),
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
       },
       include: {
         patient: true,
@@ -441,7 +436,7 @@ async function getPatientPrescriptions(req, res) {
       where: {
         patientId: req.params.patientId,
         clinicId: req.clinicId,
-        ...doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false }),
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
       },
       orderBy: { date: 'desc' },
       include: {
@@ -464,7 +459,7 @@ async function getLastPrescription(req, res) {
       where: {
         patientId: req.params.patientId,
         clinicId: req.clinicId,
-        ...doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false }),
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
       },
       orderBy: { date: 'desc' },
       include: {
