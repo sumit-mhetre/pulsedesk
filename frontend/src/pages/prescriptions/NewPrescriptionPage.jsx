@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams, useParams } from 'react-router-dom'
 import { Plus, Trash2, ArrowLeft, Save, Printer, Copy, AlertTriangle, ChevronDown, X, Activity, BookOpen, Zap, FlaskConical, Calendar, Search } from 'lucide-react'
 import { Button, Badge, Card, PageHeader, ConfirmDialog, Modal } from '../../components/ui'
 import AutosaveIndicator from '../../components/ui/AutosaveIndicator'
-import api from '../../lib/api'
+import api, { BASE_URL as API_BASE_URL } from '../../lib/api'
 import toast from 'react-hot-toast'
 import { format, addDays } from 'date-fns'
 import { detectMedicineType } from '../../lib/medicineType'
@@ -934,11 +934,17 @@ const isPdf = (m) => m === 'application/pdf'
 
 // Build the proxy URL that streams the file through our backend (hides
 // Cloudinary). Auth flows via a `t=<jwt>` query param because <a href>
-// and <img src> can't send Authorization headers.
+// and <img src> can't send Authorization headers. Uses API_BASE_URL
+// (imported from api.js at the top of this file) so we share whatever
+// VITE_API_URL or fallback the rest of the app uses.
 const proxyAttUrl = (attId) => {
   const token = localStorage.getItem('accessToken') || ''
-  const base  = (import.meta?.env?.VITE_API_URL || '').replace(/\/+$/, '') || '/api'
-  return `${base}/prescriptions/attachments/${attId}/file?t=${encodeURIComponent(token)}`
+  let base = API_BASE_URL
+  if (base.startsWith('/')) base = window.location.origin + base
+  const url = `${base}/prescriptions/attachments/${attId}/file?t=${encodeURIComponent(token)}`
+  // TEMP debug: log so we can see what URL we're generating. Remove after fix verified.
+  console.log('[proxyAttUrl]', { API_BASE_URL, base, url })
+  return url
 }
 
 // Header button. Opens hidden file input. On select:

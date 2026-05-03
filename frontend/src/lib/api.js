@@ -2,8 +2,10 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 
 // Use VITE_API_URL if set (production with separate backend),
-// otherwise fall back to relative /api (same-origin or Vite proxy)
-const BASE_URL = import.meta.env.VITE_API_URL
+// otherwise fall back to relative /api (same-origin or Vite proxy).
+// Exported so other modules (e.g. attachment proxy URL builder) can
+// reuse the same resolved base.
+export const BASE_URL = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL.replace(/\/+$/, '') // remove trailing slash
   : '/api'
 
@@ -19,7 +21,7 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle token expiry - auto refresh
+// Handle token expiry — auto refresh
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
@@ -45,8 +47,8 @@ api.interceptors.response.use(
     //   (a) request opted out via config.silent = true
     //   (b) endpoint is auth-related (page handles it)
     //   (c) status is 401 (refresh handled above or redirect coming)
-    //   (d) status is 404 on a GET (often expected - page handles empty state)
-    //   (e) status is 403 (user hit a forbidden route - show once but don't spam)
+    //   (d) status is 404 on a GET (often expected — page handles empty state)
+    //   (e) status is 403 (user hit a forbidden route — show once but don't spam)
     const url = original?.url || ''
     const method = (original?.method || 'get').toLowerCase()
     const status = err.response?.status
@@ -65,7 +67,7 @@ api.interceptors.response.use(
       }
     } else if (!shouldSkip && !status) {
       // Network error / no response
-      const msg = 'Network error - please check your connection'
+      const msg = 'Network error — please check your connection'
       if (msg !== lastToastMsg || Date.now() - lastToastAt > 2000) {
         toast.error(msg, { id: 'api-err-network' })
         lastToastMsg = msg
