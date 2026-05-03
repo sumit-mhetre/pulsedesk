@@ -1,5 +1,14 @@
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse, paginatedResponse } = require('../lib/response');
+const { logAudit } = require('../lib/audit');
+
+// ── Normalize a custom patient code (uppercase, alphanumeric only, max 20) ──
+// Returns null when input is empty/invalid so caller can fall back to auto-gen.
+function normalizeCustomCode(raw) {
+  if (raw == null) return null;
+  const cleaned = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+  return cleaned || null;
+}
 
 // ── Generate unique patient code ──────────────────────────
 async function generatePatientCode(clinicId) {
@@ -15,7 +24,7 @@ async function generatePatientCode(clinicId) {
   // Extract numeric part if prefix already has numbers (e.g. MH1000)
   const numMatch = prefix.match(/^([a-zA-Z]+)(\d+)$/);
   if (numMatch) {
-    // prefix like MH1000 - use as starting counter
+    // prefix like MH1000 — use as starting counter
     const letters = numMatch[1];
     const startNum = parseInt(numMatch[2]);
     const count = await prisma.patient.count({ where: { clinicId } });
@@ -90,18 +99,22 @@ async function createPatient(req, res) {
     const {
       prefix, name, age, dob, gender, phone, email, address,
       bloodGroup, allergies, chronicConditions, existingId,
+      customPatientCode,
     } = req.body;
 
     if (!name) return errorResponse(res, 'Name is required', 400);
     if (!phone) return errorResponse(res, 'Phone is required', 400);
 
-    // Warn (not block) if duplicate phone - return existing patient info as warning
+    // Warn (not block) if duplicate phone — return existing patient info as warning
     const duplicate = await prisma.patient.findFirst({
       where: { clinicId: req.clinicId, phone, isActive: true },
       select: { patientCode: true, name: true, id: true },
     });
 
-    const patientCode = await generatePatientCode(req.clinicId);
+    // Use the custom code if the user provided one, else auto-generate.
+    // The unique (clinicId, patientCode) constraint catches collisions either way.
+    const customCode = normalizeCustomCode(customPatientCode);
+    const patientCode = customCode || await generatePatientCode(req.clinicId);
     const fullName = prefix ? `${prefix} ${name}` : name;
 
     // Calculate age from DOB if age not provided
@@ -114,24 +127,33 @@ async function createPatient(req, res) {
       if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) finalAge--;
     }
 
-    const patient = await prisma.patient.create({
-      data: {
-        clinicId: req.clinicId,
-        patientCode,
-        prefix:   prefix || null,
-        name:     fullName,
-        age:      finalAge || 0,
-        dob:      dob ? new Date(dob) : null,
-        gender,
-        phone,
-        email:    email || null,
-        address:  address || null,
-        bloodGroup: bloodGroup || null,
-        existingId: existingId || null,
-        allergies:         Array.isArray(allergies) ? allergies : [],
-        chronicConditions: Array.isArray(chronicConditions) ? chronicConditions : [],
-      },
-    });
+    let patient;
+    try {
+      patient = await prisma.patient.create({
+        data: {
+          clinicId: req.clinicId,
+          patientCode,
+          prefix:   prefix || null,
+          name:     fullName,
+          age:      finalAge || 0,
+          dob:      dob ? new Date(dob) : null,
+          gender,
+          phone,
+          email:    email || null,
+          address:  address || null,
+          bloodGroup: bloodGroup || null,
+          existingId: existingId || null,
+          allergies:         Array.isArray(allergies) ? allergies : [],
+          chronicConditions: Array.isArray(chronicConditions) ? chronicConditions : [],
+        },
+      });
+    } catch (err) {
+      // Prisma P2002 = unique constraint failed. Friendlier message than generic 500.
+      if (err?.code === 'P2002') {
+        return errorResponse(res, `Patient code "${patientCode}" is already in use. Please choose a different code.`, 409);
+      }
+      throw err;
+    }
 
     return successResponse(res, {
       ...patient,
@@ -155,30 +177,59 @@ async function updatePatient(req, res) {
     const {
       prefix, name, age, dob, gender, phone, email, address,
       bloodGroup, allergies, chronicConditions, existingId,
+      customPatientCode,
     } = req.body;
 
     const fullName = prefix ? `${prefix} ${name?.replace(/^(Mr|Mrs|Ms|Dr|Baby|Master|Miss)\s+/i,'')}` : name;
 
-    const patient = await prisma.patient.update({
-      where: { id: req.params.id },
-      data: {
-        ...(name      && { name: fullName }),
-        ...(prefix    !== undefined && { prefix }),
-        ...(age       !== undefined && { age: age ? parseInt(age) : null }),
-        ...(dob       !== undefined && { dob: dob ? new Date(dob) : null }),
-        ...(gender    && { gender }),
-        ...(phone     && { phone }),
-        ...(email     !== undefined && { email }),
-        ...(address   !== undefined && { address }),
-        ...(bloodGroup !== undefined && { bloodGroup }),
-        ...(existingId !== undefined && { existingId }),
-        ...(allergies !== undefined && { allergies: Array.isArray(allergies) ? allergies : [] }),
-        ...(chronicConditions !== undefined && { chronicConditions: Array.isArray(chronicConditions) ? chronicConditions : [] }),
-      },
-    });
+    // Detect a patient-code change. Only triggered when the client sent
+    // customPatientCode AND it normalizes to a value different from the
+    // current one. Empty / null leaves the existing code untouched.
+    const newCode = normalizeCustomCode(customPatientCode);
+    const codeChanging = newCode && newCode !== existing.patientCode;
+
+    let patient;
+    try {
+      patient = await prisma.patient.update({
+        where: { id: req.params.id },
+        data: {
+          ...(name      && { name: fullName }),
+          ...(prefix    !== undefined && { prefix }),
+          ...(age       !== undefined && { age: age ? parseInt(age) : null }),
+          ...(dob       !== undefined && { dob: dob ? new Date(dob) : null }),
+          ...(gender    && { gender }),
+          ...(phone     && { phone }),
+          ...(email     !== undefined && { email }),
+          ...(address   !== undefined && { address }),
+          ...(bloodGroup !== undefined && { bloodGroup }),
+          ...(existingId !== undefined && { existingId }),
+          ...(allergies !== undefined && { allergies: Array.isArray(allergies) ? allergies : [] }),
+          ...(chronicConditions !== undefined && { chronicConditions: Array.isArray(chronicConditions) ? chronicConditions : [] }),
+          ...(codeChanging && { patientCode: newCode }),
+        },
+      });
+    } catch (err) {
+      if (err?.code === 'P2002') {
+        return errorResponse(res, `Patient code "${newCode}" is already in use. Please choose a different code.`, 409);
+      }
+      throw err;
+    }
+
+    // Audit-log code changes so we always know what the code used to be.
+    // Old printed Rx / bills still show the previous code; this trail explains why.
+    if (codeChanging) {
+      await logAudit(req, {
+        clinicId: req.clinicId,
+        action:   'PATIENT_CODE_CHANGED',
+        entity:   'Patient',
+        entityId: patient.id,
+        details:  { from: existing.patientCode, to: newCode, name: existing.name },
+      });
+    }
 
     return successResponse(res, patient, 'Patient updated successfully');
   } catch (err) {
+    console.error('Update patient error:', err?.message);
     return errorResponse(res, 'Failed to update patient', 500);
   }
 }

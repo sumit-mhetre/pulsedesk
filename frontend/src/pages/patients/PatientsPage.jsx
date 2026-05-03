@@ -92,6 +92,12 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
   const [error, setError]       = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [nextCode, setNextCode] = useState('')
+  // Patient code override — read-only by default, click pencil to unlock + edit.
+  // codeInput holds the value the user is typing; only sent to backend when
+  // codeUnlocked and the value differs from the auto/existing code.
+  const [codeUnlocked, setCodeUnlocked] = useState(false)
+  const [codeInput,    setCodeInput]    = useState('')
+  const [confirmCodeChange, setConfirmCodeChange] = useState(null)  // { from, to } when edit-save needs confirmation
   const [nameResults, setNameResults]   = useState([])
   const [showNameDrop, setShowNameDrop] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
@@ -109,9 +115,22 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
   useEffect(() => {
     if (mode !== 'add') return
     api.get('/patients/next-code')
-      .then(r => setNextCode(r.data.data?.nextCode || ''))
+      .then(r => {
+        const code = r.data.data?.nextCode || ''
+        setNextCode(code)
+        // Pre-fill the override input with the auto code so when the user
+        // unlocks they see the suggested code as a starting point.
+        if (!codeInput) setCodeInput(code)
+      })
       .catch(() => {})
   }, [mode])
+
+  // For edit mode: seed codeInput with the patient's current code on mount
+  useEffect(() => {
+    if (mode === 'edit' && initialForm?.patientCode) {
+      setCodeInput(initialForm.patientCode)
+    }
+  }, [mode, initialForm?.patientCode])
 
   // Auto-gender from prefix
   useEffect(() => {
@@ -150,7 +169,7 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
       try {
         const { data } = await api.get(`/patients/search?q=${form.phone}`)
         const dup = data.data?.find(p => p.phone === form.phone)
-        setWarning(dup ? `Phone already used by ${dup.patientCode} - ${dup.name}` : '')
+        setWarning(dup ? `Phone already used by ${dup.patientCode} — ${dup.name}` : '')
       } catch {}
     }, 400)
     return () => clearTimeout(t)
@@ -172,25 +191,44 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
     return true
   }
 
-  // Handle backdrop click - show confirm if form is dirty
+  // Handle backdrop click — show confirm if form is dirty
   const handleBackdropClick = () => {
     if (isDirty) setConfirmClose(true)
     else onClose()
   }
 
-  const handleSubmit = async (redirect = null) => {
+  const handleSubmit = async (redirect = null, bypassCodeConfirm = false) => {
     setError('')
     if (!validate()) return
+
+    // Determine if the user actually changed the code. We only send
+    // customPatientCode to the backend when the value differs from the
+    // auto / current one - otherwise the backend uses its default behaviour.
+    const trimmedCode = (codeInput || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20)
+    const baseline = mode === 'edit' ? (initialForm?.patientCode || '') : nextCode
+    const codeChanged = codeUnlocked && trimmedCode && trimmedCode !== baseline
+
+    // For EDIT mode, code changes are heavy. Show a confirmation dialog before
+    // actually saving so the user is warned about old printed Rx / bills.
+    if (mode === 'edit' && codeChanged && !bypassCodeConfirm) {
+      setConfirmCodeChange({ from: baseline, to: trimmedCode, redirect })
+      return
+    }
+
     setSaving(true)
     try {
+      // Send body. customPatientCode only included if the user truly changed it.
+      const body = { ...form }
+      if (codeChanged) body.customPatientCode = trimmedCode
+
       let res
       if (mode === 'edit') {
-        res = await api.put(`/patients/${initialForm.id}`, form)
-        toast.success('Patient updated successfully!')
+        res = await api.put(`/patients/${initialForm.id}`, body)
+        toast.success(codeChanged ? `Patient updated. Code changed to ${trimmedCode}.` : 'Patient updated successfully!')
         onSaved(res.data.data)
         onClose()
       } else {
-        res = await api.post('/patients', form)
+        res = await api.post('/patients', body)
         const patient = res.data.data
         if (patient.warning) toast(patient.warning, { icon: '⚠️', duration: 5000 })
         toast.success(`✅ Patient ${patient.patientCode} registered!`)
@@ -230,7 +268,9 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
       } else {
         setError(msg || 'Failed to save patient. Please try again.')
       }
-    } finally { setSaving(false) }
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -246,10 +286,59 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
               <h2 className="font-bold text-slate-800 text-lg">
                 {mode === 'edit' ? 'Edit Patient' : 'Add New Patient'}
               </h2>
-              {mode === 'add' && nextCode && (
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Will be assigned: <span className="font-mono font-semibold text-primary">{nextCode}</span>
-                </p>
+
+              {/* OPD code — read-only badge by default with pencil to unlock + edit.
+                  Once unlocked, becomes a small input. The user can collapse back
+                  to the auto code via "Reset". */}
+              {(mode === 'edit' || (mode === 'add' && nextCode)) && (
+                <div className="mt-1 flex items-center gap-2 text-xs">
+                  <span className="text-slate-400">
+                    {mode === 'edit' ? 'OPD Code:' : 'Will be assigned:'}
+                  </span>
+                  {!codeUnlocked ? (
+                    <>
+                      <span className="font-mono font-semibold text-primary">
+                        {mode === 'edit' ? (initialForm?.patientCode || '—') : nextCode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCodeUnlocked(true)}
+                        title="Edit OPD code"
+                        className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-50 rounded transition-colors"
+                      >
+                        <Edit2 className="w-3 h-3"/>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        autoFocus
+                        className="form-input font-mono text-xs h-7 px-2 w-32"
+                        placeholder="MH0001"
+                        maxLength={20}
+                        value={codeInput}
+                        onChange={(e) => {
+                          // Strip spaces and non-alphanumeric on the fly so backend
+                          // normalization matches what the user sees.
+                          const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20)
+                          setCodeInput(v)
+                          setIsDirty(true)
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Reset to auto (add) or original (edit) and lock
+                          setCodeInput(mode === 'edit' ? (initialForm?.patientCode || '') : nextCode)
+                          setCodeUnlocked(false)
+                        }}
+                        className="text-[11px] text-slate-500 hover:text-slate-700 underline"
+                      >
+                        Reset
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
             <button onClick={handleBackdropClick} className="btn-ghost btn-icon">
@@ -291,7 +380,7 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
                 {showNameDrop && nameResults.length > 0 && (
                   <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-blue-100 max-h-44 overflow-y-auto">
                     <p className="px-3 py-1.5 text-xs font-semibold text-primary bg-blue-50 uppercase tracking-wide">
-                      Existing Patients - click to view
+                      Existing Patients — click to view
                     </p>
                     {nameResults.map(p=>(
                       <button key={p.id} type="button"
@@ -361,7 +450,7 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
                   onChange={e=>{ setForm(f=>({...f,dob:e.target.value})); setIsDirty(true); if(fieldErrors.age)setFieldErrors(p=>({...p,age:''})) }}/>
               </div>
             </div>
-            <p className="text-xs text-slate-400 -mt-2">Enter age in years <strong>or</strong> pick date of birth - age auto-fills from DOB</p>
+            <p className="text-xs text-slate-400 -mt-2">Enter age in years <strong>or</strong> pick date of birth — age auto-fills from DOB</p>
 
             {/* Preferred Language */}
             <div className="grid grid-cols-2 gap-3">
@@ -403,7 +492,7 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
                 value={form.address} onChange={set('address')}/>
             </div>
 
-            {/* Allergies + Chronic - only in edit mode */}
+            {/* Allergies + Chronic — only in edit mode */}
             {mode === 'edit' && (
               <>
                 <div className="border-t border-slate-100 pt-4">
@@ -463,6 +552,26 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
           onClose={()=>setConfirmClose(false)}
         />
       )}
+
+      {/* Confirm code change (edit mode only) — code changes are heavy because
+          old printed Rx / bills still show the old code. We log every change to
+          the AuditLog. */}
+      {confirmCodeChange && (
+        <ConfirmDialog
+          open={!!confirmCodeChange}
+          variant="warning"
+          title="Change Patient Code?"
+          message={`This patient's code will change from ${confirmCodeChange.from} to ${confirmCodeChange.to}. Already-printed prescriptions and bills will still show the old code. The change will be recorded in the audit log.`}
+          confirmLabel="Yes, Change Code"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            const r = confirmCodeChange.redirect
+            setConfirmCodeChange(null)
+            handleSubmit(r, true)
+          }}
+          onClose={() => setConfirmCodeChange(null)}
+        />
+      )}
     </>
   )
 }
@@ -504,6 +613,7 @@ export default function PatientsPage() {
       const prefixMatch = p.name?.match(/^(Mr|Mrs|Ms|Dr|Baby|Master|Er)\s+/i)
       setEditPt({
         id: p.id,
+        patientCode: p.patientCode || '',
         prefix: prefixMatch ? prefixMatch[1] : 'Mr',
         name: prefixMatch ? p.name.replace(prefixMatch[0],'').trim() : (p.name||''),
         age: p.age || '',

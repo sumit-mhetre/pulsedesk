@@ -139,6 +139,7 @@ export default function QueuePage() {
       const prefixMatch = p.name?.match(/^(Mr|Mrs|Ms|Dr|Baby|Master|Er)\s+/i)
       setEditPt({
         id: p.id,
+        patientCode: p.patientCode || '',
         prefix: prefixMatch ? prefixMatch[1] : 'Mr',
         name: prefixMatch ? p.name.replace(prefixMatch[0], '').trim() : (p.name || ''),
         age: p.age || '',
