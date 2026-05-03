@@ -11,7 +11,7 @@ import { format, addDays } from 'date-fns'
 import { detectMedicineType } from '../../lib/medicineType'
 import useAuthStore from '../../store/authStore'
 
-const DOSAGE_OPTS = ['1-0-0','0-1-0','0-0-1','1-0-1','1-1-0','0-1-1','1-1-1','1-1-1-1','OD','BD','TDS','QID','HS','SOS','STAT']
+const DOSAGE_OPTS = ['0-0-0','1-0-0','0-1-0','0-0-1','1-0-1','1-1-0','0-1-1','1-1-1','1-1-1-1','OD','BD','TDS','QID','HS','SOS','STAT']
 const DAYS_OPTS   = ['1','2','3','5','7','10','14','15','21','30']
 
 // ── Smart days input — type number → shows N days/weeks/months/years ──
@@ -125,24 +125,66 @@ const FREQ_DIV = { DAILY: 1, ALT_DAYS: 2, EVERY_3D: 3, WEEKLY: 7 }
 // keeping backward compat with the rest of this file (qty calc, print, etc).
 const inferMedicineType = (name) => detectMedicineType(name) || 'tablet'
 
+// Parses a dosage string and returns the total number of units per day.
+// Supports:
+//   - Hyphen-separated numbers: "1-0-1"=2, "2-0-2"=4, "0-0-0"=0
+//   - Decimals:                 "0.5-0-0.5"=1, "1.5-0-1.5"=3
+//   - Fractions:                "1/2-0-1/2"=1, "1/4-1/4-1/4"=0.75
+//   - Mixed:                    "1-1/2-1"=2.5
+//   - Frequency codes:          OD=1, BD=2, TDS=3, QID=4, HS=1
+//   - SOS / STAT / unknown:     null  (caller should leave qty manual)
+//
+// Returns a finite positive number, 0, or null when nothing parseable.
+const parseDosagePerDay = (dosage) => {
+  if (!dosage) return null
+  const s = String(dosage).trim().toUpperCase()
+  // Frequency codes - covered separately because some appear with the same shape.
+  const codeMap = { OD: 1, BD: 2, TDS: 3, QID: 4, HS: 1 }
+  if (codeMap[s] !== undefined) return codeMap[s]
+  if (s === 'SOS' || s === 'STAT' || s === 'PRN') return null
+  // Hyphen-separated numeric / fraction / decimal pieces.
+  // Allow "1-0-1", "1-0-1-1" (4 slot QID-style), or "0-0-0" etc.
+  const parts = s.split('-')
+  if (parts.length < 2) return null
+  let total = 0
+  for (const part of parts) {
+    const p = part.trim()
+    if (p === '' || p === '0') { continue }
+    let val
+    if (p.includes('/')) {
+      const [num, den] = p.split('/').map(x => parseFloat(x))
+      if (!isFinite(num) || !isFinite(den) || den === 0) return null
+      val = num / den
+    } else {
+      val = parseFloat(p)
+    }
+    if (!isFinite(val) || val < 0) return null
+    total += val
+  }
+  return total
+}
+
 const calcQty = (dosage, days, type='tablet', frequency='DAILY') => {
   // Liquid/syrup/drops/cream/etc → qty always 1 bottle/tube (editable)
-  // Uses NON_TABLET + 'sachet' as single source of truth to avoid duplicate-list drift
   if (NON_TABLET.includes(type) || type === 'sachet') return '1'
-  // SOS = as-needed; no fixed schedule, let doctor fill in manually
+  // SOS = as-needed; no fixed schedule
   if (frequency === 'SOS') return ''
-  const t=FREQ_MAP[dosage]
+  // Parse dosage to "units per day". Falls back to FREQ_MAP for legacy codes,
+  // then to parseDosagePerDay for free-text values like "2-0-2" or "0.5-0-0.5".
+  const t = FREQ_MAP[dosage] ?? parseDosagePerDay(dosage)
   // Extract number from days string like "7 days", "2 weeks"
   const d = days ? parseInt(String(days).match(/\d+/)?.[0]) : 0
   const multiplier = String(days).toLowerCase().includes('week') ? 7
     : String(days).toLowerCase().includes('month') ? 30
     : String(days).toLowerCase().includes('year') ? 365 : 1
-  if (!t || !d) return ''
+  if (t == null || t === 0 || !d) return ''
   const totalDays = d * multiplier
   const divisor = FREQ_DIV[frequency] || 1
-  // Ceil so the patient always has enough for the full duration (medically safer)
+  // doses = number of dose-times across the duration. Ceil to round up.
   const doses = Math.ceil(totalDays / divisor)
-  return String(t * doses)
+  const total = t * doses
+  // Return integer when whole, else round up (medically safer than rounding down).
+  return Number.isInteger(total) ? String(total) : String(Math.ceil(total))
 }
 
 // Normalize a duration value to include a unit — bare numbers default to "days".
@@ -218,6 +260,44 @@ function ColDrop({ value, options, onChange, disabled, placeholder }) {
     </>
   )
 }
+
+// Editable dosage input - text field with a small chevron that opens the
+// preset list as a popover. Doctors can type custom values like "2-0-2",
+// "0.5-0-0.5", "1/2-0-1/2" or pick a preset (1-0-1, BD, TDS, SOS, etc.).
+// The value flows up via onChange whether typed or picked. Auto-learn (saved
+// per-doctor on Rx submit) handles defaulting next time the same medicine
+// is selected.
+function DosageInput({ value, options, onChange, disabled, placeholder }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  if (disabled) return <div className="h-8 px-2 flex items-center text-xs text-slate-300 bg-slate-50 rounded-lg border border-slate-100 w-full">N/A</div>
+  return (
+    <>
+      <div ref={ref} className={`w-full h-8 rounded-lg border transition-all flex items-center ${value?'border-blue-200 bg-white':'border-slate-200 bg-white'} hover:border-primary focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20`}>
+        <input
+          type="text"
+          value={value || ''}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 h-full px-2 text-xs bg-transparent rounded-l-lg focus:outline-none text-slate-700 font-medium placeholder:text-slate-300 placeholder:font-normal min-w-0"
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => setOpen(o => !o)}
+          title="Pick preset"
+          className="h-full px-1.5 flex items-center text-slate-400 hover:text-primary border-l border-slate-100"
+        >
+          <ChevronDown className="w-3 h-3"/>
+        </button>
+      </div>
+      <PortalDrop anchorRef={ref} open={open} options={options} value={value}
+        onSelect={(v) => { onChange(v); setOpen(false) }}
+        onClose={() => setOpen(false)}/>
+    </>
+  )
+}
+
 
 // ── Medicine search ───────────────────────────────────────
 function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex, recentIds = [] }) {
@@ -2229,7 +2309,7 @@ export default function NewPrescriptionPage() {
                     </td>
                     <td className="py-1.5 px-1">
                       {isNT ? <div className="h-8 px-2 flex items-center text-xs text-slate-300 bg-slate-50 rounded-lg border border-slate-100">N/A</div>
-                        : <ColDrop value={med.dosage} options={DOSAGE_OPTS} placeholder="Select" onChange={v=>updateMed(idx,'dosage',v)}/>}
+                        : <DosageInput value={med.dosage} options={DOSAGE_OPTS} placeholder="e.g. 1-0-1" onChange={v=>updateMed(idx,'dosage',v)}/>}
                     </td>
                     <td className="py-1.5 px-1">
                       <ColDrop value={med.timing} options={TIMING_OPTS} placeholder="When" onChange={v=>updateMed(idx,'timing',v)}/>
@@ -2292,8 +2372,8 @@ export default function NewPrescriptionPage() {
                 <div className="grid grid-cols-3 gap-2 mb-2">
                   <div>
                     <p className="text-xs text-slate-400 mb-1">Dosage</p>
-                    <ColDrop value={med.dosage} options={DOSAGE_OPTS}
-                      placeholder="Select" onChange={v=>updateMed(idx,'dosage',v)}/>
+                    <DosageInput value={med.dosage} options={DOSAGE_OPTS}
+                      placeholder="e.g. 1-0-1" onChange={v=>updateMed(idx,'dosage',v)}/>
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 mb-1">When</p>
