@@ -117,6 +117,15 @@ export default function ViewBillPage() {
         </Card>
       )}
 
+      {/* Print page rules — paper size + orientation from PageDesigner. */}
+      <style>{`
+        @media print {
+          @page {
+            size: ${cfg?.paperSize === 'A5' ? 'A5' : cfg?.paperSize === 'half' ? 'A5' : 'A4'} ${cfg?.orientation === 'landscape' ? 'landscape' : 'portrait'};
+          }
+        }
+      `}</style>
+
       <div className="relative bg-white rounded-2xl shadow-card border border-blue-50 p-8 max-w-2xl mx-auto print-area" style={{ lineHeight: lineHeightFor(cfg?.lineSpacing) }}>
 
         {clinic?.letterheadMode && clinic?.letterheadUrl && (

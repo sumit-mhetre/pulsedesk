@@ -917,7 +917,7 @@ export default function NewPrescriptionPage() {
     }
   }, [])
   const [printLang, setPrintLang] = useState('en')
-  const [customRxNo,setCustomRxNo]= useState('')
+  // customRxNo removed — Rx number is now always auto-generated
   const [saving,    setSaving]    = useState(false)
   const [lastRx,    setLastRx]    = useState(null)
   const [doctorPrefs,  setDoctorPrefs]  = useState({})
@@ -977,12 +977,12 @@ export default function NewPrescriptionPage() {
     complaint: complaintTags.join(' || '),
     diagnosis: diagnosisTags.join(' || '),
     advice:    rxAdvice.join('\n'),
-    nextVisit, printLang, customRxNo,
+    nextVisit, printLang,
     vitals,
     medicines: rxMeds,
     labTests:  rxTests,
     customData,
-  }), [complaintTags, diagnosisTags, rxAdvice, nextVisit, printLang, customRxNo, vitals, rxMeds, rxTests, customData])
+  }), [complaintTags, diagnosisTags, rxAdvice, nextVisit, printLang, vitals, rxMeds, rxTests, customData])
 
   const autosave = useAutosave({
     enabled:      !isEdit && !!patient?.id,
@@ -1012,7 +1012,6 @@ export default function NewPrescriptionPage() {
     if (s.advice)     setRxAdvice(String(s.advice).split('\n').filter(Boolean))
     if (s.nextVisit != null) setNextVisit(s.nextVisit)
     if (s.printLang)  setPrintLang(s.printLang)
-    if (s.customRxNo != null) setCustomRxNo(s.customRxNo)
     if (s.vitals && typeof s.vitals === 'object') setVitals(v => ({ ...v, ...s.vitals }))
     if (Array.isArray(s.medicines) && s.medicines.length) setRxMeds(s.medicines)
     if (Array.isArray(s.labTests)) setRxTests(s.labTests)
@@ -1912,7 +1911,7 @@ export default function NewPrescriptionPage() {
         complaint:  complaintTags.join(' || '),
         diagnosis:  diagnosisTags.join(' || '),
         advice:     rxAdvice.map(a=>a.name).join('\n'),
-        nextVisit:  nextVisit||null, printLang, customRxNo: customRxNo||null,
+        nextVisit:  nextVisit||null, printLang,
         medicines:  rxMeds.filter(m=>m.medicineId||m.medicineName).map(m=>({...m, days: normalizeDays(m.days)})),
         labTests:   savedTests.filter(t=>t.id&&!t.isNew).map(t=>({labTestId:t.id,labTestName:t.name})),
         customData: Object.keys(cleanCustomData).length > 0 ? cleanCustomData : null,
@@ -2424,21 +2423,17 @@ export default function NewPrescriptionPage() {
         })}
 
         {/* Next Visit & Settings — kept as a single card so admin niceties
-            (Custom Rx No, Print Language) live alongside the date the doctor
-            actually cares about. Reorderable as the `nextVisit` section. */}
+            (Print Language) live alongside the date the doctor actually
+            cares about. Reorderable as the `nextVisit` section. */}
         <div id="sec-nextvisit" className="scroll-mt-20"
              style={{display: showSection('showNextVisit') ? '' : 'none', order: getSectionOrder('nextVisit')}}>
           <Card>
             <h3 className="font-bold text-slate-700 mb-3">Next Visit & Settings</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="form-group">
                 <label className="form-label">Next Visit Date</label>
                 <input type="date" className="form-input" value={nextVisit} onChange={e=>setNextVisit(e.target.value)}/>
                 {nextVisit && <p className="text-xs text-success mt-1">✓ Auto-set from medicine duration</p>}
-              </div>
-              <div className="form-group">
-                <label className="form-label">Custom Rx No.</label>
-                <input className="form-input font-mono" placeholder="Auto-generated if empty" value={customRxNo} onChange={e=>setCustomRxNo(e.target.value)}/>
               </div>
               <div className="form-group">
                 <label className="form-label">Print Language</label>

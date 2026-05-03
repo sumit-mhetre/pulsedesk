@@ -209,6 +209,16 @@ export default function ViewPrescriptionPage() {
         </div>
       </div>
 
+      {/* Print page rules — paper size + orientation from PageDesigner.
+          @page only takes effect when window.print() is invoked. */}
+      <style>{`
+        @media print {
+          @page {
+            size: ${cfg?.paperSize === 'A5' ? 'A5' : cfg?.paperSize === 'half' ? 'A5' : 'A4'} ${cfg?.orientation === 'landscape' ? 'landscape' : 'portrait'};
+          }
+        }
+      `}</style>
+
       {/* ── Print area ── */}
       <div className={`relative bg-white rounded-2xl shadow-card border border-blue-50 p-6 max-w-3xl mx-auto print-area ${cfg?.baseFontSize==='sm'?'text-sm':cfg?.baseFontSize==='lg'?'text-lg':''}`} style={{
         fontFamily: cfg?.fontFamily==='serif'?'Georgia,serif':cfg?.fontFamily==='mono'?'monospace':'inherit',
