@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search, UserPlus, ChevronRight, Clock, CheckCircle, XCircle,
-  Stethoscope, RefreshCw, FileText, X,
+  Stethoscope, RefreshCw, FileText, X, Edit2,
 } from 'lucide-react'
 import { Card, Button, Badge } from '../../components/ui'
 import api from '../../lib/api'
@@ -38,6 +38,10 @@ export default function QueuePage() {
 
   // Add Patient modal
   const [showAddModal, setShowAddModal] = useState(false)
+  // Edit patient modal - opened from a pencil icon on each search result row.
+  // editPt holds the patient form pre-filled from /patients/:id.
+  const [editPt,        setEditPt]        = useState(null)
+  const [loadingEdit,   setLoadingEdit]   = useState(false)
 
   // ── Fetch queue ─────────────────────────────────────────
   const fetchQueue = useCallback(async () => {
@@ -108,7 +112,7 @@ export default function QueuePage() {
       const params = selectedDoctor ? `?doctorId=${selectedDoctor}` : ''
       const { data } = await api.get(`/appointments/queue/next${params}`)
       if (!data.data) { toast('No more patients waiting', { icon: '✅' }); return }
-      toast.success(`Calling Token #${data.data.tokenNo} - ${data.data.patient.name}`)
+      toast.success(`Calling Token #${data.data.tokenNo} — ${data.data.patient.name}`)
       fetchQueue()
     } catch {}
   }
@@ -123,6 +127,39 @@ export default function QueuePage() {
     { key: 'InConsultation',label: 'In Consultation', count: stats.inConsultation },
     { key: 'Done',          label: 'Done',            count: stats.done },
   ]
+
+  // Load patient details and open edit modal. Mirrors the openEdit() in
+  // PatientsPage so the form shape is identical.
+  const openEdit = async (id) => {
+    if (loadingEdit) return
+    setLoadingEdit(true)
+    try {
+      const { data } = await api.get(`/patients/${id}`)
+      const p = data.data
+      const prefixMatch = p.name?.match(/^(Mr|Mrs|Ms|Dr|Baby|Master|Er)\s+/i)
+      setEditPt({
+        id: p.id,
+        prefix: prefixMatch ? prefixMatch[1] : 'Mr',
+        name: prefixMatch ? p.name.replace(prefixMatch[0], '').trim() : (p.name || ''),
+        age: p.age || '',
+        dob: p.dob ? format(new Date(p.dob), 'yyyy-MM-dd') : '',
+        gender: p.gender || 'Male',
+        phone: p.phone || '',
+        email: p.email || '',
+        address: p.address || '',
+        bloodGroup: p.bloodGroup || '',
+        existingId: p.existingId || '',
+        preferredLanguage: p.preferredLanguage || 'English',
+        allergies: p.allergies || [],
+        chronicConditions: p.chronicConditions || [],
+      })
+      setShowResults(false); setSearchQ('')
+    } catch {
+      toast.error('Failed to load patient details. Please try again.')
+    } finally {
+      setLoadingEdit(false)
+    }
+  }
 
   return (
     <div className="fade-in">
@@ -142,7 +179,7 @@ export default function QueuePage() {
 
       {/* Compact toolbar: search + filters all on one row (wraps on narrow screens) */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        {/* Search - flex-grow so it takes up available space */}
+        {/* Search — flex-grow so it takes up available space */}
         <div ref={searchWrapRef} className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -177,37 +214,52 @@ export default function QueuePage() {
                 </p>
               ) : (
                 searchResults.map(p => (
-                  <button
+                  <div
                     key={p.id}
-                    type="button"
-                    onMouseDown={() => {
-                      navigate(`/patients/${p.id}`)
-                      setShowResults(false); setSearchQ('')
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-slate-50 last:border-0 flex items-center gap-3"
+                    className="w-full px-3 py-2 hover:bg-blue-50 border-b border-slate-50 last:border-0 flex items-center gap-3"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center flex-shrink-0">
-                      {(p.name || '?').charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800">
-                        <span className="font-mono text-primary mr-2">{p.patientCode}</span>
-                        {p.name}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {[p.age != null ? `${p.age}y` : null, p.gender, p.phone].filter(Boolean).join(' • ')}
-                        {p.allergies?.length > 0 && <span className="text-danger ml-2">⚠ Allergic</span>}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300"/>
-                  </button>
+                    <button
+                      type="button"
+                      onMouseDown={() => {
+                        navigate(`/patients/${p.id}`)
+                        setShowResults(false); setSearchQ('')
+                      }}
+                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary font-bold flex items-center justify-center flex-shrink-0">
+                        {(p.name || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-800">
+                          <span className="font-mono text-primary mr-2">{p.patientCode}</span>
+                          {p.name}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {[p.age != null ? `${p.age}y` : null, p.gender, p.phone].filter(Boolean).join(' • ')}
+                          {p.allergies?.length > 0 && <span className="text-danger ml-2">⚠ Allergic</span>}
+                        </p>
+                      </div>
+                    </button>
+                    {can('managePatients') && (
+                      <button
+                        type="button"
+                        title="Edit Patient"
+                        disabled={loadingEdit}
+                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); openEdit(p.id) }}
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-100 rounded-lg transition-colors flex-shrink-0 disabled:opacity-40"
+                      >
+                        <Edit2 className="w-4 h-4"/>
+                      </button>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0"/>
+                  </div>
                 ))
               )}
             </div>
           )}
         </div>
 
-        {/* Doctor filter - only shown for multi-doctor clinics (2+) */}
+        {/* Doctor filter — only shown for multi-doctor clinics (2+) */}
         {doctors.length > 1 && (
           <select className="form-select w-48 flex-shrink-0" value={selectedDoctor}
             onChange={e => setSelectedDoctor(e.target.value)}>
@@ -259,7 +311,7 @@ export default function QueuePage() {
                     #{a.tokenNo}
                   </div>
 
-                  {/* Patient Info - clickable, goes to profile */}
+                  {/* Patient Info — clickable, goes to profile */}
                   <button type="button"
                     onClick={() => navigate(`/patients/${a.patient.id}`)}
                     className="flex-1 min-w-0 text-left hover:opacity-70 transition-opacity">
@@ -305,12 +357,24 @@ export default function QueuePage() {
         )}
       </Card>
 
-      {/* Add Patient modal - reuses the same modal from PatientsPage */}
+      {/* Add Patient modal — reuses the same modal from PatientsPage */}
       {showAddModal && (
         <PatientModal
           mode="add"
           onClose={() => setShowAddModal(false)}
           onSaved={() => { setShowAddModal(false); fetchQueue() }}
+          navigate={navigate}
+          can={can}
+        />
+      )}
+
+      {/* Edit Patient modal — opened from the pencil icon on each search result */}
+      {editPt && (
+        <PatientModal
+          mode="edit"
+          initialForm={editPt}
+          onClose={() => setEditPt(null)}
+          onSaved={() => { setEditPt(null); fetchQueue() }}
           navigate={navigate}
           can={can}
         />

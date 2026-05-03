@@ -13,7 +13,7 @@ import useAuthStore from '../../store/authStore'
 
 // ─── Shared UI Primitives ─────────────────────────────────
 function Toggle({ checked, onChange, label, sub, locked = false }) {
-  // Locked toggles cannot be turned off - used for forced branding (watermark, footer credit, etc.)
+  // Locked toggles cannot be turned off — used for forced branding (watermark, footer credit, etc.)
   const effectiveChecked = locked ? true : checked
   return (
     <div className="flex items-center justify-between py-2.5 border-b border-slate-50 last:border-0">
@@ -43,13 +43,13 @@ function Toggle({ checked, onChange, label, sub, locked = false }) {
 }
 
 // ─────────────────────────────────────────────
-// ACCORDION - only one section open at a time, all start closed
+// ACCORDION — only one section open at a time, all start closed
 // ─────────────────────────────────────────────
 // Pattern: parent provides AccordionContext; children read openId and toggle.
 // Wrap a tab in <AccordionProvider> and use <AccordionItem id="..."> for each
 // collapsible section inside. Opening one closes any other.
 //
-// CollapsibleSection (used by PrintDesignPanel) opts in by passing an id -
+// CollapsibleSection (used by PrintDesignPanel) opts in by passing an id —
 // when an id is provided AND a context exists, it behaves as an accordion item.
 // Otherwise it falls back to internal state with defaultOpen, so the component
 // is backward-compatible for any non-accordion uses.
@@ -67,7 +67,7 @@ function AccordionProvider({ children, defaultOpenId = null }) {
   )
 }
 
-// AccordionItem - generic collapsible card that renders title + chevron + children.
+// AccordionItem — generic collapsible card that renders title + chevron + children.
 // Children render only when this item's id matches the provider's openId.
 // headerExtra is an optional slot for badges/counts shown on the header strip.
 function AccordionItem({ id, title, subtitle, headerExtra, icon: Icon, children }) {
@@ -186,7 +186,7 @@ const DEFAULT_RX_PRINT = {
   showLabResults: true, showAdvice: true, showNextVisit: true, showVitals: false,
   showCustomFields: true,    // Print clinic-defined custom field values, gated by this
   showDosage: true, showWhen: true, showFrequency: true, showDays: true, showQty: true, showNotes: true,
-  showGeneric: false,  // Print generic/composition below medicine name - OFF by default
+  showGeneric: false,  // Print generic/composition below medicine name — OFF by default
   compactPrint: true,  // Combine Timing-Freq-Duration into one column for denser layout
   fontFamily: 'default', baseFontSize: 'md', medicineNameBold: true,
   showSignature: true, showSignatureImage: true, showStampImage: true, showLogo: true,
@@ -195,7 +195,7 @@ const DEFAULT_RX_PRINT = {
   // Spacing controls (mm for padding, dropdown for line spacing)
   paddingTop: 8, paddingBottom: 8,
   lineSpacing: 'normal',  // 'tight' | 'normal' | 'comfortable' | 'airy'
-  defaultPrintLang: 'en', // 'en' | 'hi' | 'mr' - pre-fills the Rx form's language dropdown
+  defaultPrintLang: 'en', // 'en' | 'hi' | 'mr' — pre-fills the Rx form's language dropdown
 }
 
 const DEFAULT_BILL_PRINT = {
@@ -214,13 +214,13 @@ const DEFAULT_BILL_PRINT = {
 }
 
 const TABS = [
-  { key: 'clinic',     label: 'Clinic Info',        icon: Building2 },
-  { key: 'branding',   label: 'Branding',           icon: Palette   },
-  { key: 'clinical',   label: 'Clinical',           icon: Stethoscope },
-  { key: 'rxform',     label: 'Prescription Form & Print',  icon: FileText  },
-  { key: 'rxprint',    label: 'Print Style',                 icon: Printer   },
-  { key: 'billprint',  label: 'Bill / Receipt',     icon: Receipt   },
-  { key: 'doctemplates', label: 'Cert Templates',  icon: FileCheck },
+  { key: 'clinic',     label: 'Clinic Info',           icon: Building2 },
+  { key: 'branding',   label: 'Letterhead & Logos',    icon: Palette   },
+  { key: 'clinical',   label: 'Lab Settings',          icon: Stethoscope },
+  { key: 'rxform',     label: 'Prescription Layout',   icon: FileText  },
+  { key: 'rxprint',    label: 'Prescription Style',    icon: Printer   },
+  { key: 'billprint',  label: 'Bill Style',            icon: Receipt   },
+  { key: 'doctemplates', label: 'Certificate Templates', icon: FileCheck },
 ]
 
 // ═══════════════════════════════════════════════════════════
@@ -232,7 +232,7 @@ export default function SettingsPage() {
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
 
-  // Doctor (current user) - read from authStore so the live preview can show
+  // Doctor (current user) — read from authStore so the live preview can show
   // the real signature, stamp, name, qualification, etc. when toggles enable them.
   const { user } = useAuthStore()
 
@@ -249,7 +249,7 @@ export default function SettingsPage() {
     hideTextOnHeader: true, letterheadMode: false,
   })
 
-  // Clinical settings state - separate from clinic info because saving has a different shape.
+  // Clinical settings state — separate from clinic info because saving has a different shape.
   // Maps to Clinic.settings JSON column on backend (shallow-merged on save).
   const [clinical, setClinical] = useState({
     flagOutOfRangeLabValues: true,   // default ON when no setting saved yet
@@ -285,7 +285,7 @@ export default function SettingsPage() {
         hideTextOnHeader: c.hideTextOnHeader !== false,  // default true
         letterheadMode:   !!c.letterheadMode,
       })
-      // Clinical settings - hydrate from clinic.settings JSON. Default to ON when not set.
+      // Clinical settings — hydrate from clinic.settings JSON. Default to ON when not set.
       const s = c.settings || {}
       setClinical({
         flagOutOfRangeLabValues: s.flagOutOfRangeLabValues !== false,
@@ -405,7 +405,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/*  Tab 1 - Clinic Info                                   */}
+      {/*  Tab 1 — Clinic Info                                   */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'clinic' && (
         <AccordionProvider>
@@ -478,7 +478,7 @@ export default function SettingsPage() {
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/*  Tab 2 - Branding (centralized image management)        */}
+      {/*  Tab 2 — Branding (centralized image management)        */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'branding' && (
         <AccordionProvider>
@@ -486,7 +486,7 @@ export default function SettingsPage() {
           <AccordionItem
             id="header-banner"
             title="Header Banner (recommended)"
-            subtitle="Full-width image with your logo + clinic name + address - replaces the text header on print">
+            subtitle="Full-width image with your logo + clinic name + address — replaces the text header on print">
             <div className="p-4">
               <div className="space-y-4">
                 <ImageUploader
@@ -517,7 +517,7 @@ export default function SettingsPage() {
           <AccordionItem
             id="clinic-branding"
             title="Clinic Branding"
-            subtitle="Used when no header banner is uploaded - shows logo + text in header">
+            subtitle="Used when no header banner is uploaded — shows logo + text in header">
             <div className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <ImageUploader
@@ -572,7 +572,7 @@ export default function SettingsPage() {
           <AccordionItem
             id="doctor-signature"
             title="Doctor Signature & Stamp"
-            subtitle="Your personal signature and stamp - appear on YOUR prescriptions only">
+            subtitle="Your personal signature and stamp — appear on YOUR prescriptions only">
             <div className="p-4">
               <DoctorBrandingSection/>
             </div>
@@ -590,7 +590,7 @@ export default function SettingsPage() {
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/*  Tab - Clinical Settings                                */}
+      {/*  Tab — Clinical Settings                                */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'clinical' && (
         <AccordionProvider>
@@ -601,7 +601,7 @@ export default function SettingsPage() {
                 checked={clinical.flagOutOfRangeLabValues}
                 onChange={v => { setClinical(c => ({ ...c, flagOutOfRangeLabValues: v })); setGlobalDirty(true) }}
                 label="Highlight out-of-range values"
-                sub="When ON, lab values outside the configured normal range get a soft red background. Doctors still make all clinical decisions - this is just a visual cue."
+                sub="When ON, lab values outside the configured normal range get a soft red background. Doctors still make all clinical decisions — this is just a visual cue."
               />
             </div>
           </AccordionItem>
@@ -616,7 +616,7 @@ export default function SettingsPage() {
 
       {/* ─────────────────────────────────────────────────────── */}
       {/* ─────────────────────────────────────────────────────── */}
-      {/*  Tab - Prescription Form & Print                          */}
+      {/*  Tab — Prescription Form & Print                          */}
       {/*  Pattern B: collapsible groups on the left, sticky live   */}
       {/*  Rx preview on the right that updates as toggles change.  */}
       {/* ─────────────────────────────────────────────────────── */}
@@ -624,7 +624,7 @@ export default function SettingsPage() {
         <AccordionProvider>
         <div className="max-w-7xl">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px] gap-5 items-start">
-            {/* LEFT - collapsible setting groups (accordion: only one open at a time) */}
+            {/* LEFT — collapsible setting groups (accordion: only one open at a time) */}
             <div className="space-y-3 min-w-0">
               <CollapsibleGroupCard
                 id="sections"
@@ -637,7 +637,7 @@ export default function SettingsPage() {
               <CollapsibleGroupCard
                 id="clinic-header"
                 title="Clinic Header"
-                subtitle="Print only - shown at the top of every Rx"
+                subtitle="Print only — shown at the top of every Rx"
                 rows={CLINIC_HEADER_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
@@ -645,7 +645,7 @@ export default function SettingsPage() {
               <CollapsibleGroupCard
                 id="doctor-info"
                 title="Doctor Information"
-                subtitle="Print only - shown in the header"
+                subtitle="Print only — shown in the header"
                 rows={DOCTOR_INFO_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
@@ -653,7 +653,7 @@ export default function SettingsPage() {
               <CollapsibleGroupCard
                 id="patient-details"
                 title="Patient Details"
-                subtitle="Print only - shown after the header"
+                subtitle="Print only — shown after the header"
                 rows={PATIENT_DETAIL_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
@@ -661,7 +661,7 @@ export default function SettingsPage() {
               <CollapsibleGroupCard
                 id="medicine-cols"
                 title="Medicine Table Columns"
-                subtitle="Print only - controls columns in the medicines table"
+                subtitle="Print only — controls columns in the medicines table"
                 rows={MEDICINE_COL_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
@@ -669,12 +669,12 @@ export default function SettingsPage() {
               <CollapsibleGroupCard
                 id="footer"
                 title="Footer"
-                subtitle="Print only - bottom of the Rx"
+                subtitle="Print only — bottom of the Rx"
                 rows={FOOTER_ROWS}
                 rxForm={rxForm} setRxForm={setRxForm}
                 rxPrint={rxPrint} setRxPrint={setRxPrint}/>
 
-              {/* Vitals Fields - collapsible accordion item (only when Vitals form-side is on). */}
+              {/* Vitals Fields — collapsible accordion item (only when Vitals form-side is on). */}
               {rxForm.showVitals && (
                 <AccordionItem
                   id="vitals-fields"
@@ -711,7 +711,7 @@ export default function SettingsPage() {
 
               <div className="flex justify-between items-center pt-2">
                 <p className="text-xs text-slate-400 max-w-md">
-                  Visual styling (colors, fonts, paper size, padding) is on the <strong>Print Style</strong> tab.
+                  Visual styling (colors, fonts, paper size, padding) is on the <strong>Prescription Style</strong> tab.
                 </p>
                 <Button variant="primary" loading={saving}
                   icon={saved ? <Check className="w-4 h-4"/> : <Save className="w-4 h-4"/>}
@@ -721,7 +721,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* RIGHT - sticky live preview. Hidden on small screens (under lg) so the
+            {/* RIGHT — sticky live preview. Hidden on small screens (under lg) so the
                 left side gets full width. Doctor sees instant feedback as they toggle. */}
             <div className="hidden lg:block">
               <div className="sticky top-4">
@@ -730,7 +730,7 @@ export default function SettingsPage() {
                 </p>
                 <RxLivePreview cfg={rxPrint} clinic={clinic} doctor={user} rxForm={rxForm}/>
                 <p className="text-[10px] text-slate-400 mt-2 italic">
-                  Expand a section above and toggle 🖨 icons - preview updates instantly.
+                  Expand a section above and toggle 🖨 icons — preview updates instantly.
                 </p>
               </div>
             </div>
@@ -740,7 +740,7 @@ export default function SettingsPage() {
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/*  Tab - Print Style (visual styling only - visibility    */}
+      {/*  Tab — Print Style (visual styling only — visibility    */}
       {/*  toggles live on the merged "Prescription Form & Print" */}
       {/*  tab now). Bill / Receipt tab keeps the full panel.     */}
       {/* ─────────────────────────────────────────────────────── */}
@@ -757,7 +757,7 @@ export default function SettingsPage() {
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/*  Tab 4 - Bill / Receipt Print                          */}
+      {/*  Tab 4 — Bill / Receipt Print                          */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'billprint' && (
         <PrintDesignPanel
@@ -771,7 +771,7 @@ export default function SettingsPage() {
       )}
 
       {/* ─────────────────────────────────────────────────────── */}
-      {/*  Tab 5 - Document Templates (fitness, medical, referral) */}
+      {/*  Tab 5 — Document Templates (fitness, medical, referral) */}
       {/* ─────────────────────────────────────────────────────── */}
       {activeTab === 'doctemplates' && <DocTemplatesPanel/>}
     </div>
@@ -779,9 +779,9 @@ export default function SettingsPage() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  PrintDesignPanel - shared UI for Rx Print & Bill Print
+//  PrintDesignPanel — shared UI for Rx Print & Bill Print
 // ═══════════════════════════════════════════════════════════
-// PrintDesignPanel - original "everything in one panel" view used by Bill / Receipt.
+// PrintDesignPanel — original "everything in one panel" view used by Bill / Receipt.
 // For Prescription, the parent now passes styleOnly=true which strips out all the
 // visibility toggle CollapsibleSections (those moved to the Form&Print merged tab).
 // What remains for prescription: Paper & Typography, Spacing & Layout, and the live
@@ -835,7 +835,7 @@ function PrintDesignPanel({ type, cfg, setCfg, clinic, doctor, rxForm, onSave, o
         {/* Patient section */}
         {!styleOnly && (
         <CollapsibleSection id="print-patient-details" title="Patient Details">
-          <Toggle checked={cfg.showOPD ?? true}    onChange={v => set('showOPD', v)}    label="OPD / Patient Code"  sub="e.g. MH0001 - printed in bold"/>
+          <Toggle checked={cfg.showOPD ?? true}    onChange={v => set('showOPD', v)}    label="OPD / Patient Code"  sub="e.g. MH0001 — printed in bold"/>
           <Toggle checked={cfg.showPatient}        onChange={v => set('showPatient', v)} label="Patient Name"/>
           <Toggle checked={cfg.showAge}            onChange={v => set('showAge', v)}     label="Age"/>
           <Toggle checked={cfg.showGender}         onChange={v => set('showGender', v)}  label="Gender"/>
@@ -854,14 +854,14 @@ function PrintDesignPanel({ type, cfg, setCfg, clinic, doctor, rxForm, onSave, o
         {/* Prescription-only sections */}
         {!styleOnly && isRx && (
           <>
-            <CollapsibleSection id="print-rx-sections" title="Print - Prescription Sections">
+            <CollapsibleSection id="print-rx-sections" title="Print — Prescription Sections">
               <p className="text-xs text-slate-400 mb-3 bg-blue-50 px-3 py-2 rounded-lg">
                 Controls what appears on the <strong>printed prescription</strong>. For the writing form, see the <strong>Prescription Form</strong> tab.
               </p>
               <Toggle checked={cfg.showComplaint} onChange={v => set('showComplaint', v)} label="Chief Complaint"/>
               <Toggle checked={cfg.showDiagnosis} onChange={v => set('showDiagnosis', v)} label="Diagnosis"/>
               <Toggle checked={cfg.showVitals}    onChange={v => set('showVitals', v)}    label="Vitals" sub="BP, Sugar, Weight etc."/>
-              <Toggle checked={true} onChange={()=>{}} locked label="Medicines Table" sub="Always printed - Rx is meaningless without medicines"/>
+              <Toggle checked={true} onChange={()=>{}} locked label="Medicines Table" sub="Always printed — Rx is meaningless without medicines"/>
               <Toggle checked={cfg.showLabTests}  onChange={v => set('showLabTests', v)}  label="Lab Tests"/>
               <Toggle checked={cfg.showLabResults} onChange={v => set('showLabResults', v)} label="Test Outcomes" sub="Recorded values for ordered tests, with date columns"/>
               <Toggle checked={cfg.showCustomFields !== false} onChange={v => set('showCustomFields', v)} label="Custom Fields" sub="Clinic-defined custom fields added in Prescription Form"/>
@@ -907,7 +907,7 @@ function PrintDesignPanel({ type, cfg, setCfg, clinic, doctor, rxForm, onSave, o
           </CollapsibleSection>
         )}
 
-        {/* Spacing - paddings and line height */}
+        {/* Spacing — paddings and line height */}
         <CollapsibleSection id="print-spacing" title="Spacing & Layout">
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
@@ -941,10 +941,10 @@ function PrintDesignPanel({ type, cfg, setCfg, clinic, doctor, rxForm, onSave, o
                 value={cfg.lineSpacing || 'normal'}
                 onChange={e => set('lineSpacing', e.target.value)}
               >
-                <option value="tight">Tight (1.2× - most compact)</option>
-                <option value="normal">Normal (1.5× - default)</option>
-                <option value="comfortable">Comfortable (1.75× - more breathing room)</option>
-                <option value="airy">Airy (2.0× - most spacious)</option>
+                <option value="tight">Tight (1.2× — most compact)</option>
+                <option value="normal">Normal (1.5× — default)</option>
+                <option value="comfortable">Comfortable (1.75× — more breathing room)</option>
+                <option value="airy">Airy (2.0× — most spacious)</option>
               </select>
               <p className="text-xs text-slate-400 mt-1">Affects spacing between lines and sections in the body.</p>
             </div>
@@ -974,7 +974,7 @@ function PrintDesignPanel({ type, cfg, setCfg, clinic, doctor, rxForm, onSave, o
           {isRx && <Toggle checked={cfg.showStampImage ?? true}      onChange={v => set('showStampImage', v)}     label="Doctor Stamp / Seal"     sub="Uploaded via Branding tab"/>}
           <Toggle checked={cfg.showFooterImage ?? false} onChange={v => set('showFooterImage', v)} label="Footer Image"           sub="Banner uploaded via Branding tab"/>
           <Toggle checked={cfg.showSignature}   onChange={v => set('showSignature', v)}   label="Doctor Signature Line"  sub="Blank line for handwritten signature"/>
-          <Toggle checked={true} onChange={()=>{}} locked label="Generated by SimpleRx EMR" sub="Footer timestamp - always shown"/>
+          <Toggle checked={true} onChange={()=>{}} locked label="Generated by SimpleRx EMR" sub="Footer timestamp — always shown"/>
         </CollapsibleSection>
         )}
 
@@ -991,7 +991,7 @@ function PrintDesignPanel({ type, cfg, setCfg, clinic, doctor, rxForm, onSave, o
         </div>
       </div>
 
-      {/* Live preview panel - shared real-letterhead style */}
+      {/* Live preview panel — shared real-letterhead style */}
       <div className="lg:col-span-1">
         <div className="sticky top-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1">
@@ -1001,7 +1001,7 @@ function PrintDesignPanel({ type, cfg, setCfg, clinic, doctor, rxForm, onSave, o
             ? <RxLivePreview cfg={cfg} clinic={clinic} doctor={doctor} rxForm={rxForm}/>
             : <BillLivePreview cfg={cfg} clinic={clinic} doctor={doctor}/>}
           <p className="text-[10px] text-slate-400 mt-2 italic">
-            Toggle settings on the left - preview updates instantly.
+            Toggle settings on the left — preview updates instantly.
           </p>
         </div>
       </div>
@@ -1046,7 +1046,7 @@ function DoctorBrandingSection() {
         value={user.stamp}
         onChange={(url) => updateUserField('stamp', url)}
         label="My Stamp / Seal (optional)"
-        description="Doctor's seal - printed next to the signature."
+        description="Doctor's seal — printed next to the signature."
         aspectHint="square"
       />
     </div>
@@ -1054,7 +1054,7 @@ function DoctorBrandingSection() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  Document Templates panel - manages reusable templates for
+//  Document Templates panel — manages reusable templates for
 //  fitness certs, medical certs, and referrals.
 // ═══════════════════════════════════════════════════════════
 
@@ -1091,7 +1091,7 @@ function DocTemplatesPanel() {
 
   return (
     <div className="max-w-3xl space-y-4">
-      <Card title="Certificate Templates" subtitle="Pre-fill common patterns to save typing - doctors can edit anything before saving">
+      <Card title="Certificate Templates" subtitle="Pre-fill common patterns to save typing — doctors can edit anything before saving">
         {/* Type tabs */}
         <div className="flex gap-2 mb-4 flex-wrap">
           {DOC_TYPES.map(t => (
@@ -1200,7 +1200,7 @@ function TemplateEditor({ type, template, onClose, onSaved }) {
       <div className="space-y-3">
         <div>
           <label className="form-label">Template Name *</label>
-          <input type="text" className="form-input" placeholder="e.g. Sports fitness - adult"
+          <input type="text" className="form-input" placeholder="e.g. Sports fitness — adult"
             value={name} onChange={e => setName(e.target.value)}/>
         </div>
 
@@ -1291,21 +1291,21 @@ function TemplateEditor({ type, template, onClose, onSaved }) {
 // that show up on every new Rx form and on the printed prescription. Only the
 // `name` is editable for v1; type is fixed to 'text' (radio/dropdown/checkbox in v2).
 // ─────────────────────────────────────────────
-// SECTION GROUP CARD - generic Form/Print toggle table
+// SECTION GROUP CARD — generic Form/Print toggle table
 // ─────────────────────────────────────────────
 // One reusable card that renders a titled group of toggle rows. Each row has:
 //   - label, optional sub-text
-//   - formKey (writes to rxForm.showXxx) - omit if the row is print-only
-//   - printKey (writes to rxPrint.showXxx) - omit if the row is form-only
-//   - locked flag - disables both toggles, shows a "LOCKED" badge
+//   - formKey (writes to rxForm.showXxx) — omit if the row is print-only
+//   - printKey (writes to rxPrint.showXxx) — omit if the row is form-only
+//   - locked flag — disables both toggles, shows a "LOCKED" badge
 //
 // Eye icon (👁) is shown only when formKey is provided. Printer icon (🖨) only when
 // printKey is provided. Dark blue = enabled in that mode, faded gray = disabled.
 //
 // Used for: Clinic Header, Doctor Info, Patient Details, Sections (body), Medicine
-// Columns, Footer. Each group passes its own row list - see merged tab below.
+// Columns, Footer. Each group passes its own row list — see merged tab below.
 // ─────────────────────────────────────────────
-// RX LIVE PREVIEW - small print mockup that updates as toggles change
+// RX LIVE PREVIEW — small print mockup that updates as toggles change
 // ─────────────────────────────────────────────
 // Renders a compact prescription preview reflecting the current rxPrint config.
 // Used inside the merged "Prescription Form & Print" tab as a sticky sidebar so
@@ -1319,11 +1319,11 @@ function TemplateEditor({ type, template, onClose, onSaved }) {
 //   - Date appears on the patient line, right-aligned (matches print exactly)
 //   - Medicines table: # | Medicine (with generic + notes) | Dosage | TIMING-FREQ-DURATION (compact) | Qty
 //     With cell borders matching print page.
-//   - Body sections (vitals, complaint, etc.) - only show when toggle is ON, and use
+//   - Body sections (vitals, complaint, etc.) — only show when toggle is ON, and use
 //     a (placeholder) so the doctor sees layout without fake fabricated data.
-//   - Custom fields - only those with print toggle on (matches print page rule).
+//   - Custom fields — only those with print toggle on (matches print page rule).
 //   - Next Visit shows day-of-week in the chosen print language (en/hi/mr).
-//   - Footer image, doctor stamp image, signature image - all wired.
+//   - Footer image, doctor stamp image, signature image — all wired.
 //   - Footer timestamp under "Generated by SimpleRx EMR" (matches print).
 //
 // Uses REAL clinic data and REAL doctor data. Patient/medicine/section bodies are
@@ -1335,7 +1335,7 @@ const PREVIEW_DAY_NAMES = {
 }
 
 function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
-  // Helper that mirrors the print page's `show()` - defaults to true if undefined.
+  // Helper that mirrors the print page's `show()` — defaults to true if undefined.
   const show = (k) => cfg && cfg[k] !== false
 
   const hasLetterhead = clinic?.letterheadMode && clinic?.letterheadUrl
@@ -1358,7 +1358,7 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
   const customFields = Array.isArray(rxForm?.customFields) ? rxForm.customFields : []
   const visibleCustomFields = customFields.filter(cf => cfPrintMap[cf.id] !== false)
 
-  // Border thickness for medicines table cells - matches print page's "border-slate-400"
+  // Border thickness for medicines table cells — matches print page's "border-slate-400"
   const medCellCls = 'py-1 px-1.5 text-[9px] border border-slate-400 align-top'
 
   // ── Print Style knobs honored in the live preview ──
@@ -1388,7 +1388,7 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
         lineHeight,
       }}>
 
-      {/* Letterhead background - covers entire preview when on */}
+      {/* Letterhead background — covers entire preview when on */}
       {hasLetterhead && (
         <img src={clinic.letterheadUrl} alt="letterhead"
              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
@@ -1441,11 +1441,11 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
           </div>
         )}
 
-        {/* Body - px constant; py controlled by Print Style padding knobs */}
+        {/* Body — px constant; py controlled by Print Style padding knobs */}
         <div className="px-3 space-y-2"
              style={{ paddingTop: `${padTop}px`, paddingBottom: `${padBottom}px` }}>
 
-          {/* Patient row + date - date on the right matches print page */}
+          {/* Patient row + date — date on the right matches print page */}
           <div className="border-b border-slate-300 pb-1.5 text-[11px] flex flex-wrap items-baseline gap-x-2">
             {show('showOPD') && <span className="font-bold tracking-wide">{(clinic?.opdSeriesPrefix || 'SHA') + '0001'}</span>}
             {show('showPatient') && (
@@ -1459,7 +1459,7 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
                 {show('showPhone') && <span className="text-slate-700"> - 9876543210</span>}
               </span>
             )}
-            {/* Date - right-aligned, always shown (mirrors print page) */}
+            {/* Date — right-aligned, always shown (mirrors print page) */}
             <span className="ml-auto text-right">
               <span className="text-slate-500">{dateLabel}: </span>
               <span className="font-semibold">29-Apr-2026</span>
@@ -1487,13 +1487,13 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
             <p className="text-[10px]"><span className="font-semibold">Rx No:</span> <span className="text-slate-500">0042</span></p>
           )}
 
-          {/* Body sections - placeholder text shows ONLY when toggle is on. Doctor
+          {/* Body sections — placeholder text shows ONLY when toggle is on. Doctor
               sees the layout slot is reserved without fabricated data appearing. */}
           {show('showComplaint') && <p className="text-[11px]"><span className="font-bold">Chief Complaint:</span> <span className="text-slate-400 italic">(complaint will print here)</span></p>}
           {show('showDiagnosis') && <p className="text-[11px]"><span className="font-bold">Diagnosis:</span> <span className="text-slate-400 italic">(diagnosis will print here)</span></p>}
           {show('showVitals')    && <p className="text-[11px]"><span className="font-bold">Vitals:</span> <span className="text-slate-400 italic">(vitals will print here)</span></p>}
 
-          {/* Medicines table - exact print-page layout */}
+          {/* Medicines table — exact print-page layout */}
           {show('showMedicines') && (
             <div>
               <div className="flex items-center gap-1.5 mb-1">
@@ -1572,7 +1572,7 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
             <p className="text-[11px]"><span className="font-bold">{nextVisitLabel}</span> {dayName} 04 May 2026</p>
           )}
 
-          {/* Custom fields - respect per-cf print toggle and field order */}
+          {/* Custom fields — respect per-cf print toggle and field order */}
           {visibleCustomFields.map(cf => (
             <p key={cf.id} className="text-[11px]">
               <span className="font-bold">{cf.name || '(unnamed field)'}:</span>{' '}
@@ -1580,7 +1580,7 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
             </p>
           ))}
 
-          {/* Footer image - uploaded clinic banner */}
+          {/* Footer image — uploaded clinic banner */}
           {show('showFooterImage') && clinic?.footerImageUrl && (
             <div className="border-t border-slate-100 pt-2 mt-2 flex justify-center">
               <img src={clinic.footerImageUrl} alt="footer"
@@ -1588,7 +1588,7 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
             </div>
           )}
 
-          {/* Footer signature row - mirrors print page (timestamp on left, signature on right) */}
+          {/* Footer signature row — mirrors print page (timestamp on left, signature on right) */}
           <div className="border-t border-slate-100 pt-2 mt-3 flex justify-between items-end">
             <div className="text-[9px] text-slate-400">
               <p>Generated by SimpleRx EMR</p>
@@ -1621,7 +1621,7 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
 }
 
 // ─────────────────────────────────────────────
-// BILL LIVE PREVIEW - sibling of RxLivePreview, used by Bill / Receipt tab.
+// BILL LIVE PREVIEW — sibling of RxLivePreview, used by Bill / Receipt tab.
 // Honors every Bill toggle and the same paper / typography / spacing knobs.
 // Uses the real clinic data (letterhead, header banner, name, address, phone,
 // logo, footer image) and respects all visibility toggles.
@@ -1642,14 +1642,14 @@ function BillLivePreview({ cfg, clinic, doctor }) {
   const paperWidth   = widthByPaper[cfg?.paperSize] || '100%'
   const minHeight    = isLandscape ? '180px' : '320px'
 
-  // Padding (mm-ish - visualized as px in the preview). Treat as relative.
+  // Padding (mm-ish — visualized as px in the preview). Treat as relative.
   const padTop    = Math.max(0, Math.min(50, cfg?.paddingTop    ?? 8))
   const padBottom = Math.max(0, Math.min(50, cfg?.paddingBottom ?? 8))
 
   // Line spacing → CSS line-height multiplier
   const lineHeight = ({ tight: 1.2, normal: 1.5, comfortable: 1.75, airy: 2.0 })[cfg?.lineSpacing || 'normal'] || 1.5
 
-  // Base font size class - matches the print page's tier
+  // Base font size class — matches the print page's tier
   const fontClass = cfg?.baseFontSize === 'sm' ? 'text-[10px]'
                   : cfg?.baseFontSize === 'lg' ? 'text-sm'
                   : 'text-xs'
@@ -1714,11 +1714,11 @@ function BillLivePreview({ cfg, clinic, doctor }) {
             </div>
           )}
 
-          {/* Body - padding controlled by Spacing & Layout */}
+          {/* Body — padding controlled by Spacing & Layout */}
           <div className="px-3 space-y-2"
                style={{ paddingTop: `${padTop}px`, paddingBottom: `${padBottom}px` }}>
 
-            {/* Patient row + date - same shape as Rx for visual consistency */}
+            {/* Patient row + date — same shape as Rx for visual consistency */}
             <div className="border-b border-slate-300 pb-1.5 text-[11px] flex flex-wrap items-baseline gap-x-2">
               {show('showOPD') && (
                 <span className="font-bold tracking-wide">
@@ -1754,7 +1754,7 @@ function BillLivePreview({ cfg, clinic, doctor }) {
               </p>
             )}
 
-            {/* Bill no - only if toggled on */}
+            {/* Bill no — only if toggled on */}
             {show('showBillNo') && (
               <p className="text-[11px]">
                 <span className="font-semibold">Bill #:</span>{' '}
@@ -1781,7 +1781,7 @@ function BillLivePreview({ cfg, clinic, doctor }) {
                     {show('showAmount') && <td className="py-1 px-1.5 text-right font-mono border border-slate-400">500.00</td>}
                   </tr>
                   <tr>
-                    <td className="py-1 px-1.5 border border-slate-400">Lab Test - CBC</td>
+                    <td className="py-1 px-1.5 border border-slate-400">Lab Test — CBC</td>
                     {show('showQty')    && <td className="py-1 px-1.5 text-center border border-slate-400">1</td>}
                     {show('showRate')   && <td className="py-1 px-1.5 text-right font-mono border border-slate-400">250.00</td>}
                     {show('showAmount') && <td className="py-1 px-1.5 text-right font-mono border border-slate-400">250.00</td>}
@@ -1790,7 +1790,7 @@ function BillLivePreview({ cfg, clinic, doctor }) {
               </table>
             )}
 
-            {/* Totals block - right-aligned */}
+            {/* Totals block — right-aligned */}
             <div className="flex justify-end">
               <div className="text-right space-y-0.5 text-[11px] min-w-[55%]">
                 {show('showSubtotal') && (
@@ -1827,7 +1827,7 @@ function BillLivePreview({ cfg, clinic, doctor }) {
               </div>
             </div>
 
-            {/* Payment notes - full width below totals */}
+            {/* Payment notes — full width below totals */}
             {show('showNotes') && (
               <div className="text-[10px] text-slate-600 border-t border-slate-100 pt-1.5">
                 <span className="font-semibold">Notes:</span>{' '}
@@ -1842,7 +1842,7 @@ function BillLivePreview({ cfg, clinic, doctor }) {
               </p>
             )}
 
-            {/* Footer image - uploaded clinic banner */}
+            {/* Footer image — uploaded clinic banner */}
             {show('showFooterImage') && clinic?.footerImageUrl && (
               <div className="border-t border-slate-100 pt-2 mt-2 flex justify-center">
                 <img src={clinic.footerImageUrl} alt="footer"
@@ -1875,7 +1875,7 @@ function BillLivePreview({ cfg, clinic, doctor }) {
 }
 
 // ─────────────────────────────────────────────
-// COLLAPSIBLE GROUP CARD - collapsible variant of SectionGroupCard
+// COLLAPSIBLE GROUP CARD — collapsible variant of SectionGroupCard
 // ─────────────────────────────────────────────
 // Wraps a SectionGroupCard in a collapsible header. Shows a count badge and
 // an "n on / m total" summary so the doctor can see at a glance which groups
@@ -1927,7 +1927,7 @@ function CollapsibleGroupCard({ id, title, subtitle, rows, rxForm, setRxForm, rx
   )
 }
 
-// Body-only variant of SectionGroupCard - same row UI but without the wrapper Card,
+// Body-only variant of SectionGroupCard — same row UI but without the wrapper Card,
 // so it can be embedded inside a CollapsibleGroupCard's expanded panel.
 function SectionGroupCardBody({ rows, rxForm, setRxForm, rxPrint, setRxPrint }) {
   const isFormOn  = (key) => key == null ? null : rxForm[key]  !== false
@@ -1965,7 +1965,7 @@ function SectionGroupCardBody({ rows, rxForm, setRxForm, rxPrint, setRxPrint }) 
             </div>
             {hasForm ? (
               <button type="button" onClick={() => toggleForm(row.formKey, row.locked)} disabled={!!row.locked}
-                title={row.locked ? 'Always shown on form' : (formOn ? 'Showing on form - click to hide' : 'Hidden on form - click to show')}
+                title={row.locked ? 'Always shown on form' : (formOn ? 'Showing on form — click to hide' : 'Hidden on form — click to show')}
                 aria-label={`Toggle ${row.label} on writing form`}
                 className={['p-1.5 rounded-lg transition flex-shrink-0',
                   row.locked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white',
@@ -1978,7 +1978,7 @@ function SectionGroupCardBody({ rows, rxForm, setRxForm, rxPrint, setRxPrint }) 
             )}
             {hasPrint ? (
               <button type="button" onClick={() => togglePrint(row.printKey, row.locked)} disabled={!!row.locked}
-                title={row.locked ? 'Always printed' : (printOn ? 'Printing - click to hide on print' : 'Hidden on print - click to print')}
+                title={row.locked ? 'Always printed' : (printOn ? 'Printing — click to hide on print' : 'Hidden on print — click to print')}
                 aria-label={`Toggle ${row.label} on printed Rx`}
                 className={['p-1.5 rounded-lg transition flex-shrink-0',
                   row.locked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white',
@@ -2033,13 +2033,13 @@ function SectionGroupCard({ title, subtitle, rows, rxForm, setRxForm, rxPrint, s
                 {row.sub && <div className="text-xs text-slate-400 truncate">{row.sub}</div>}
               </div>
 
-              {/* Eye / Form toggle - rendered only if this row applies to the form. */}
+              {/* Eye / Form toggle — rendered only if this row applies to the form. */}
               {hasForm ? (
                 <button
                   type="button"
                   onClick={() => toggleForm(row.formKey, row.locked)}
                   disabled={!!row.locked}
-                  title={row.locked ? 'Always shown on form' : (formOn ? 'Showing on form - click to hide' : 'Hidden on form - click to show')}
+                  title={row.locked ? 'Always shown on form' : (formOn ? 'Showing on form — click to hide' : 'Hidden on form — click to show')}
                   aria-label={`Toggle ${row.label} on writing form`}
                   className={[
                     'p-1.5 rounded-lg transition flex-shrink-0',
@@ -2052,13 +2052,13 @@ function SectionGroupCard({ title, subtitle, rows, rxForm, setRxForm, rxPrint, s
                 <span className="w-8 flex-shrink-0" aria-hidden/>
               )}
 
-              {/* Printer / Print toggle - rendered only if this row applies to print. */}
+              {/* Printer / Print toggle — rendered only if this row applies to print. */}
               {hasPrint ? (
                 <button
                   type="button"
                   onClick={() => togglePrint(row.printKey, row.locked)}
                   disabled={!!row.locked}
-                  title={row.locked ? 'Always printed' : (printOn ? 'Printing - click to hide on print' : 'Hidden on print - click to print')}
+                  title={row.locked ? 'Always printed' : (printOn ? 'Printing — click to hide on print' : 'Hidden on print — click to print')}
                   aria-label={`Toggle ${row.label} on printed Rx`}
                   className={[
                     'p-1.5 rounded-lg transition flex-shrink-0',
@@ -2081,7 +2081,7 @@ function SectionGroupCard({ title, subtitle, rows, rxForm, setRxForm, rxPrint, s
 // ─────────────────────────────────────────────
 // Row catalogs for each group on the merged tab.
 // ─────────────────────────────────────────────
-// Defined at module scope so they're stable references - no re-creation on render.
+// Defined at module scope so they're stable references — no re-creation on render.
 // Each row: { label, sub?, formKey?, printKey?, locked? }
 // Print-only rows omit formKey; the card renders an empty placeholder slot for the
 // missing icon so all rows align vertically. Locked rows show a badge and disable
@@ -2104,7 +2104,7 @@ const DOCTOR_INFO_ROWS = [
 ]
 
 const PATIENT_DETAIL_ROWS = [
-  { label: 'OPD / Patient Code', sub: 'e.g. MH0001 - printed in bold', printKey: 'showOPD' },
+  { label: 'OPD / Patient Code', sub: 'e.g. MH0001 — printed in bold', printKey: 'showOPD' },
   { label: 'Patient Name',       printKey: 'showPatient' },
   { label: 'Age',                printKey: 'showAge' },
   { label: 'Gender',             printKey: 'showGender' },
@@ -2117,15 +2117,15 @@ const PATIENT_DETAIL_ROWS = [
   { label: 'Rx Number',          printKey: 'showRxNo' },
 ]
 
-// Body sections - these appear on BOTH the writing form and the printed Rx, so they
+// Body sections — these appear on BOTH the writing form and the printed Rx, so they
 // get both eye and printer icons. Test Outcomes is a special case where the form
 // flag (showTestOutcomes) controls flask FAB visibility while the print flag
-// (showLabResults) controls printed table - different keys, same conceptual row.
+// (showLabResults) controls printed table — different keys, same conceptual row.
 const BODY_SECTION_ROWS = [
   { label: 'Vitals',               sub: 'BP, Sugar, Weight, Temp, SpO2, Pulse', formKey: 'showVitals',       printKey: 'showVitals' },
   { label: 'Chief Complaint',      sub: "Patient's main complaints",            formKey: 'showComplaint',    printKey: 'showComplaint' },
   { label: 'Diagnosis',            sub: 'Clinical diagnosis',                   formKey: 'showDiagnosis',    printKey: 'showDiagnosis' },
-  { label: 'Medicines',            sub: 'Always shown - Rx is meaningless without medicines', formKey: 'showMedicines', printKey: 'showMedicines', locked: true },
+  { label: 'Medicines',            sub: 'Always shown — Rx is meaningless without medicines', formKey: 'showMedicines', printKey: 'showMedicines', locked: true },
   { label: 'Lab Tests',            sub: 'Diagnostic tests requested',           formKey: 'showLabTests',     printKey: 'showLabTests' },
   { label: 'Test Outcomes',        sub: 'Recorded values for ordered tests',    formKey: 'showTestOutcomes', printKey: 'showLabResults' },
   { label: 'Advice & Precautions', sub: 'Instructions to patient',              formKey: 'showAdvice',       printKey: 'showAdvice' },
@@ -2160,7 +2160,7 @@ function CustomFieldsBody({ rxForm, setRxForm, rxPrint, setRxPrint }) {
 
   // Per-cf print visibility is stored in rxPrint.customFieldPrint as a {[cfId]: bool}
   // map. Default to TRUE if a field has no entry (so newly added fields print).
-  // The legacy single `showCustomFields` master toggle is now a fallback only -
+  // The legacy single `showCustomFields` master toggle is now a fallback only —
   // if it's explicitly false, no custom fields print regardless of per-cf flags.
   const cfPrintMap = (rxPrint && typeof rxPrint.customFieldPrint === 'object' && rxPrint.customFieldPrint) || {}
   const isPrintOn  = (id) => cfPrintMap[id] !== false
@@ -2235,7 +2235,7 @@ function CustomFieldsBody({ rxForm, setRxForm, rxPrint, setRxPrint }) {
                 <button
                   type="button"
                   onClick={() => togglePrint(cf.id)}
-                  title={printOn ? 'Printing - click to hide on print' : 'Hidden on print - click to print'}
+                  title={printOn ? 'Printing — click to hide on print' : 'Hidden on print — click to print'}
                   aria-label={`Toggle print for ${cf.name || 'field'}`}
                   className={[
                     'p-1.5 rounded transition flex-shrink-0',
@@ -2267,10 +2267,10 @@ function CustomFieldsBody({ rxForm, setRxForm, rxPrint, setRxPrint }) {
   )
 }
 
-// Backward-compatible Card wrapper - kept so existing uses (if any) still work.
+// Backward-compatible Card wrapper — kept so existing uses (if any) still work.
 function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
   return (
-    <Card title="Custom Fields" subtitle="Extra fields captured on every prescription. Tap 🖨 to control whether each one prints - they always show on the writing form.">
+    <Card title="Custom Fields" subtitle="Extra fields captured on every prescription. Tap 🖨 to control whether each one prints — they always show on the writing form.">
       <CustomFieldsBody rxForm={rxForm} setRxForm={setRxForm} rxPrint={rxPrint} setRxPrint={setRxPrint}/>
     </Card>
   )
@@ -2280,7 +2280,7 @@ function CustomFieldsCard({ rxForm, setRxForm, rxPrint, setRxPrint }) {
 // Lets the doctor reorder which Rx sections appear in what order, both on the
 // writing form and on the printed Rx. Uses up/down arrow buttons (no drag-drop).
 // Built-in sections + custom fields share one unified order list.
-// Body-only version of Section Order - drag-drop list of sections without
+// Body-only version of Section Order — drag-drop list of sections without
 // the outer Card wrapper. Used inside accordion items where the parent supplies
 // the header. The thin SectionOrderCard wrapper below is kept for backward compat.
 function SectionOrderBody({ rxForm, setRxForm }) {
