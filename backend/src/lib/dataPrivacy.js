@@ -1,0 +1,82 @@
+// Shared filter logic for the per-doctor data privacy feature.
+//
+// Each piece of "personal workflow" data (prescription templates, complaints,
+// diagnoses, advice options) carries an optional userId field tagging the
+// creator. When a clinic-level "share*" toggle is OFF (the privacy-first
+// default), each doctor only sees:
+//   - rows they themselves created (userId === me), AND
+//   - legacy rows with no creator tag (userId IS NULL) - existing data.
+// When the toggle is ON, all doctors in the clinic see all rows.
+// Admins always see everything regardless.
+//
+// Returns a Prisma `where` fragment that callers spread into their existing
+// where clause:
+//
+//   const where = {
+//     clinicId: req.clinicId,
+//     ...privacyWhere(req, clinic.shareTemplates),
+//     ...other filters,
+//   };
+//
+// Pass clinic from a single SELECT before the main query (or include it in
+// the auth middleware later for caching).
+
+const prisma = require('./prisma');
+
+/**
+ * Returns the additional `where` clause needed to enforce the privacy filter.
+ * If `shared` is true, returns {} (no filter, everyone sees everything).
+ * If user is ADMIN, returns {} (admin override).
+ * Otherwise restricts to userId === me OR userId === null.
+ */
+function privacyWhere(req, shared) {
+  if (shared) return {};
+  const user = req?.user;
+  if (!user) return {};
+  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') return {};
+  return {
+    OR: [
+      { userId: user.id },
+      { userId: null },
+    ],
+  };
+}
+
+/**
+ * Returns true if the user is allowed to mutate (edit/delete) a row owned by
+ * `rowUserId`. Owner can mutate; admins can mutate anything; legacy null-owned
+ * rows are mutable by anyone in the clinic (preserves old behaviour).
+ */
+function canMutate(req, rowUserId) {
+  const user = req?.user;
+  if (!user) return false;
+  if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') return true;
+  if (rowUserId == null) return true; // legacy shared
+  return rowUserId === user.id;
+}
+
+/**
+ * Loads the clinic's sharing flags. Cached per-request to avoid repeat
+ * lookups within a single controller. Caller passes req.
+ */
+async function getClinicSharingFlags(req) {
+  if (req._clinicSharingFlags) return req._clinicSharingFlags;
+  const clinic = await prisma.clinic.findUnique({
+    where: { id: req.clinicId },
+    select: {
+      shareAppointments: true,
+      sharePrescriptions: true,
+      shareTemplates: true,
+      shareMasterData: true,
+    },
+  });
+  req._clinicSharingFlags = clinic || {
+    shareAppointments: false,
+    sharePrescriptions: false,
+    shareTemplates: false,
+    shareMasterData: false,
+  };
+  return req._clinicSharingFlags;
+}
+
+module.exports = { privacyWhere, canMutate, getClinicSharingFlags };

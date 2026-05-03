@@ -191,6 +191,7 @@ async function updateClinic(req, res) {
       letterheadMode, logo, footerImageUrl, letterheadUrl,
       headerImageUrl, hideTextOnHeader,
       settings,
+      shareAppointments, sharePrescriptions, shareTemplates, shareMasterData,
     } = req.body;
 
     // Only include fields that were actually sent (avoid overwriting with undefined)
@@ -204,6 +205,11 @@ async function updateClinic(req, res) {
     if (gst              !== undefined) data.gst = gst;
     if (letterheadMode   !== undefined) data.letterheadMode = !!letterheadMode;
     if (hideTextOnHeader !== undefined) data.hideTextOnHeader = !!hideTextOnHeader;
+    // Doctor Data Privacy toggles - all default false at the schema level.
+    if (shareAppointments  !== undefined) data.shareAppointments  = !!shareAppointments;
+    if (sharePrescriptions !== undefined) data.sharePrescriptions = !!sharePrescriptions;
+    if (shareTemplates     !== undefined) data.shareTemplates     = !!shareTemplates;
+    if (shareMasterData    !== undefined) data.shareMasterData    = !!shareMasterData;
     // Image URL fields — accept null (clear) or string (set). Upload endpoint sets these
     // directly, but this allows admins to clear them via the clinic update form too.
     if (logo             !== undefined) data.logo = logo || null;

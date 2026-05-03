@@ -1,13 +1,21 @@
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse } = require('../lib/response');
+const { privacyWhere, canMutate, getClinicSharingFlags } = require('../lib/dataPrivacy');
 
-function masterController(model, uniqueField = 'nameEn') {
+// `privateData = true` opts a master-data type into the per-doctor privacy
+// filter (complaint / diagnosis / advice). For shared reference data
+// (medicine, labTest, etc.) the controller behaves exactly as before.
+function masterController(model, uniqueField = 'nameEn', privateData = false) {
   const getAll = async (req, res) => {
     try {
       const { search = '', includeInactive = false } = req.query;
       const where = { clinicId: req.clinicId };
       if (!includeInactive) where.isActive = true;
       if (search) where[uniqueField] = { contains: search, mode: 'insensitive' };
+      if (privateData) {
+        const flags = await getClinicSharingFlags(req);
+        Object.assign(where, privacyWhere(req, flags.shareMasterData));
+      }
       const items = await prisma[model].findMany({
         where,
         orderBy: [{ usageCount: 'desc' }, { [uniqueField]: 'asc' }],
@@ -22,9 +30,17 @@ function masterController(model, uniqueField = 'nameEn') {
   const create = async (req, res) => {
     try {
       const data = { clinicId: req.clinicId, ...req.body };
-      const existing = await prisma[model].findFirst({
-        where: { clinicId: req.clinicId, [uniqueField]: { equals: req.body[uniqueField], mode: 'insensitive' } },
-      });
+      // For private data, the duplicate-name check is scoped to this doctor only.
+      // Two doctors can each have their own "Fever" complaint without colliding.
+      const dupWhere = {
+        clinicId: req.clinicId,
+        [uniqueField]: { equals: req.body[uniqueField], mode: 'insensitive' },
+      };
+      if (privateData) {
+        dupWhere.userId = req.user?.id || null;
+        data.userId     = req.user?.id || null;
+      }
+      const existing = await prisma[model].findFirst({ where: dupWhere });
       if (existing) {
         if (!existing.isActive) {
           const updated = await prisma[model].update({ where: { id: existing.id }, data: { isActive: true, ...req.body } });
@@ -44,6 +60,9 @@ function masterController(model, uniqueField = 'nameEn') {
     try {
       const existing = await prisma[model].findFirst({ where: { id: req.params.id, clinicId: req.clinicId } });
       if (!existing) return errorResponse(res, 'Not found', 404);
+      if (privateData && !canMutate(req, existing.userId)) {
+        return errorResponse(res, 'You can only edit items you created', 403);
+      }
       const item = await prisma[model].update({ where: { id: req.params.id }, data: req.body });
       return successResponse(res, item, 'Updated successfully');
     } catch (err) {
@@ -55,6 +74,9 @@ function masterController(model, uniqueField = 'nameEn') {
     try {
       const existing = await prisma[model].findFirst({ where: { id: req.params.id, clinicId: req.clinicId } });
       if (!existing) return errorResponse(res, 'Not found', 404);
+      if (privateData && !canMutate(req, existing.userId)) {
+        return errorResponse(res, 'You can only delete items you created', 403);
+      }
       await prisma[model].update({ where: { id: req.params.id }, data: { isActive: false } });
       return successResponse(res, null, 'Removed successfully');
     } catch (err) {
@@ -158,7 +180,7 @@ const medicineCtrl = {
   },
 
   // Focused endpoint for inline generic-name edit from the prescription form.
-  // Doctor/Admin only - enforced on the route via requireRoles middleware.
+  // Doctor/Admin only — enforced on the route via requireRoles middleware.
   setGeneric: async (req, res) => {
     try {
       const { genericName } = req.body;
@@ -325,9 +347,9 @@ async function getMasterDataCounts(req, res) {
   }
 }
 
-const complainCtrl    = masterController('complaint',    'nameEn');
-const diagnosisCtrl   = masterController('diagnosis',    'nameEn');
-const adviceCtrl      = masterController('adviceOption', 'nameEn');
+const complainCtrl    = masterController('complaint',    'nameEn', true);
+const diagnosisCtrl   = masterController('diagnosis',    'nameEn', true);
+const adviceCtrl      = masterController('adviceOption', 'nameEn', true);
 const medicineNoteCtrl= masterController('medicineNote', 'nameEn');
 
 // Lab tests get a custom wrapper to validate the JSON `expectedFields` shape on create/update.

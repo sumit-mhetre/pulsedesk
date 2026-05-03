@@ -4,9 +4,19 @@ import { Plus, Edit2, Trash2, Zap, Search, FileText, Pill, FlaskConical, BookOpe
 import { Card, Button, Badge, PageHeader } from '../../components/ui'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import useAuthStore from '../../store/authStore'
 
 export default function TemplatesPage() {
   const navigate  = useNavigate()
+  const { user }  = useAuthStore()
+  // A template is "owned" if userId matches me, OR userId is null (legacy
+  // shared - treated as owned by everyone in the clinic), OR I am the admin.
+  const canModify = (t) => {
+    if (!user) return false
+    if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') return true
+    if (t.userId == null) return true
+    return t.userId === user.id
+  }
   const [templates, setTemplates] = useState([])
   const [loading,  setLoading]    = useState(true)
   const [search,   setSearch]     = useState('')
@@ -67,14 +77,20 @@ export default function TemplatesPage() {
                   <p className="text-xs text-slate-400 mt-0.5">Used {t.usageCount} times</p>
                 </div>
                 <div className="flex gap-1 ml-2 flex-shrink-0">
-                  <button onClick={()=>navigate(`/templates/${t.id}/edit`)}
-                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors">
-                    <Edit2 className="w-3.5 h-3.5"/>
-                  </button>
-                  <button onClick={()=>handleDelete(t.id, t.name)} disabled={deleting===t.id}
-                    className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-danger hover:bg-red-50 rounded-lg transition-colors">
-                    <Trash2 className="w-3.5 h-3.5"/>
-                  </button>
+                  {canModify(t) ? (
+                    <>
+                      <button onClick={()=>navigate(`/templates/${t.id}/edit`)}
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition-colors">
+                        <Edit2 className="w-3.5 h-3.5"/>
+                      </button>
+                      <button onClick={()=>handleDelete(t.id, t.name)} disabled={deleting===t.id}
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-danger hover:bg-red-50 rounded-lg transition-colors">
+                        <Trash2 className="w-3.5 h-3.5"/>
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 px-2 py-1" title="Created by another doctor">Read-only</span>
+                  )}
                 </div>
               </div>
 

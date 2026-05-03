@@ -233,6 +233,17 @@ model Clinic {
   ipdNumberCounters Json?
   ipdSettings       Json?
 
+  // ── Doctor Data Privacy toggles ──
+  // When false (default), each doctor only sees their own data + legacy
+  // (userId NULL) rows. When true, doctors share that data type clinic-wide.
+  // Admin always sees everything regardless of these flags.
+  // Phase 1+2 wires shareTemplates and shareMasterData; the appointment and
+  // prescription flags are stored now but become active in later phases.
+  shareAppointments  Boolean @default(false)
+  sharePrescriptions Boolean @default(false)
+  shareTemplates     Boolean @default(false)
+  shareMasterData    Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -311,6 +322,14 @@ model User {
   ipdOrders               IPDOrder[]                 @relation("IPDOrderOrderedBy")
   intakeOutputRecords     IntakeOutputRecord[]       @relation("IntakeOutputRecordedBy")
   consultations           Consultation[]             @relation("ConsultationDoctor")
+
+  // ── Doctor-private workflow data (privacy toggles) ──
+  // ON DELETE SET NULL on those relations means deactivating a doctor
+  // turns their data into "legacy shared" rather than deleting it.
+  prescriptionTemplates PrescriptionTemplate[]
+  ownedComplaints       Complaint[]
+  ownedDiagnoses        Diagnosis[]
+  ownedAdviceOptions    AdviceOption[]
 
   @@unique([email])
   @@map("users")
@@ -475,6 +494,7 @@ model LabTest {
 model Complaint {
   id         String   @id @default(uuid())
   clinicId   String
+  userId     String?  // null = legacy shared (visible to all doctors). Set to creator for new rows.
   nameEn     String
   nameHi     String?
   nameMr     String?
@@ -483,14 +503,17 @@ model Complaint {
   createdAt  DateTime @default(now())
 
   clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId],   references: [id], onDelete: SetNull)
 
-  @@unique([clinicId, nameEn])
+  @@unique([clinicId, userId, nameEn])
+  @@index([clinicId, userId])
   @@map("complaints")
 }
 
 model Diagnosis {
   id         String   @id @default(uuid())
   clinicId   String
+  userId     String?  // null = legacy shared. Set to creator for new rows.
   nameEn     String
   nameHi     String?
   nameMr     String?
@@ -499,14 +522,17 @@ model Diagnosis {
   createdAt  DateTime @default(now())
 
   clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId],   references: [id], onDelete: SetNull)
 
-  @@unique([clinicId, nameEn])
+  @@unique([clinicId, userId, nameEn])
+  @@index([clinicId, userId])
   @@map("diagnoses")
 }
 
 model AdviceOption {
   id         String   @id @default(uuid())
   clinicId   String
+  userId     String?  // null = legacy shared. Set to creator for new rows.
   nameEn     String
   nameHi     String?
   nameMr     String?
@@ -515,8 +541,10 @@ model AdviceOption {
   createdAt  DateTime @default(now())
 
   clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId],   references: [id], onDelete: SetNull)
 
-  @@unique([clinicId, nameEn])
+  @@unique([clinicId, userId, nameEn])
+  @@index([clinicId, userId])
   @@map("advice_options")
 }
 
@@ -588,6 +616,7 @@ model TimingOption {
 model PrescriptionTemplate {
   id         String   @id @default(uuid())
   clinicId   String
+  userId     String?  // null = legacy shared (visible to all). Set to creator for new templates.
   name       String
   complaint  String?
   diagnosis  String?
@@ -602,9 +631,11 @@ model PrescriptionTemplate {
   updatedAt  DateTime @updatedAt
 
   clinic    Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user      User?              @relation(fields: [userId],   references: [id], onDelete: SetNull)
   medicines TemplateMedicine[]
 
-  @@unique([clinicId, name])
+  @@unique([clinicId, userId, name])
+  @@index([clinicId, userId])
   @@map("prescription_templates")
 }
 

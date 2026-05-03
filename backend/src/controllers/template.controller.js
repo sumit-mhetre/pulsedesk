@@ -1,11 +1,17 @@
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse } = require('../lib/response');
+const { privacyWhere, canMutate, getClinicSharingFlags } = require('../lib/dataPrivacy');
 
 // ── Get all templates ─────────────────────────────────────
 async function getTemplates(req, res) {
   try {
     const { search = '' } = req.query;
-    const where = { clinicId: req.clinicId, isActive: true };
+    const flags = await getClinicSharingFlags(req);
+    const where = {
+      clinicId: req.clinicId,
+      isActive: true,
+      ...privacyWhere(req, flags.shareTemplates),
+    };
     if (search) where.name = { contains: search, mode: 'insensitive' };
 
     const templates = await prisma.prescriptionTemplate.findMany({
@@ -28,8 +34,13 @@ async function getTemplates(req, res) {
 // ── Get single template ───────────────────────────────────
 async function getTemplate(req, res) {
   try {
+    const flags = await getClinicSharingFlags(req);
     const template = await prisma.prescriptionTemplate.findFirst({
-      where: { id: req.params.id, clinicId: req.clinicId },
+      where: {
+        id: req.params.id,
+        clinicId: req.clinicId,
+        ...privacyWhere(req, flags.shareTemplates),
+      },
       include: { medicines: { orderBy: { sortOrder: 'asc' } } },
     });
     if (!template) return errorResponse(res, 'Template not found', 404);
@@ -46,8 +57,14 @@ async function createTemplate(req, res) {
 
     if (!name) return errorResponse(res, 'Template name is required', 400);
 
+    // Duplicate-name check is scoped to this doctor only - two doctors can each
+    // have their own "URTI 1" template without colliding.
     const existing = await prisma.prescriptionTemplate.findFirst({
-      where: { clinicId: req.clinicId, name: { equals: name, mode: 'insensitive' } },
+      where: {
+        clinicId: req.clinicId,
+        userId:   req.user?.id || null,
+        name:     { equals: name, mode: 'insensitive' },
+      },
     });
     if (existing) return errorResponse(res, `Template "${name}" already exists`, 409);
 
@@ -55,13 +72,14 @@ async function createTemplate(req, res) {
       const t = await tx.prescriptionTemplate.create({
         data: {
           clinicId:  req.clinicId,
+          userId:    req.user?.id || null,  // stamp the creator
           name,
           complaint: complaint || null,
           diagnosis: diagnosis || null,
           advice:    advice    || null,
           nextVisit: nextVisit ? parseInt(nextVisit) : null,
           labTests:  labTests,
-          // Custom field values - only persist if the client sent a non-empty object.
+          // Custom field values — only persist if the client sent a non-empty object.
           // Same {[cfId]: string[]} shape as Prescription.customData.
           customData: customData && typeof customData === 'object' && Object.keys(customData).length > 0
             ? customData
@@ -104,6 +122,13 @@ async function updateTemplate(req, res) {
       where: { id: req.params.id, clinicId: req.clinicId },
     });
     if (!existing) return errorResponse(res, 'Template not found', 404);
+
+    // Ownership: doctors can only edit their own templates (or legacy NULL ones).
+    // Admins can edit anything. The clinic toggle does not relax this - even with
+    // sharing ON, you don't want Dr B silently rewriting Dr A's template.
+    if (!canMutate(req, existing.userId)) {
+      return errorResponse(res, 'You can only edit templates you created', 403);
+    }
 
     const { name, complaint, diagnosis, advice, nextVisit, labTests, medicines, customData } = req.body;
 
@@ -164,6 +189,9 @@ async function deleteTemplate(req, res) {
       where: { id: req.params.id, clinicId: req.clinicId },
     });
     if (!existing) return errorResponse(res, 'Template not found', 404);
+    if (!canMutate(req, existing.userId)) {
+      return errorResponse(res, 'You can only delete templates you created', 403);
+    }
     await prisma.prescriptionTemplate.update({ where: { id: req.params.id }, data: { isActive: false } });
     return successResponse(res, null, 'Template deleted');
   } catch (err) {
@@ -174,8 +202,13 @@ async function deleteTemplate(req, res) {
 // ── Use template (increments usage count) ────────────────
 async function useTemplate(req, res) {
   try {
+    const flags = await getClinicSharingFlags(req);
     const template = await prisma.prescriptionTemplate.findFirst({
-      where: { id: req.params.id, clinicId: req.clinicId },
+      where: {
+        id: req.params.id,
+        clinicId: req.clinicId,
+        ...privacyWhere(req, flags.shareTemplates),
+      },
       include: {
         medicines: {
           orderBy: { sortOrder: 'asc' },
@@ -244,13 +277,18 @@ async function saveAsTemplate(req, res) {
       ? customData
       : null;
 
-    // Check if name exists and update, or create new
+    // Find existing template scoped to THIS doctor only - two doctors with the
+    // same template name don't trample each other.
     const existing = await prisma.prescriptionTemplate.findFirst({
-      where: { clinicId: req.clinicId, name: { equals: name, mode: 'insensitive' } },
+      where: {
+        clinicId: req.clinicId,
+        userId:   req.user?.id || null,
+        name:     { equals: name, mode: 'insensitive' },
+      },
     });
 
     if (existing) {
-      // Update existing - increment version
+      // Update existing — increment version (ownership already implicit in the lookup above)
       await prisma.$transaction(async (tx) => {
         await tx.templateMedicine.deleteMany({ where: { templateId: existing.id } });
         await tx.prescriptionTemplate.update({
@@ -271,10 +309,16 @@ async function saveAsTemplate(req, res) {
       return successResponse(res, { id: existing.id, name }, `Template "${name}" updated!`);
     }
 
-    // Create new
+    // Create new - stamp the creator
     await prisma.$transaction(async (tx) => {
       const t = await tx.prescriptionTemplate.create({
-        data: { clinicId: req.clinicId, name, complaint, diagnosis, advice, nextVisit: nextVisit?parseInt(nextVisit):null, labTests, customData: cleanCustomData },
+        data: {
+          clinicId: req.clinicId,
+          userId:   req.user?.id || null,
+          name, complaint, diagnosis, advice,
+          nextVisit: nextVisit?parseInt(nextVisit):null,
+          labTests, customData: cleanCustomData,
+        },
       });
       if (medicines.length > 0) {
         await tx.templateMedicine.createMany({
