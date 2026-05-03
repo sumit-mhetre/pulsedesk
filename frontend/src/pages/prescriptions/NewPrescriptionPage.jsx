@@ -8,6 +8,7 @@ import AutosaveIndicator from '../../components/ui/AutosaveIndicator'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { format, addDays } from 'date-fns'
+import { detectMedicineType } from '../../lib/medicineType'
 import useAuthStore from '../../store/authStore'
 
 const DOSAGE_OPTS = ['1-0-0','0-1-0','0-0-1','1-0-1','1-1-0','0-1-1','1-1-1','1-1-1-1','OD','BD','TDS','QID','HS','SOS','STAT']
@@ -117,20 +118,12 @@ const FREQ_DIV = { DAILY: 1, ALT_DAYS: 2, EVERY_3D: 3, WEEKLY: 7 }
 // Infer medicine type from a typed-in name. Order matters — most specific first.
 // Returns ONLY values present in the backend MedicineType enum:
 // tablet | capsule | liquid | drops | cream | sachet | injection | inhaler | powder
-const inferMedicineType = (name) => {
-  if (!name) return 'tablet'
-  const n = String(name).toLowerCase()
-  // Order matters: more specific terms first
-  if (/\binjection|\binj\b|injectable/.test(n))                    return 'injection'
-  if (/\bsyrup|\bsuspension|\bsusp\b|elixir|\bliquid\b/.test(n))   return 'liquid'
-  if (/\bdrops?\b/.test(n))                                        return 'drops'
-  if (/\binhaler|inhalation|nebuliz|\bspray\b/.test(n))            return 'inhaler'
-  if (/\bcream|\bointment|\boint\b|\bgel\b|\blotion\b/.test(n))    return 'cream'
-  if (/\bpowder|\bsachet|\bsach\b/.test(n))                        return 'powder'
-  if (/\bcapsule|\bcap\b/.test(n))                                 return 'capsule'
-  if (/\btablet|\btab\b/.test(n))                                  return 'tablet'
-  return 'tablet'  // default
-}
+// Wrapper around the shared detector at frontend/src/lib/medicineType.js so
+// the prefix detection (Tab. / Cap. / Syr. / Syp. / etc.) is identical
+// across the Master Data form, the inline create on the prescription page,
+// and the backend. Returns 'tablet' as the default when nothing matches,
+// keeping backward compat with the rest of this file (qty calc, print, etc).
+const inferMedicineType = (name) => detectMedicineType(name) || 'tablet'
 
 const calcQty = (dosage, days, type='tablet', frequency='DAILY') => {
   // Liquid/syrup/drops/cream/etc → qty always 1 bottle/tube (editable)
@@ -701,7 +694,6 @@ function TagSearch({ tags, onAdd, onRemove, items, placeholder, allowCustom=true
 // ── Section template button ───────────────────────────────
 function SectionTemplate({ label, onApply, templates, section }) {
   const [open,setOpen] = useState(false)
-  const [query, setQuery] = useState('')
   const relevant = (templates||[]).filter(t => {
     if (section==='complaint')  return t.complaint
     if (section==='diagnosis')  return t.diagnosis
@@ -711,17 +703,6 @@ function SectionTemplate({ label, onApply, templates, section }) {
     return false
   })
   if (relevant.length === 0) return null
-
-  // Show search box once there are enough templates that scrolling becomes annoying.
-  const showSearch = relevant.length >= 4
-  const q = query.trim().toLowerCase()
-  const filtered = q
-    ? relevant.filter(t => (t.name || '').toLowerCase().includes(q))
-    : relevant
-
-  // Reset the search query whenever the dropdown closes so it starts fresh next time.
-  const close = () => { setOpen(false); setQuery('') }
-
   return (
     <div className="relative">
       <button type="button" onClick={()=>setOpen(o=>!o)}
@@ -730,42 +711,24 @@ function SectionTemplate({ label, onApply, templates, section }) {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={close}/>
-          <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-xl border border-blue-100 z-50 max-h-80 overflow-hidden flex flex-col">
+          <div className="fixed inset-0 z-40" onClick={()=>setOpen(false)}/>
+          <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-xl border border-blue-100 z-50 max-h-72 overflow-y-auto">
             <div className="px-3 py-2 border-b border-slate-50">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
             </div>
-            {showSearch && (
-              <div className="px-2 py-2 border-b border-slate-50">
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Search templates..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
-                />
-              </div>
-            )}
-            <div className="overflow-y-auto">
-              {filtered.length === 0 ? (
-                <p className="px-3 py-4 text-xs text-slate-400 text-center">No templates match "{query}"</p>
-              ) : (
-                filtered.map(t=>(
-                  <button key={t.id} type="button" onClick={()=>{ onApply(t); close() }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-slate-50 last:border-0">
-                    <p className="font-medium text-sm text-slate-700">{t.name}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {section==='medicines'&&`${t.medicines?.length||0} med(s)`}
-                      {section==='labTests'&&`${t.labTests?.length||0} test(s)`}
-                      {section==='complaint'&&(t.complaint||'').replace(/\|\|/g,', ').slice(0,40)}
-                      {section==='diagnosis'&&(t.diagnosis||'').replace(/\|\|/g,', ').slice(0,40)}
-                      {section==='advice'&&`${(t.advice||'').split('\n').filter(Boolean).length} item(s)`}
-                    </p>
-                  </button>
-                ))
-              )}
-            </div>
+            {relevant.map(t=>(
+              <button key={t.id} type="button" onClick={()=>{ onApply(t); setOpen(false) }}
+                className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-slate-50 last:border-0">
+                <p className="font-medium text-sm text-slate-700">{t.name}</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {section==='medicines'&&`${t.medicines?.length||0} med(s)`}
+                  {section==='labTests'&&`${t.labTests?.length||0} test(s)`}
+                  {section==='complaint'&&(t.complaint||'').replace(/\|\|/g,', ').slice(0,40)}
+                  {section==='diagnosis'&&(t.diagnosis||'').replace(/\|\|/g,', ').slice(0,40)}
+                  {section==='advice'&&`${(t.advice||'').split('\n').filter(Boolean).length} item(s)`}
+                </p>
+              </button>
+            ))}
           </div>
         </>
       )}
