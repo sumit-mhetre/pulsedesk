@@ -196,22 +196,6 @@ export default function DashLayout() {
             render IPD at the end so it doesn't disappear. */}
         {billingIdx === -1 && <IPDSection/>}
       </nav>
-
-      <div className="p-4 border-t border-white/10">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors"
-          onClick={() => { navigate('/profile'); setSidebarOpen(false) }}>
-          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            {user?.name?.charAt(0)?.toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{user?.name}</p>
-            <p className="text-blue-300 text-xs truncate">{user?.role}</p>
-          </div>
-        </div>
-        <button onClick={handleLogout} className="sidebar-link w-full mt-1 text-red-300 hover:text-red-200 hover:bg-red-500/20">
-          <LogOut className="w-4 h-4"/> Logout
-        </button>
-      </div>
     </aside>
   )
 
