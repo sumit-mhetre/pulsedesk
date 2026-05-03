@@ -932,6 +932,15 @@ function fmtAttSize(b) {
 const isImg = (m) => m && m.startsWith('image/')
 const isPdf = (m) => m === 'application/pdf'
 
+// Build the proxy URL that streams the file through our backend (hides
+// Cloudinary). Auth flows via a `t=<jwt>` query param because <a href>
+// and <img src> can't send Authorization headers.
+const proxyAttUrl = (attId) => {
+  const token = localStorage.getItem('accessToken') || ''
+  const base  = (import.meta?.env?.VITE_API_URL || '').replace(/\/+$/, '') || '/api'
+  return `${base}/prescriptions/attachments/${attId}/file?t=${encodeURIComponent(token)}`
+}
+
 // Header button. Opens hidden file input. On select:
 //   - validates each file
 //   - in edit mode: uploads each via API, refreshes saved list (parent owns refresh)
@@ -1036,11 +1045,12 @@ function AttachmentsList({ savedItems, pendingFiles, currentUserId, isAdmin, onD
       })}
       {(savedItems || []).map(att => {
         const canDelete = isAdmin || att.uploadedById === currentUserId
+        const fileUrl = proxyAttUrl(att.id)
         return (
           <div key={att.id} className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lg border border-slate-200 bg-white text-xs max-w-xs">
-            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
               {isImg(att.mimeType) ? (
-                <img src={att.url} alt="" className="w-8 h-8 object-cover rounded"/>
+                <img src={fileUrl} alt="" className="w-8 h-8 object-cover rounded"/>
               ) : isPdf(att.mimeType) ? (
                 <span className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded text-slate-600 text-[10px] font-bold">PDF</span>
               ) : (
@@ -1048,7 +1058,7 @@ function AttachmentsList({ savedItems, pendingFiles, currentUserId, isAdmin, onD
               )}
             </a>
             <div className="flex-1 min-w-0">
-              <a href={att.url} target="_blank" rel="noopener noreferrer"
+              <a href={fileUrl} target="_blank" rel="noopener noreferrer"
                 className="block truncate font-medium text-slate-700 hover:text-primary" title={att.filename}>{att.filename}</a>
               <p className="text-slate-400 text-[10px]">{fmtAttSize(att.sizeBytes)}{att.uploadedBy?.name ? ` · ${att.uploadedBy.name}` : ''}</p>
             </div>

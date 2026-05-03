@@ -932,7 +932,6 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
               <Toggle checked={cfg.showDays}         onChange={v => set('showDays', v)}         label="Duration"/>
               <Toggle checked={cfg.showQty}          onChange={v => set('showQty', v)}          label="Quantity"/>
               <Toggle checked={cfg.showNotes}        onChange={v => set('showNotes', v)}        label="Notes" sub="Instructions for the medicine (visible on print)"/>
-              <Toggle checked={cfg.notesAsColumn === true} onChange={v => set('notesAsColumn', v)} label="Notes as Separate Column" sub="ON: notes print as a separate column. OFF: notes print below medicine name (default)."/>
               <Toggle checked={cfg.showGeneric === true} onChange={v => set('showGeneric', v)} label="Generic Name" sub="Prints active ingredient below medicine name (e.g. Paracetamol 500mg)"/>
               <Toggle checked={cfg.showRxSymbol}     onChange={v => set('showRxSymbol', v)}     label="℞ Symbol"/>
               <Toggle checked={cfg.medicineNameBold} onChange={v => set('medicineNameBold', v)} label="Bold Medicine Names"/>
@@ -2058,7 +2057,8 @@ const MEDICINE_COL_ROWS = [
   { label: 'Frequency',           sub: 'Daily, Alternate Days, Weekly', printKey: 'showFrequency' },
   { label: 'Duration',            printKey: 'showDays' },
   { label: 'Quantity',            printKey: 'showQty' },
-  { label: 'Notes',               sub: 'Instructions below medicine name', printKey: 'showNotes' },
+  { label: 'Notes',               sub: 'Show notes for the medicine on print', printKey: 'showNotes' },
+  { label: 'Notes as Separate Column', sub: 'ON: separate column on the right. OFF: notes shown below medicine name (default)', printKey: 'notesAsColumn' },
   { label: 'Generic Name',        sub: 'Active ingredient below brand',  printKey: 'showGeneric' },
   { label: '℞ Symbol',            printKey: 'showRxSymbol' },
   { label: 'Bold Medicine Names', printKey: 'medicineNameBold' },

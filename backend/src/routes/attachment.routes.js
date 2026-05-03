@@ -27,6 +27,12 @@ function handleUpload(req, res, next) {
   });
 }
 
+// Note: /file is the ONLY route here that uses query-param auth (?t=jwt).
+// We mount it BEFORE router.use(authenticate) so the global Bearer middleware
+// doesn't reject the request for missing Authorization header. The controller
+// verifies the token internally.
+router.get('/prescriptions/attachments/:id/file', ctrl.streamAttachment);
+
 router.use(authenticate);
 
 // List attachments for a prescription. viewPrescriptions covers doctor +

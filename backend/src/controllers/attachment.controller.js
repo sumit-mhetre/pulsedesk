@@ -128,4 +128,70 @@ async function deleteAttachment(req, res) {
   }
 }
 
-module.exports = { listAttachments, uploadAttachment, deleteAttachment };
+// Stream the file through the backend so the user never sees the raw
+// Cloudinary URL (avoids leaking the cloud name + folder structure). Also
+// re-checks privacy on every request — direct Cloudinary URLs would otherwise
+// be permanently shareable once leaked.
+//
+// Auth via query param `?t=<jwt>` because <img src> and <a href> can't send
+// Authorization headers. This is the same access token used elsewhere; the
+// route is explicitly excluded from the global authenticate middleware so we
+// can verify the query token here.
+async function streamAttachment(req, res) {
+  try {
+    // Verify token from query string. Same payload as the Bearer header path
+    // in auth.middleware.js — sets req.user and req.clinicId so privacy
+    // helpers downstream still work.
+    const jwt = require('jsonwebtoken');
+    const token = req.query.t;
+    if (!token) return errorResponse(res, 'Token required', 401);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      return errorResponse(res, 'Invalid or expired token', 401);
+    }
+    // Hydrate the user from the decoded token (same shape as the Bearer middleware).
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, role: true, clinicId: true, name: true },
+    });
+    if (!user) return errorResponse(res, 'User not found', 401);
+    req.user     = user;
+    req.clinicId = user.clinicId;
+
+    const att = await prisma.prescriptionAttachment.findFirst({
+      where: { id: req.params.id, clinicId: req.clinicId },
+      include: { prescription: { select: { id: true, doctorId: true } } },
+    });
+    if (!att) return errorResponse(res, 'Attachment not found', 404);
+
+    // Privacy check: same rules as viewing the prescription itself.
+    const flags = await getClinicSharingFlags(req);
+    const ok = await prisma.prescription.findFirst({
+      where: {
+        id: att.prescriptionId,
+        clinicId: req.clinicId,
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false }),
+      },
+      select: { id: true },
+    });
+    if (!ok) return errorResponse(res, 'Attachment not found', 404);
+
+    // Pull the file from Cloudinary's URL and pipe it back to the client.
+    const upstream = await fetch(att.url);
+    if (!upstream.ok) return errorResponse(res, 'File unavailable', 502);
+
+    res.setHeader('Content-Type',  att.mimeType || upstream.headers.get('content-type') || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('Content-Disposition', `inline; filename="${(att.filename || 'file').replace(/"/g, '')}"`);
+
+    const { Readable } = require('stream');
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch (err) {
+    console.error('[streamAttachment]', err);
+    if (!res.headersSent) return errorResponse(res, 'Failed to fetch attachment', 500);
+  }
+}
+
+module.exports = { listAttachments, uploadAttachment, deleteAttachment, streamAttachment };
