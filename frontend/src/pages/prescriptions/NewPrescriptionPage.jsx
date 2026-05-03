@@ -2245,14 +2245,13 @@ export default function NewPrescriptionPage() {
               {rxMeds.filter(m=>m.medicineName).length>0 && <button type="button" onClick={()=>setRxMeds([{...emptyMed}])} className="text-xs text-slate-400 hover:text-danger flex items-center gap-1"><X className="w-3 h-3"/>Clear All</button>}
               <SectionTemplate label="Medicine Templates" section="medicines" templates={allTemplates} onApply={t=>{ if(t.medicines?.length>0){api.post(`/templates/${t.id}/use`).then(({data})=>{setRxMeds(p=>{const existing=p.filter(m=>m.medicineName);const newMeds=data.data.medicines||[];return[...existing,...newMeds,{...emptyMed}]});toast.success(`${t.name} medicines loaded!`)}).catch(()=>{})} }}/><Button variant="outline" size="sm" icon={<Plus className="w-3.5 h-3.5"/>} onClick={addRow}>Add Row</Button></div>
           </div>
-          <p className="text-xs text-slate-400 mb-3">💡 Click <strong className="text-primary">↓</strong> in headers to apply value to all rows</p>
 
           {/* ── Medicine table — desktop ── */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full" style={{tableLayout:'fixed'}}>
             <colgroup>
-              <col style={{width:'26px'}}/><col style={{width:'180px'}}/><col style={{width:'100px'}}/>
-              <col style={{width:'105px'}}/><col style={{width:'110px'}}/><col style={{width:'95px'}}/><col style={{width:'50px'}}/>
+              <col style={{width:'26px'}}/><col style={{width:'170px'}}/><col style={{width:'130px'}}/>
+              <col style={{width:'100px'}}/><col style={{width:'105px'}}/><col style={{width:'95px'}}/><col style={{width:'50px'}}/>
               <col/><col style={{width:'26px'}}/>
             </colgroup>
             <thead>
@@ -2507,7 +2506,6 @@ export default function NewPrescriptionPage() {
               <div className="form-group">
                 <label className="form-label">Next Visit Date</label>
                 <input type="date" className="form-input" value={nextVisit} onChange={e=>setNextVisit(e.target.value)}/>
-                {nextVisit && <p className="text-xs text-success mt-1">✓ Auto-set from medicine duration</p>}
               </div>
               <div className="form-group">
                 <label className="form-label">Custom Rx No.</label>
