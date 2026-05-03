@@ -746,6 +746,7 @@ export default function SettingsPage() {
         <PrintDesignPanel
           type="prescription"
           cfg={rxPrint} setCfg={setRxPrint}
+          clinic={clinic} doctor={user} rxForm={rxForm}
           onSave={() => savePrintDesign('prescription')}
           onReset={() => resetPrintDesign('prescription')}
           saving={saving} saved={saved}
@@ -760,6 +761,7 @@ export default function SettingsPage() {
         <PrintDesignPanel
           type="bill"
           cfg={billPrint} setCfg={setBillPrint}
+          clinic={clinic} doctor={user}
           onSave={() => savePrintDesign('bill')}
           onReset={() => resetPrintDesign('bill')}
           saving={saving} saved={saved}
@@ -782,7 +784,7 @@ export default function SettingsPage() {
 // visibility toggle CollapsibleSections (those moved to the Form&Print merged tab).
 // What remains for prescription: Paper & Typography, Spacing & Layout, and the live
 // Preview. Bill mode is unchanged.
-function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, styleOnly = false }) {
+function PrintDesignPanel({ type, cfg, setCfg, clinic, doctor, rxForm, onSave, onReset, saving, saved, styleOnly = false }) {
   const set = (key, val) => { setCfg(p => ({ ...p, [key]: val })); setGlobalDirty(true) }
   const isRx = type === 'prescription'
 
@@ -985,153 +987,18 @@ function PrintDesignPanel({ type, cfg, setCfg, onSave, onReset, saving, saved, s
         </div>
       </div>
 
-      {/* Live preview panel */}
+      {/* Live preview panel — shared real-letterhead style */}
       <div className="lg:col-span-1">
         <div className="sticky top-4">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1">
             <Eye className="w-3.5 h-3.5"/>Live Preview
           </p>
-          <div className={`bg-white rounded-xl border-2 border-blue-100 overflow-hidden shadow-card
-            ${cfg.baseFontSize === 'sm' ? 'text-xs' : cfg.baseFontSize === 'lg' ? 'text-sm' : 'text-xs'}`}
-            style={{ fontFamily: cfg.fontFamily === 'serif' ? 'Georgia,serif' : cfg.fontFamily === 'mono' ? 'monospace' : 'inherit' }}>
-
-            {/* Preview header */}
-            <div className={`p-3 ${cfg.headerBorder !== false ? 'border-b-2' : ''}`}
-              style={{ borderColor: cfg.primaryColor || cfg.headerColor || '#1565C0' }}>
-              <div className="flex justify-between items-start">
-                <div>
-                  {cfg.showClinicName    && <p className="font-bold text-sm" style={{ color: cfg.primaryColor || '#1565C0' }}>Sharma Medical Clinic</p>}
-                  {cfg.showClinicTagline && <p className="text-xs text-slate-500 italic">Your Health, Our Priority</p>}
-                  {cfg.showClinicAddress && <p className="text-xs text-slate-400">123 Main Street, Pune</p>}
-                  {cfg.showClinicPhone   && <p className="text-xs text-slate-400">📞 9876543210</p>}
-                </div>
-                {isRx && (
-                  <div className="text-right">
-                    {cfg.showDoctorName  && <p className="font-bold text-xs">Dr. Rajesh Sharma</p>}
-                    {cfg.showDoctorQual  && <p className="text-xs text-slate-500">MBBS, MD</p>}
-                    {cfg.showDoctorSpec  && <p className="text-xs text-slate-500">General Physician</p>}
-                    {cfg.showDoctorRegNo && <p className="text-xs text-slate-400">Reg: MH-12345</p>}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="p-3 space-y-2">
-              {/* Patient — preview uses the same layout as actual print page */}
-              <div className="border-b border-slate-200 pb-2 text-xs flex flex-wrap items-baseline gap-x-2">
-                {(cfg.showOPD ?? true) && <span className="font-bold tracking-wide">MH0001</span>}
-                {cfg.showPatient && (
-                  <span className="font-semibold">
-                    Suraj Dingane
-                    {(cfg.showAge || cfg.showGender) && (
-                      <span className="font-normal text-slate-700">
-                        {' '}({[
-                          cfg.showAge    && '33 yrs',
-                          cfg.showGender && 'Male',
-                        ].filter(Boolean).join(', ')})
-                      </span>
-                    )}
-                    {(cfg.showPhone ?? true) && <span className="text-slate-700"> - 9876543210</span>}
-                  </span>
-                )}
-                <span className="ml-auto text-slate-500" style={{fontSize:'9px'}}>Date: 25-Apr-2026</span>
-              </div>
-              {/* Optional contact row */}
-              {(cfg.showEmail || cfg.showAddress || cfg.showBloodGroup) && (
-                <p className="text-[10px] text-slate-500 -mt-1">
-                  {[
-                    cfg.showEmail       && 'patient@email.com',
-                    cfg.showAddress     && '123 Main St, Pune',
-                    cfg.showBloodGroup  && 'B+',
-                  ].filter(Boolean).join(' • ')}
-                </p>
-              )}
-              {isRx && cfg.showChronicConditions && (
-                <p className="text-[10px]"><span className="font-semibold">Chronic:</span> Hypertension, Diabetes</p>
-              )}
-
-              {/* Rx-specific preview */}
-              {isRx && (
-                <>
-                  {cfg.showComplaint && <p className="text-xs"><span className="text-slate-400">COMPLAINT:</span> Headache, mild fever</p>}
-                  {cfg.showDiagnosis && <p className="text-xs"><span className="text-slate-400">DIAGNOSIS:</span> Viral Fever</p>}
-                  {cfg.showMedicines && (
-                    <div className="border-t border-slate-100 pt-2">
-                      <div className="flex items-center gap-1 mb-1">
-                        {cfg.showRxSymbol && <span className="text-base font-bold" style={{ color: cfg.primaryColor || '#1565C0' }}>℞</span>}
-                        <span className="text-[10px] font-bold text-slate-500">MEDICINES</span>
-                      </div>
-                      <table className="w-full text-[10px]">
-                        <thead>
-                          <tr className="text-slate-400 border-b">
-                            <th className="text-left py-0.5">MEDICINE</th>
-                            {cfg.showDosage && <th className="text-center">DOSAGE</th>}
-                            {cfg.showWhen   && <th className="text-center">TIMING</th>}
-                            {cfg.showDays   && <th className="text-center">DURATION</th>}
-                            {cfg.showQty    && <th className="text-center">QTY</th>}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="border-b border-slate-50">
-                            <td className={`py-1 ${cfg.medicineNameBold ? 'font-semibold' : ''}`}>Paracetamol 500mg</td>
-                            {cfg.showDosage && <td className="text-center">1-0-1</td>}
-                            {cfg.showWhen   && <td className="text-center">After Food</td>}
-                            {cfg.showDays   && <td className="text-center">5 days</td>}
-                            {cfg.showQty    && <td className="text-center">10</td>}
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {cfg.showAdvice && <p className="text-xs"><span className="text-slate-400">ADVICE:</span> Rest, drink fluids</p>}
-                  {cfg.showNextVisit && <p className="text-xs"><span className="text-slate-400">Next Visit:</span> 30 Apr 2026</p>}
-                </>
-              )}
-
-              {/* Bill-specific preview */}
-              {!isRx && (
-                <>
-                  <div className="flex justify-between text-xs">
-                    {cfg.showBillNo && <span className="text-slate-400">Bill #: <span className="text-slate-700 font-mono">B0001</span></span>}
-                    {cfg.showDate   && <span className="text-slate-400">Date: <span className="text-slate-700">22 Apr 2026</span></span>}
-                  </div>
-                  <table className="w-full text-[10px] border-t pt-1">
-                    <thead>
-                      <tr className="text-slate-400 border-b">
-                        {cfg.showItemName && <th className="text-left py-0.5">ITEM</th>}
-                        {cfg.showQty      && <th className="text-center">QTY</th>}
-                        {cfg.showRate     && <th className="text-right">RATE</th>}
-                        {cfg.showAmount   && <th className="text-right">AMT</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-slate-50">
-                        {cfg.showItemName && <td className="py-1">Consultation</td>}
-                        {cfg.showQty      && <td className="text-center">1</td>}
-                        {cfg.showRate     && <td className="text-right">500</td>}
-                        {cfg.showAmount   && <td className="text-right">500</td>}
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div className="text-right space-y-0.5 text-xs">
-                    {cfg.showSubtotal    && <p className="text-slate-500">Subtotal: <span className="font-mono">₹500</span></p>}
-                    {cfg.showDiscount    && <p className="text-slate-500">Discount: <span className="font-mono">₹50</span></p>}
-                    {cfg.showTotal       && <p className="font-bold" style={{ color: cfg.primaryColor || '#1565C0' }}>Total: ₹450</p>}
-                    {cfg.showPaymentMode && <p className="text-slate-400 text-[10px]">Paid by Cash</p>}
-                  </div>
-                  {cfg.thankYouMessage && (
-                    <p className="text-center text-[10px] italic text-slate-400 pt-2 border-t">{cfg.thankYouMessage}</p>
-                  )}
-                </>
-              )}
-
-              {/* Footer — watermark always shown */}
-              <div className="border-t border-slate-100 pt-2 flex justify-between text-[10px]">
-                {cfg.showSignature   && <span className="text-slate-400">_______________<br/>Doctor's Signature</span>}
-                <span className="text-slate-300 italic self-end ml-auto">Generated by SimpleRx EMR</span>
-              </div>
-            </div>
-          </div>
+          {isRx
+            ? <RxLivePreview cfg={cfg} clinic={clinic} doctor={doctor} rxForm={rxForm}/>
+            : <BillLivePreview cfg={cfg} clinic={clinic} doctor={doctor}/>}
+          <p className="text-[10px] text-slate-400 mt-2 italic">
+            Toggle settings on the left — preview updates instantly.
+          </p>
         </div>
       </div>
     </div>
@@ -1490,9 +1357,25 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
   // Border thickness for medicines table cells — matches print page's "border-slate-400"
   const medCellCls = 'py-1 px-1.5 text-[9px] border border-slate-400 align-top'
 
+  // ── Print Style knobs honored in the live preview ──
+  // paperSize affects width proportionally so doctor SEES A5 narrower than A4.
+  const widthByPaper = { A4: '100%', A5: '78%', half: '64%' }
+  const paperWidth   = widthByPaper[cfg?.paperSize] || '100%'
+  const padTop       = Math.max(0, Math.min(50, cfg?.paddingTop    ?? 8))
+  const padBottom    = Math.max(0, Math.min(50, cfg?.paddingBottom ?? 8))
+  const lineHeight   = ({ tight: 1.2, normal: 1.5, comfortable: 1.75, airy: 2.0 })[cfg?.lineSpacing || 'normal'] || 1.5
+  const fontClass    = cfg?.baseFontSize === 'sm' ? 'text-[10px]'
+                     : cfg?.baseFontSize === 'lg' ? 'text-sm'
+                     : 'text-xs'
+
   return (
-    <div className="bg-white rounded-xl border border-slate-100 overflow-hidden text-xs relative"
-      style={{ fontFamily: cfg.fontFamily === 'serif' ? 'Georgia,serif' : cfg.fontFamily === 'mono' ? 'monospace' : 'inherit' }}>
+    <div className="bg-slate-50 rounded-xl p-2 flex justify-center">
+    <div className={`bg-white rounded-lg border border-slate-100 overflow-hidden ${fontClass} relative transition-all`}
+      style={{
+        fontFamily: cfg.fontFamily === 'serif' ? 'Georgia,serif' : cfg.fontFamily === 'mono' ? 'monospace' : 'inherit',
+        width: paperWidth,
+        lineHeight,
+      }}>
 
       {/* Letterhead background — covers entire preview when on */}
       {hasLetterhead && (
@@ -1547,8 +1430,9 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
           </div>
         )}
 
-        {/* Body */}
-        <div className="p-3 space-y-2">
+        {/* Body — px constant; py controlled by Print Style padding knobs */}
+        <div className="px-3 space-y-2"
+             style={{ paddingTop: `${padTop}px`, paddingBottom: `${padBottom}px` }}>
 
           {/* Patient row + date — date on the right matches print page */}
           <div className="border-b border-slate-300 pb-1.5 text-[11px] flex flex-wrap items-baseline gap-x-2">
@@ -1716,6 +1600,262 @@ function RxLivePreview({ cfg, clinic, doctor, rxForm }) {
                   </>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
+// BILL LIVE PREVIEW — sibling of RxLivePreview, used by Bill / Receipt tab.
+// Honors every Bill toggle and the same paper / typography / spacing knobs.
+// Uses the real clinic data (letterhead, header banner, name, address, phone,
+// logo, footer image) and respects all visibility toggles.
+// ─────────────────────────────────────────────
+function BillLivePreview({ cfg, clinic, doctor }) {
+  const show = (k) => cfg && cfg[k] !== false
+
+  const hasLetterhead   = clinic?.letterheadMode && clinic?.letterheadUrl
+  const hasHeaderBanner = !hasLetterhead && clinic?.headerImageUrl
+  const showTextHeader  = !hasLetterhead && (!clinic?.headerImageUrl || !clinic?.hideTextOnHeader)
+
+  // Paper-size visual: subtle proportional width inside the preview pane so
+  // doctor SEES that A5 is narrower than A4. We keep it readable rather than
+  // strictly to scale (true A4 vs A5 width ratio would crush the preview).
+  const widthByPaper = {
+    A4:   '100%',
+    A5:   '78%',
+    half: '64%',
+  }
+  const paperWidth = widthByPaper[cfg?.paperSize] || '100%'
+
+  // Padding (mm-ish — visualized as px in the preview). Treat as relative.
+  const padTop    = Math.max(0, Math.min(50, cfg?.paddingTop    ?? 8))
+  const padBottom = Math.max(0, Math.min(50, cfg?.paddingBottom ?? 8))
+
+  // Line spacing → CSS line-height multiplier
+  const lineHeight = ({ tight: 1.2, normal: 1.5, comfortable: 1.75, airy: 2.0 })[cfg?.lineSpacing || 'normal'] || 1.5
+
+  // Base font size class — matches the print page's tier
+  const fontClass = cfg?.baseFontSize === 'sm' ? 'text-[10px]'
+                  : cfg?.baseFontSize === 'lg' ? 'text-sm'
+                  : 'text-xs'
+  const fontFamily = cfg?.fontFamily === 'serif' ? 'Georgia,serif'
+                  : cfg?.fontFamily === 'mono'  ? 'monospace'
+                  : 'inherit'
+
+  return (
+    <div className="bg-slate-50 rounded-xl p-2 flex justify-center">
+      <div className={`bg-white rounded-lg border border-slate-100 overflow-hidden relative ${fontClass} transition-all`}
+           style={{ fontFamily, width: paperWidth, lineHeight }}>
+
+        {/* Letterhead background */}
+        {hasLetterhead && (
+          <img src={clinic.letterheadUrl} alt="letterhead"
+               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+               style={{ zIndex: 0 }}/>
+        )}
+
+        <div className="relative" style={{ zIndex: 1 }}>
+
+          {/* Header banner */}
+          {hasHeaderBanner && (
+            <div className="p-2 border-b-2 border-slate-400">
+              <img src={clinic.headerImageUrl} alt="header"
+                   className="w-full object-contain" style={{ maxHeight: 70 }}/>
+            </div>
+          )}
+
+          {/* Text-based header */}
+          {showTextHeader && (
+            <div className="p-3 border-b-2"
+                 style={{ borderColor: cfg?.primaryColor || cfg?.headerColor || '#1565C0' }}>
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex items-start gap-2 min-w-0 flex-1">
+                  {show('showLogo') && clinic?.logo && !clinic?.headerImageUrl && (
+                    <img src={clinic.logo} alt="logo" className="w-8 h-8 object-contain flex-shrink-0"/>
+                  )}
+                  <div className="min-w-0">
+                    {show('showClinicName') && (
+                      <p className="font-bold text-sm truncate" style={{ color: cfg?.primaryColor || '#1565C0' }}>
+                        {clinic?.name || 'Clinic Name'}
+                      </p>
+                    )}
+                    {show('showClinicAddress') && clinic?.address && (
+                      <p className="text-[10px] text-slate-500 truncate">{clinic.address}</p>
+                    )}
+                    {show('showClinicPhone') && (clinic?.mobile || clinic?.phone) && (
+                      <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                        <span className="text-danger">📞</span>
+                        {clinic?.mobile || clinic?.phone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {show('showDoctorName') && doctor?.name && (
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-[10px]">{doctor.name}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Body — padding controlled by Spacing & Layout */}
+          <div className="px-3 space-y-2"
+               style={{ paddingTop: `${padTop}px`, paddingBottom: `${padBottom}px` }}>
+
+            {/* Patient row + date — same shape as Rx for visual consistency */}
+            <div className="border-b border-slate-300 pb-1.5 text-[11px] flex flex-wrap items-baseline gap-x-2">
+              {show('showOPD') && (
+                <span className="font-bold tracking-wide">
+                  {(clinic?.opdSeriesPrefix || 'MH') + '0001'}
+                </span>
+              )}
+              {show('showPatient') && (
+                <span className="font-semibold">
+                  Sample Patient
+                  {(show('showAge') || show('showGender')) && (
+                    <span className="font-normal text-slate-700">
+                      {' '}({[show('showAge') && '33 yrs', show('showGender') && 'Male'].filter(Boolean).join(', ')})
+                    </span>
+                  )}
+                  {show('showPhone') && <span className="text-slate-700"> - 9876543210</span>}
+                </span>
+              )}
+              {show('showDate') && (
+                <span className="ml-auto text-right">
+                  <span className="text-slate-500">Date: </span>
+                  <span className="font-semibold">25-Apr-2026</span>
+                </span>
+              )}
+            </div>
+
+            {/* Optional contact row */}
+            {(show('showEmail') || show('showAddress')) && (
+              <p className="text-[10px] text-slate-600">
+                {[
+                  show('showEmail')   && 'Email: patient@email.com',
+                  show('showAddress') && 'Address: 123 Main St, Pune',
+                ].filter(Boolean).join(' • ')}
+              </p>
+            )}
+
+            {/* Bill no — only if toggled on */}
+            {show('showBillNo') && (
+              <p className="text-[11px]">
+                <span className="font-semibold">Bill #:</span>{' '}
+                <span className="font-mono text-slate-700">B0001</span>
+              </p>
+            )}
+
+            {/* Items table */}
+            {show('showItemName') && (
+              <table className="w-full text-[10px] border-collapse border border-slate-400">
+                <thead>
+                  <tr className="bg-slate-50">
+                    <th className="py-1 px-1.5 text-left font-bold uppercase text-slate-700 border border-slate-400">Item</th>
+                    {show('showQty')    && <th className="py-1 px-1.5 text-center font-bold uppercase text-slate-700 border border-slate-400 w-10">Qty</th>}
+                    {show('showRate')   && <th className="py-1 px-1.5 text-right  font-bold uppercase text-slate-700 border border-slate-400 w-14">Rate</th>}
+                    {show('showAmount') && <th className="py-1 px-1.5 text-right  font-bold uppercase text-slate-700 border border-slate-400 w-16">Amt</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="py-1 px-1.5 border border-slate-400">Consultation</td>
+                    {show('showQty')    && <td className="py-1 px-1.5 text-center border border-slate-400">1</td>}
+                    {show('showRate')   && <td className="py-1 px-1.5 text-right font-mono border border-slate-400">500.00</td>}
+                    {show('showAmount') && <td className="py-1 px-1.5 text-right font-mono border border-slate-400">500.00</td>}
+                  </tr>
+                  <tr>
+                    <td className="py-1 px-1.5 border border-slate-400">Lab Test — CBC</td>
+                    {show('showQty')    && <td className="py-1 px-1.5 text-center border border-slate-400">1</td>}
+                    {show('showRate')   && <td className="py-1 px-1.5 text-right font-mono border border-slate-400">250.00</td>}
+                    {show('showAmount') && <td className="py-1 px-1.5 text-right font-mono border border-slate-400">250.00</td>}
+                  </tr>
+                </tbody>
+              </table>
+            )}
+
+            {/* Totals block — right-aligned */}
+            <div className="flex justify-end">
+              <div className="text-right space-y-0.5 text-[11px] min-w-[55%]">
+                {show('showSubtotal') && (
+                  <div className="flex justify-between gap-6">
+                    <span className="text-slate-500">Subtotal:</span>
+                    <span className="font-mono">₹750.00</span>
+                  </div>
+                )}
+                {show('showDiscount') && (
+                  <div className="flex justify-between gap-6">
+                    <span className="text-slate-500">Discount:</span>
+                    <span className="font-mono">- ₹50.00</span>
+                  </div>
+                )}
+                {show('showTotal') && (
+                  <div className="flex justify-between gap-6 font-bold border-t border-slate-300 pt-0.5"
+                       style={{ color: cfg?.primaryColor || '#1565C0' }}>
+                    <span>Total:</span>
+                    <span className="font-mono">₹700.00</span>
+                  </div>
+                )}
+                {show('showPaymentMode') && (
+                  <div className="flex justify-between gap-6 text-slate-500 text-[10px]">
+                    <span>Payment:</span>
+                    <span>Cash</span>
+                  </div>
+                )}
+                {show('showBalance') && (
+                  <div className="flex justify-between gap-6 text-[10px]">
+                    <span className="text-slate-500">Balance Due:</span>
+                    <span className="font-mono font-semibold">₹0.00</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Payment notes — full width below totals */}
+            {show('showNotes') && (
+              <div className="text-[10px] text-slate-600 border-t border-slate-100 pt-1.5">
+                <span className="font-semibold">Notes:</span>{' '}
+                <span className="text-slate-400 italic">(payment notes will print here)</span>
+              </div>
+            )}
+
+            {/* Thank you */}
+            {cfg?.thankYouMessage && (
+              <p className="text-center text-[10px] italic text-slate-500 pt-1">
+                {cfg.thankYouMessage}
+              </p>
+            )}
+
+            {/* Footer image — uploaded clinic banner */}
+            {show('showFooterImage') && clinic?.footerImageUrl && (
+              <div className="border-t border-slate-100 pt-2 mt-2 flex justify-center">
+                <img src={clinic.footerImageUrl} alt="footer"
+                     className="max-h-10 object-contain" style={{ maxWidth: '90%' }}/>
+              </div>
+            )}
+
+            {/* Footer signature row */}
+            <div className="border-t border-slate-100 pt-2 mt-3 flex justify-between items-end">
+              <div className="text-[9px] text-slate-400">
+                <p>Generated by SimpleRx EMR</p>
+                <p>25 Apr 2026, 11:00 AM</p>
+              </div>
+              {(show('showSignature') || (show('showSignatureImage') && doctor?.signature)) && (
+                <div className="text-right">
+                  {show('showSignatureImage') && doctor?.signature ? (
+                    <img src={doctor.signature} alt="sig" className="h-6 ml-auto object-contain mb-0.5" style={{ maxWidth: 80 }}/>
+                  ) : (
+                    <div className="w-20 border-b border-slate-300 mb-0.5 h-3"/>
+                  )}
+                  <p className="text-[9px] text-slate-500">Signature</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
