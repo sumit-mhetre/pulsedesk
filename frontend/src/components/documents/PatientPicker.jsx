@@ -3,7 +3,7 @@ import { Search, X, User } from 'lucide-react'
 import api from '../../lib/api'
 
 /**
- * PatientPicker — search by OPD code / name / phone, click to select.
+ * PatientPicker - search by OPD code / name / phone, click to select.
  *
  * Props:
  *   value     selected patient object (or null)
@@ -40,7 +40,7 @@ export default function PatientPicker({ value, onChange, disabled = false }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Selected state — show patient summary card with Change button
+  // Selected state - show patient summary card with Change button
   if (value) {
     return (
       <div className="p-3 border-2 border-primary/30 bg-blue-50/30 rounded-xl flex items-start gap-3">
@@ -73,7 +73,7 @@ export default function PatientPicker({ value, onChange, disabled = false }) {
     )
   }
 
-  // Empty state — search input
+  // Empty state - search input
   return (
     <div ref={wrapRef} className="relative">
       <div className="relative">

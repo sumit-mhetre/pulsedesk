@@ -1,4 +1,4 @@
-// Medications tab — list of medication orders for the admission, with the
+// Medications tab - list of medication orders for the admission, with the
 // ability to write new orders (doctor) and stop active orders.
 //
 // Layout:
@@ -22,16 +22,16 @@ import toast from 'react-hot-toast'
 import { format, formatDistanceToNow } from 'date-fns'
 
 const FREQUENCIES = [
-  { value: 'OD',   label: 'OD — Once a day',         times: '9 AM' },
-  { value: 'BD',   label: 'BD — Twice a day',        times: '9 AM, 9 PM' },
-  { value: 'TDS',  label: 'TDS — Three times a day', times: '8 AM, 2 PM, 8 PM' },
-  { value: 'QID',  label: 'QID — Four times a day',  times: '6 AM, 12 PM, 6 PM, 10 PM' },
-  { value: 'HS',   label: 'HS — At bedtime',         times: '10 PM' },
-  { value: 'STAT', label: 'STAT — Once, immediately', times: 'Now' },
-  { value: 'SOS',  label: 'SOS — As needed',         times: 'When required' },
-  { value: 'Q4H',  label: 'Q4H — Every 4 hours',     times: '6, 10, 2, 6, 10, 2' },
-  { value: 'Q6H',  label: 'Q6H — Every 6 hours',     times: '6 AM, 12, 6 PM, 12 AM' },
-  { value: 'Q8H',  label: 'Q8H — Every 8 hours',     times: '8 AM, 4 PM, 12 AM' },
+  { value: 'OD',   label: 'OD - Once a day',         times: '9 AM' },
+  { value: 'BD',   label: 'BD - Twice a day',        times: '9 AM, 9 PM' },
+  { value: 'TDS',  label: 'TDS - Three times a day', times: '8 AM, 2 PM, 8 PM' },
+  { value: 'QID',  label: 'QID - Four times a day',  times: '6 AM, 12 PM, 6 PM, 10 PM' },
+  { value: 'HS',   label: 'HS - At bedtime',         times: '10 PM' },
+  { value: 'STAT', label: 'STAT - Once, immediately', times: 'Now' },
+  { value: 'SOS',  label: 'SOS - As needed',         times: 'When required' },
+  { value: 'Q4H',  label: 'Q4H - Every 4 hours',     times: '6, 10, 2, 6, 10, 2' },
+  { value: 'Q6H',  label: 'Q6H - Every 6 hours',     times: '6 AM, 12, 6 PM, 12 AM' },
+  { value: 'Q8H',  label: 'Q8H - Every 8 hours',     times: '8 AM, 4 PM, 12 AM' },
 ]
 
 const ROUTES = ['PO', 'IV', 'IM', 'SC', 'SL', 'PR', 'Topical', 'Inhalation', 'Eye', 'Ear', 'Nasal']
@@ -124,7 +124,7 @@ export default function MedicationsTab({ admission }) {
         </div>
       </div>
 
-      {/* Inline bulk editor — appears at the top when showForm=true */}
+      {/* Inline bulk editor - appears at the top when showForm=true */}
       {showForm && canWrite && isOpen && (
         <BulkAddEditor
           admission={admission}
@@ -681,7 +681,7 @@ function OrderFormModal({ admission, onClose, onSaved }) {
         </>
       }>
       <div className="space-y-3">
-        {/* Medicine picker — type to search master, or type custom name */}
+        {/* Medicine picker - type to search master, or type custom name */}
         <div className="form-group">
           <label className="form-label">Medicine *</label>
           <MedicineAutocomplete

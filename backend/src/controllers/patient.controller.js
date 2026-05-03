@@ -15,7 +15,7 @@ async function generatePatientCode(clinicId) {
   // Extract numeric part if prefix already has numbers (e.g. MH1000)
   const numMatch = prefix.match(/^([a-zA-Z]+)(\d+)$/);
   if (numMatch) {
-    // prefix like MH1000 — use as starting counter
+    // prefix like MH1000 - use as starting counter
     const letters = numMatch[1];
     const startNum = parseInt(numMatch[2]);
     const count = await prisma.patient.count({ where: { clinicId } });
@@ -95,7 +95,7 @@ async function createPatient(req, res) {
     if (!name) return errorResponse(res, 'Name is required', 400);
     if (!phone) return errorResponse(res, 'Phone is required', 400);
 
-    // Warn (not block) if duplicate phone — return existing patient info as warning
+    // Warn (not block) if duplicate phone - return existing patient info as warning
     const duplicate = await prisma.patient.findFirst({
       where: { clinicId: req.clinicId, phone, isActive: true },
       select: { patientCode: true, name: true, id: true },
@@ -135,7 +135,7 @@ async function createPatient(req, res) {
 
     return successResponse(res, {
       ...patient,
-      warning: duplicate ? `Note: Phone ${phone} also used by ${duplicate.patientCode} — ${duplicate.name}` : null,
+      warning: duplicate ? `Note: Phone ${phone} also used by ${duplicate.patientCode} - ${duplicate.name}` : null,
     }, 'Patient registered successfully', 201);
   } catch (err) {
     console.error(err);

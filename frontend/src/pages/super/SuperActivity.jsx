@@ -128,7 +128,7 @@ function ClinicPickerView({ onSelect }) {
                   <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="font-semibold text-slate-800 text-sm truncate">{c.name}</p>
-                    <p className="text-xs text-slate-400 font-mono">{c.code || '—'}</p>
+                    <p className="text-xs text-slate-400 font-mono">{c.code || '-'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -423,7 +423,7 @@ function ClinicActivityView({ clinicId, onChangeClinic }) {
               </div>
             )}
             {!hasMore && logs.length >= PAGE_SIZE && (
-              <p className="text-center text-xs text-slate-400 mt-4">— end of feed —</p>
+              <p className="text-center text-xs text-slate-400 mt-4">- end of feed -</p>
             )}
           </>
         )}
@@ -455,7 +455,7 @@ function ActivityRow({ log }) {
   } else if (log.action === 'super.user_create' || log.action === 'user.create') {
     detailLine = `${d.role || 'user'}: ${d.name || ''}${d.email ? ` (${d.email})` : ''}`
   } else if (log.action === 'super.user_update' || log.action === 'user.update') {
-    detailLine = `${d.name || ''} — changed: ${(d.fieldsChanged || []).join(', ') || '(no fields)'}`
+    detailLine = `${d.name || ''} - changed: ${(d.fieldsChanged || []).join(', ') || '(no fields)'}`
   } else if (log.entityId) {
     detailLine = `${log.entity} · ${String(log.entityId).slice(0, 12)}${String(log.entityId).length > 12 ? '...' : ''}`
   } else if (log.entity) {

@@ -1,8 +1,8 @@
-// MAR tab — Medication Administration Record. Nurse's view: each scheduled
+// MAR tab - Medication Administration Record. Nurse's view: each scheduled
 // dose is a row, marked Given / Refused / Held / Missed.
 //
 // Layout:
-//   Date selector (default: today) — show schedule for that day
+//   Date selector (default: today) - show schedule for that day
 //   Per row: time, medicine, dose, route, status badge + action buttons
 //   Late doses (> 30 min past scheduled time, still pending) highlighted in orange
 //   Click "Given" → quick log with current time
@@ -203,7 +203,7 @@ function MARRow({ entry, isLate, canRecord, onAction }) {
           <p className="text-xs text-slate-400 italic mt-0.5">{entry.notes}</p>
         )}
         {entry.givenBy && (
-          <p className="text-xs text-slate-400">— {entry.givenBy.name}</p>
+          <p className="text-xs text-slate-400">- {entry.givenBy.name}</p>
         )}
       </div>
 
@@ -267,7 +267,7 @@ function ActionDialog({ entry, status, onConfirm, onCancel }) {
       }>
       <div className="mb-3">
         <p className="text-sm text-slate-700">
-          <strong>{entry.order?.medicineName}</strong> — {entry.order?.dose} {entry.order?.route}
+          <strong>{entry.order?.medicineName}</strong> - {entry.order?.dose} {entry.order?.route}
         </p>
         <p className="text-xs text-slate-500">
           Scheduled: {format(new Date(entry.scheduledTime), 'd MMM, hh:mm a')}

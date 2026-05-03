@@ -136,7 +136,7 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
     if (tab !== 'actions' || !clinic) return
     api.get(`/clinics/${clinicId}/master-data-counts`)
       .then(({ data }) => setSeedCounts(data.data))
-      .catch(() => {})  // non-blocking — button still works without counts
+      .catch(() => {})  // non-blocking - button still works without counts
   }, [tab, clinicId, clinic])
 
   const handleSeedMasterData = async () => {
@@ -203,7 +203,7 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
     try {
       const { data } = await api.post(`/clinics/${clinicId}/reset-admin-password`)
       setTempPassword({ email: data.data.adminEmail, name: data.data.adminName, password: data.data.tempPassword })
-      toast.success('Password reset — share with admin securely')
+      toast.success('Password reset - share with admin securely')
     } catch {} finally { setResetting(false) }
   }
 
@@ -315,7 +315,7 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
                     </div>
                     {!clinic.users || clinic.users.length === 0 ? (
                       <div className="text-center py-8">
-                        <p className="text-slate-400 text-sm mb-3">No users yet — clinic has no admin or staff accounts.</p>
+                        <p className="text-slate-400 text-sm mb-3">No users yet - clinic has no admin or staff accounts.</p>
                         <Button variant="outline" size="sm"
                           icon={<UserPlus className="w-3.5 h-3.5"/>}
                           onClick={() => setUserForm({ mode: 'add' })}>
@@ -404,7 +404,7 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
                             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"/>
                             <div className="text-sm">
                               <p className="font-semibold text-amber-900">Inactive clinic</p>
-                              <p className="text-amber-800">No prescriptions in the last 30 days{lastRx ? ` (last on ${format(new Date(lastRx), 'dd MMM yyyy')})` : ' — never used yet'}.</p>
+                              <p className="text-amber-800">No prescriptions in the last 30 days{lastRx ? ` (last on ${format(new Date(lastRx), 'dd MMM yyyy')})` : ' - never used yet'}.</p>
                             </div>
                           </div>
                         )}
@@ -571,7 +571,7 @@ export default function ClinicManageModal({ clinicId, onClose, onChanged }) {
 
                       {tempPassword && (
                         <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                          <p className="text-xs text-amber-900 font-semibold mb-2">⚠ Save this password — it won't be shown again</p>
+                          <p className="text-xs text-amber-900 font-semibold mb-2">⚠ Save this password - it won't be shown again</p>
                           <div className="space-y-2 text-sm">
                             <div className="flex items-center gap-2">
                               <span className="text-slate-500 w-24">Admin:</span>
@@ -751,7 +751,7 @@ function AuditLogRow({ log }) {
   } else if (log.action === 'super.user_create' || log.action === 'user.create') {
     detailLine = `${d.role}: ${d.name} (${d.email})`
   } else if (log.action === 'super.user_update' || log.action === 'user.update') {
-    detailLine = `${d.name} — changed: ${(d.fieldsChanged || []).join(', ') || '(no fields)'}`
+    detailLine = `${d.name} - changed: ${(d.fieldsChanged || []).join(', ') || '(no fields)'}`
   }
 
   return (

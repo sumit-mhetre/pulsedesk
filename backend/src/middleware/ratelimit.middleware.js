@@ -1,6 +1,6 @@
 const rateLimit = require('express-rate-limit')
 
-// ── Login rate limiter — 20 FAILED attempts per 15 min per IP ──
+// ── Login rate limiter - 20 FAILED attempts per 15 min per IP ──
 // Successful logins do NOT count against this limit (skipSuccessfulRequests).
 // A "success" is any response with HTTP status < 400.
 const loginLimiter = rateLimit({
@@ -16,7 +16,7 @@ const loginLimiter = rateLimit({
   keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || 'unknown',
 })
 
-// ── Forgot-password limiter — 5 requests per hour per IP ──
+// ── Forgot-password limiter - 5 requests per hour per IP ──
 // Prevents email enumeration attacks & spam.
 const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,  // 1 hour
@@ -30,7 +30,7 @@ const forgotPasswordLimiter = rateLimit({
   keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || 'unknown',
 })
 
-// ── General API limiter — 300 requests per min per IP ─────
+// ── General API limiter - 300 requests per min per IP ─────
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,       // 1 minute
   max: 300,
@@ -43,7 +43,7 @@ const apiLimiter = rateLimit({
   skip: (req) => req.path === '/api/health', // don't limit health checks
 })
 
-// ── Patient/prescription create — 100 per 10 min ─────────
+// ── Patient/prescription create - 100 per 10 min ─────────
 const createLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 100,

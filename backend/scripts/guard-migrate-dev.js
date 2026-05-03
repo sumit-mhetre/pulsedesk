@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Safety guard — prevents `prisma migrate dev` from ever running
+ * Safety guard - prevents `prisma migrate dev` from ever running
  * against a non-local database. Run before `prisma migrate dev`.
  *
  * This exists because `migrate dev` detects drift and will reset the
@@ -17,7 +17,7 @@
 const path = require('path');
 const fs   = require('fs');
 
-// Force load .env.development — this is what prisma will also use
+// Force load .env.development - this is what prisma will also use
 const envDevPath = path.resolve(__dirname, '..', '.env.development');
 
 if (!fs.existsSync(envDevPath)) {
@@ -54,6 +54,6 @@ if (!SAFE_HOSTS.includes(host)) {
   process.exit(1);
 }
 
-console.log(`✅ Safety check passed — DATABASE_URL points to "${host}"`);
+console.log(`✅ Safety check passed - DATABASE_URL points to "${host}"`);
 console.log(`   Using env file: .env.development\n`);
 

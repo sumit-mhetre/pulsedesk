@@ -133,7 +133,7 @@ const DEFAULT_DISCHARGE_SUMMARY_CONFIG = {
   showProcedures:      true,
   showConsultations:   true,
   showMedications:     true,    // medications during stay
-  showVitalsSnapshot:  false,   // last few readings — off by default (gets long)
+  showVitalsSnapshot:  false,   // last few readings - off by default (gets long)
   // Discharge details
   showConditionAtDc:   true,    // condition at discharge from notes
   showDischargeAdvice: true,
@@ -178,7 +178,7 @@ async function saveDesign(req, res) {
   try {
     const { type = 'prescription', config } = req.body;
 
-    // Upsert — one design per clinic per type
+    // Upsert - one design per clinic per type
     const existing = await prisma.pageDesign.findFirst({
       where: { clinicId: req.clinicId, type },
     });

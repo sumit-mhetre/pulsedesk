@@ -12,7 +12,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [daily, setDaily] = useState(null)
 
-  // Permission check — used to gate the daily-report fetch and the Today's Summary
+  // Permission check - used to gate the daily-report fetch and the Today's Summary
   // panel below. Receptionists don't have viewReports, so they shouldn't trigger
   // the call (which 403s and leaks "viewReports" into a toast via the global axios
   // interceptor). The Clinic Overview cards still load via /clinics/me.
@@ -27,12 +27,12 @@ export default function DashboardPage() {
       const clinic = await api.get('/clinics/me')
       setStats(clinic.data.data)
 
-      // Daily report — only fetched for users who actually have permission.
+      // Daily report - only fetched for users who actually have permission.
       // Without this guard, Receptionist hits a 403 on every dashboard load.
       if (canViewReports) {
         api.get('/reports/daily')
           .then(r => setDaily(r.data.data))
-          .catch(() => { /* swallow — clinic stats already showing */ })
+          .catch(() => { /* swallow - clinic stats already showing */ })
       }
     } catch (err) {
       // Retry once after 3 seconds (Render cold start)
@@ -63,21 +63,21 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard
           label="Total Patients"
-          value={stats?._count?.patients ?? '—'}
+          value={stats?._count?.patients ?? '-'}
           icon={<Users className="w-6 h-6" />}
           color="bg-primary"
           sub="Registered patients"
         />
         <StatCard
           label="Prescriptions"
-          value={stats?._count?.prescriptions ?? '—'}
+          value={stats?._count?.prescriptions ?? '-'}
           icon={<FileText className="w-6 h-6" />}
           color="bg-secondary"
           sub="Total written"
         />
         <StatCard
           label="Staff Members"
-          value={stats?._count?.users ?? '—'}
+          value={stats?._count?.users ?? '-'}
           icon={<UserCheck className="w-6 h-6" />}
           color="bg-accent"
           sub="Active users"
@@ -98,8 +98,8 @@ export default function DashboardPage() {
           <div className="space-y-3">
             {[
               { label: 'Clinic Name',    value: stats?.name },
-              { label: 'Email',          value: stats?.email || '—' },
-              { label: 'Phone',          value: stats?.mobile || stats?.phone || '—' },
+              { label: 'Email',          value: stats?.email || '-' },
+              { label: 'Phone',          value: stats?.mobile || stats?.phone || '-' },
               { label: 'Plan',           value: stats?.subscriptionPlan,  badge: true },
               { label: 'Status',         value: stats?.status, badge: true },
             ].map(({ label, value, badge }) => (
@@ -107,7 +107,7 @@ export default function DashboardPage() {
                 <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">{label}</span>
                 {badge
                   ? <Badge variant={value === 'Active' || value === 'Pro' ? 'success' : value === 'Standard' ? 'accent' : 'primary'}>{value}</Badge>
-                  : <span className="text-sm font-medium text-slate-700">{value || '—'}</span>
+                  : <span className="text-sm font-medium text-slate-700">{value || '-'}</span>
                 }
               </div>
             ))}
@@ -135,14 +135,14 @@ export default function DashboardPage() {
             ].map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
                 <span className="text-xs text-slate-400 font-medium uppercase tracking-wide">{label}</span>
-                <span className="text-sm font-medium text-slate-700">{value || '—'}</span>
+                <span className="text-sm font-medium text-slate-700">{value || '-'}</span>
               </div>
             ))}
           </div>
         </Card>
       </div>
 
-      {/* Today's Summary — gated by viewReports permission. Receptionists won't see
+      {/* Today's Summary - gated by viewReports permission. Receptionists won't see
           this panel since they don't have access to revenue/today's-Rx data. */}
       {canViewReports && daily && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
@@ -157,7 +157,7 @@ export default function DashboardPage() {
                 <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center text-xl flex-shrink-0`}>{s.icon}</div>
                 <div>
                   <p className="text-xs text-slate-400">{s.label}</p>
-                  <p className={`text-xl font-black ${s.color}`}>{s.value ?? '—'}</p>
+                  <p className={`text-xl font-black ${s.color}`}>{s.value ?? '-'}</p>
                 </div>
               </div>
             </Card>
@@ -165,7 +165,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Quick Actions block — REMOVED per user request.
+      {/* Quick Actions block - REMOVED per user request.
           The same actions are reachable from the sidebar nav. */}
     </div>
   )

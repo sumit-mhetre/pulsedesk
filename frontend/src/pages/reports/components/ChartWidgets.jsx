@@ -177,7 +177,7 @@ export function HeatmapHours({ data }) {
         return (
           <div
             key={h}
-            title={`${h}:00 — ${n} visits`}
+            title={`${h}:00 - ${n} visits`}
             className="h-10 rounded flex items-end justify-center text-[10px] font-semibold"
             style={{
               background: bg,

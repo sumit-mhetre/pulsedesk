@@ -182,7 +182,7 @@ export default function SuperDashboard() {
                     </span>
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-800 text-sm truncate">{c.name}</p>
-                      <p className="text-xs text-slate-400 font-mono">{c.code || '—'} · {c.plan}</p>
+                      <p className="text-xs text-slate-400 font-mono">{c.code || '-'} · {c.plan}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
@@ -246,7 +246,7 @@ export default function SuperDashboard() {
                 >
                   <div className="min-w-0">
                     <p className="font-semibold text-slate-800 text-sm truncate">{c.name}</p>
-                    <p className="text-xs text-slate-400 font-mono">{c.code || '—'} · {c.subscriptionPlan}</p>
+                    <p className="text-xs text-slate-400 font-mono">{c.code || '-'} · {c.subscriptionPlan}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-xs font-semibold text-warning">{c.ageDays} days quiet</p>

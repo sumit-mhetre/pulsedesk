@@ -8,7 +8,7 @@ const { resolvePermissions } = require('../lib/permissions');
 
 // Shape of the `clinic` relation we expose to authenticated clients.
 // MUST stay in sync with backend/src/middleware/auth.middleware.js
-// authenticate() — both endpoints (POST /auth/login and GET /auth/me)
+// authenticate() - both endpoints (POST /auth/login and GET /auth/me)
 // must return the same fields, otherwise the frontend's user shape
 // changes after a refresh (e.g., IPD sidebar disappears on first login
 // then reappears on refresh because ipdEnabled was missing).
@@ -39,7 +39,7 @@ async function login(req, res) {
     const superAdmin = await prisma.superAdmin.findUnique({ where: { email: emailNorm } });
     if (superAdmin) {
       const valid = await bcrypt.compare(password, superAdmin.password);
-      console.log(`[LOGIN] super admin path — password valid: ${valid}`);
+      console.log(`[LOGIN] super admin path - password valid: ${valid}`);
       if (!valid) return errorResponse(res, 'Invalid credentials', 401);
       const payload = { id: superAdmin.id, role: 'SUPER_ADMIN' };
       const accessToken = generateAccessToken(payload);
@@ -50,7 +50,7 @@ async function login(req, res) {
       }, 'Login successful');
     }
 
-    // Clinic user — email globally unique
+    // Clinic user - email globally unique
     const user = await prisma.user.findUnique({
       where: { email: emailNorm },
       include: { clinic: { select: CLINIC_SELECT } },
@@ -72,7 +72,7 @@ async function login(req, res) {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    // Save refresh token — non-blocking, won't crash login if DB issue
+    // Save refresh token - non-blocking, won't crash login if DB issue
     prisma.refreshToken.upsert({
       where: { token: refreshToken },
       create: { userId: user.id, token: refreshToken, expiresAt: new Date(Date.now() + 7*24*60*60*1000) },
@@ -150,7 +150,7 @@ async function changePassword(req, res) {
 // ── Forgot Password ──────────────────────────────────────────
 // Always returns success (even if email doesn't exist) to prevent email enumeration.
 // Generates a 1-hour token. Since we don't have email service yet, the reset URL
-// is logged to the server console — admin/dev can copy it from Render logs.
+// is logged to the server console - admin/dev can copy it from Render logs.
 // SuperAdmin accounts NOT supported here (separate recovery path via direct DB).
 async function forgotPassword(req, res) {
   try {
@@ -171,7 +171,7 @@ async function forgotPassword(req, res) {
         data:  { usedAt: new Date() },
       });
 
-      // Generate cryptographically-random token — 48 hex chars = 192 bits of entropy
+      // Generate cryptographically-random token - 48 hex chars = 192 bits of entropy
       const token = crypto.randomBytes(24).toString('hex');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
@@ -179,7 +179,7 @@ async function forgotPassword(req, res) {
         data: { userId: user.id, token, expiresAt },
       });
 
-      // Build reset URL — FRONTEND_URL falls back to request origin
+      // Build reset URL - FRONTEND_URL falls back to request origin
       const frontendUrl = process.env.FRONTEND_URL
         || req.headers.origin
         || req.headers.referer?.replace(/\/[^/]*$/, '')

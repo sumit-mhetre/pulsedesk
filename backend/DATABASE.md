@@ -1,4 +1,4 @@
-# SimpleRx EMR Backend — Database Operations Runbook
+# SimpleRx EMR Backend - Database Operations Runbook
 
 ## 🛑 Never do this
 
@@ -17,8 +17,8 @@ If Prisma prompts:
 
 | Command | What it does | Safe against prod? |
 |---|---|---|
-| `npm run migrate` | Guarded `migrate dev` — aborts if DATABASE_URL isn't `localhost` | ✅ Yes |
-| `npm run migrate:prod` | `migrate deploy` — applies pending migrations without reset | ✅ Yes |
+| `npm run migrate` | Guarded `migrate dev` - aborts if DATABASE_URL isn't `localhost` | ✅ Yes |
+| `npm run migrate:prod` | `migrate deploy` - applies pending migrations without reset | ✅ Yes |
 | `npx prisma migrate deploy` | Same as above, bare form | ✅ Yes |
 | `npx prisma studio` | Read/edit DB in browser GUI, manually | ⚠️ Depends which DB you point at |
 | `npx prisma generate` | Regenerates Prisma client, no DB changes | ✅ Yes |
@@ -26,9 +26,9 @@ If Prisma prompts:
 
 ## Environment files
 
-- `backend/.env` — production DATABASE_URL (Render Postgres). Destructive commands must never run against this.
-- `backend/.env.development` — local Postgres at `localhost:5432/pulsedesk_dev`. Gitignored. Used by `npm run dev`.
-- `backend/.env.example` — committed template (no secrets).
+- `backend/.env` - production DATABASE_URL (Render Postgres). Destructive commands must never run against this.
+- `backend/.env.development` - local Postgres at `localhost:5432/pulsedesk_dev`. Gitignored. Used by `npm run dev`.
+- `backend/.env.example` - committed template (no secrets).
 
 `src/index.js` auto-picks `.env.development` if it exists and `NODE_ENV !== 'production'`.
 
@@ -61,15 +61,15 @@ npm run seed
 
 ### "I need to apply an existing migration to production manually"
 
-Usually not needed — Render's build step does this. If you truly need to run from your machine:
+Usually not needed - Render's build step does this. If you truly need to run from your machine:
 
 ```bash
-# Temporarily point at production (DANGEROUS — don't leave it pointed here)
+# Temporarily point at production (DANGEROUS - don't leave it pointed here)
 # With .env.development removed or NODE_ENV=production
 npx prisma migrate deploy
 ```
 
-## Post-mortem — 2026-04-22 incident
+## Post-mortem - 2026-04-22 incident
 
 - User ran `npx prisma migrate dev` with `backend/.env` pointing at production Render Postgres
 - Prisma detected schema drift, offered to reset the schema to match migrations folder

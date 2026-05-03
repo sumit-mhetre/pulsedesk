@@ -38,7 +38,7 @@ async function getTodayQueue(req, res) {
 
     const appointments = await prisma.appointment.findMany({
       where,
-      orderBy: { tokenNo: 'desc' },   // newest first — latest token at top, no scrolling
+      orderBy: { tokenNo: 'desc' },   // newest first - latest token at top, no scrolling
       include: {
         patient: {
           select: {
@@ -91,7 +91,7 @@ async function addToQueue(req, res) {
         status:    { notIn: ['Done', 'Skipped'] },
       },
     });
-    if (alreadyIn) return errorResponse(res, `Patient already in queue — Token #${alreadyIn.tokenNo}`, 409);
+    if (alreadyIn) return errorResponse(res, `Patient already in queue - Token #${alreadyIn.tokenNo}`, 409);
 
     const tokenNo = await getNextToken(req.clinicId, new Date());
 
@@ -229,7 +229,7 @@ async function getQueueByDate(req, res) {
   try {
     const { date } = req.params;
 
-    // Reject reserved words (defensive — shouldn't happen with correct route order)
+    // Reject reserved words (defensive - shouldn't happen with correct route order)
     if (['today', 'next', 'tomorrow'].includes(date)) {
       return errorResponse(res, `Invalid date: "${date}" is a reserved word`, 400);
     }
@@ -314,12 +314,12 @@ async function startConsultation(req, res) {
             tokenNo:   nextToken,
             tokenDate: today,
             status:    'InConsultation',
-            notes:     'Direct prescription — no bill',
+            notes:     'Direct prescription - no bill',
           },
         });
         return successResponse(res, created, 'Queue entry created in consultation');
       }
-      return successResponse(res, null, 'No active queue entry — nothing to transition');
+      return successResponse(res, null, 'No active queue entry - nothing to transition');
     }
     if (appt.status === 'InConsultation') {
       return successResponse(res, appt, 'Already in consultation');
@@ -354,7 +354,7 @@ async function completeConsultation(req, res) {
     });
 
     if (!appt) {
-      return successResponse(res, null, 'No active queue entry — nothing to complete');
+      return successResponse(res, null, 'No active queue entry - nothing to complete');
     }
 
     const updated = await prisma.appointment.update({

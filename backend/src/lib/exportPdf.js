@@ -1,4 +1,4 @@
-// PDF exporter using pdfkit — simple, table + KPIs
+// PDF exporter using pdfkit - simple, table + KPIs
 //
 // Usage (streaming):
 //   const doc = toPDF({ title, subtitle, columnsMeta, rows, summary, clinicName });
@@ -178,10 +178,10 @@ function flattenSummary(summary) {
   for (const [k, v] of Object.entries(summary || {})) {
     if (v && typeof v === 'object' && !Array.isArray(v)) {
       for (const [k2, v2] of Object.entries(v)) {
-        out.push([`${label(k)} — ${k2}`, v2]);
+        out.push([`${label(k)} - ${k2}`, v2]);
       }
     } else if (Array.isArray(v)) {
-      // top-N lists — skip from KPI block, too long
+      // top-N lists - skip from KPI block, too long
     } else {
       out.push([label(k), v]);
     }

@@ -2,12 +2,12 @@ import { differenceInDays, format, parseISO, isValid as isValidDate } from 'date
 
 // Each subform receives:
 //   data       current `data` object (type-specific fields)
-//   setData    setter — accepts (newData) or function(prev) => newData
+//   setData    setter - accepts (newData) or function(prev) => newData
 //   diagnosis  current diagnosis string
 //   setDiagnosis
 //   remarks    current remarks string
 //   setRemarks
-//   setError   (msg|null) — used for live cross-field validation
+//   setError   (msg|null) - used for live cross-field validation
 //
 // Subforms ONLY render the type-specific portion.  Common fields (patient, examDate)
 // are rendered by the parent <DocumentForm/>.
@@ -205,7 +205,7 @@ export function MedicalCertSubform({ data, setData, diagnosis, setDiagnosis, rem
           <input
             type="text" readOnly
             className="form-input bg-slate-50 font-semibold"
-            value={totalDays > 0 ? `${totalDays} day${totalDays > 1 ? 's' : ''}` : '—'}
+            value={totalDays > 0 ? `${totalDays} day${totalDays > 1 ? 's' : ''}` : '-'}
           />
         </div>
       </div>
@@ -283,7 +283,7 @@ export function ReferralSubform({ data, setData, diagnosis, setDiagnosis, remark
               value={data.referredToSpecialty || ''}
               onChange={e => set('referredToSpecialty', e.target.value)}
             >
-              <option value="">— Select —</option>
+              <option value="">- Select -</option>
               {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
@@ -401,7 +401,7 @@ export function ReferralSubform({ data, setData, diagnosis, setDiagnosis, remark
         />
       </div>
 
-      {/* Hidden — diagnosis + remarks repurposed for referral */}
+      {/* Hidden - diagnosis + remarks repurposed for referral */}
       <details className="text-xs">
         <summary className="cursor-pointer text-slate-500 hover:text-slate-700">Additional notes (optional)</summary>
         <div className="mt-2 space-y-2">

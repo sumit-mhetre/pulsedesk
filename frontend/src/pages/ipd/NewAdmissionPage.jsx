@@ -1,4 +1,4 @@
-// New Admission page — single-page form for admitting a patient to a bed.
+// New Admission page - single-page form for admitting a patient to a bed.
 //
 // Sections (top to bottom):
 //   1. Patient (uses PatientPicker)
@@ -199,7 +199,7 @@ export default function NewAdmissionPage() {
               <select className="form-select"
                 value={form.primaryDoctorId}
                 onChange={e => setForm(f => ({ ...f, primaryDoctorId: e.target.value }))}>
-                <option value="">— Select doctor —</option>
+                <option value="">- Select doctor -</option>
                 {doctors.map(d => (
                   <option key={d.id} value={d.id}>
                     {d.name}{d.specialization ? ` (${d.specialization})` : ''}
@@ -216,12 +216,12 @@ export default function NewAdmissionPage() {
             <div className="form-group sm:col-span-2">
               <label className="form-label">Bed *</label>
               {beds.length === 0 ? (
-                <p className="text-sm text-slate-400 italic">No beds available — all occupied or under cleaning.</p>
+                <p className="text-sm text-slate-400 italic">No beds available - all occupied or under cleaning.</p>
               ) : (
                 <select className="form-select"
                   value={form.bedId}
                   onChange={e => setForm(f => ({ ...f, bedId: e.target.value }))}>
-                  <option value="">— Select bed —</option>
+                  <option value="">- Select bed -</option>
                   {Object.entries(bedsByWard).sort(([a], [b]) => a.localeCompare(b)).map(([ward, wardBeds]) => (
                     <optgroup key={ward} label={ward}>
                       {wardBeds.map(b => (
@@ -239,7 +239,7 @@ export default function NewAdmissionPage() {
                   Selected: <strong>{selectedBed.bedNumber}</strong> in {selectedBed.ward || 'Unspecified ward'}
                   {selectedBed.dailyRate > 0
                     ? <>, daily rate <strong>₹{selectedBed.dailyRate.toLocaleString('en-IN')}</strong></>
-                    : <span className="text-warning"> — daily rate not set</span>}
+                    : <span className="text-warning"> - daily rate not set</span>}
                 </p>
               )}
             </div>
@@ -288,7 +288,7 @@ export default function NewAdmissionPage() {
               <label className="form-label">Relation</label>
               <select className="form-select" value={form.attendantRelation}
                 onChange={e => setForm(f => ({ ...f, attendantRelation: e.target.value }))}>
-                <option value="">— Select —</option>
+                <option value="">- Select -</option>
                 {ATTENDANT_RELATIONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>

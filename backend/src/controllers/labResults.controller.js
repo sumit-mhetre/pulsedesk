@@ -1,4 +1,4 @@
-// Lab Results / Test Outcomes — recorded by doctors during prescriptions.
+// Lab Results / Test Outcomes - recorded by doctors during prescriptions.
 // Hybrid storage: anchored to a prescription (prints with Rx) AND keyed to patient
 // (queryable for trend charts across visits).
 
@@ -6,7 +6,7 @@ const prisma = require('../lib/prisma');
 const { successResponse, errorResponse } = require('../lib/response');
 const { logAudit } = require('../lib/audit');
 
-// Resolve the clinicId — super admin uses URL param, regular users use auth context.
+// Resolve the clinicId - super admin uses URL param, regular users use auth context.
 function resolveClinicId(req) {
   if (req.user?.role === 'SUPER_ADMIN' && req.params.clinicId) return req.params.clinicId;
   return req.clinicId;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-// Global dirty state — shared across all pages
+// Global dirty state - shared across all pages
 // DashLayout reads this to intercept sidebar navigation
 let _isDirty = false
 const _listeners = new Set()
@@ -30,7 +30,7 @@ export function useUnsavedChanges() {
     setGlobalDirty(v)
   }, [])
 
-  // Subscribe to global dirty flag — so pages that call setGlobalDirty(true)
+  // Subscribe to global dirty flag - so pages that call setGlobalDirty(true)
   // directly (without going through this hook's setDirty) also activate the
   // beforeunload guard. Bidirectional sync.
   useEffect(() => {

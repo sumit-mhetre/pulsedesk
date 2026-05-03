@@ -7,15 +7,15 @@ const {
 } = require('../controllers/masterdata.controller');
 const customFieldValuesCtrl = require('../controllers/customFieldValues.controller');
 
-// Reads — any authenticated user can read masters (needed for prescribing, billing, etc)
-// Writes — manageMasterData, except inline-prescribing cases noted below
+// Reads - any authenticated user can read masters (needed for prescribing, billing, etc)
+// Writes - manageMasterData, except inline-prescribing cases noted below
 
 // ── Medicines ─────────────────────────────────────────────
 router.get   ('/medicines',             authenticate, medicineCtrl.getAll);
-// Create: lower bar — anyone who can prescribe can add a missing medicine on the fly
+// Create: lower bar - anyone who can prescribe can add a missing medicine on the fly
 router.post  ('/medicines',             authenticate, requirePermission('createPrescriptions'), medicineCtrl.create);
 router.put   ('/medicines/:id',         authenticate, requirePermission('manageMasterData'), medicineCtrl.update);
-// Generic name — inline edit from prescription form, doctor/admin only (via createPrescriptions)
+// Generic name - inline edit from prescription form, doctor/admin only (via createPrescriptions)
 router.patch ('/medicines/:id/generic', authenticate, requirePermission('createPrescriptions'), medicineCtrl.setGeneric);
 router.delete('/medicines/:id',         authenticate, requirePermission('manageMasterData'), medicineCtrl.remove);
 
@@ -73,7 +73,7 @@ router.post  ('/custom-field-values',     authenticate, requirePermission('creat
 router.delete('/custom-field-values/:id', authenticate, requirePermission('manageMasterData'), customFieldValuesCtrl.remove);
 
 // ── Bulk seed ─────────────────────────────────────────────
-// Seed default master data — gated by 'loadDefaultMasterData' permission.
+// Seed default master data - gated by 'loadDefaultMasterData' permission.
 // ADMIN role gets this true by default. DOCTOR/RECEPTIONIST get it false by default
 // but admin can grant it per-user via the Capabilities editor. SUPER_ADMIN bypasses
 // all permission checks (handled inside requirePermission middleware).

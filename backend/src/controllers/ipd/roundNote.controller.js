@@ -1,10 +1,10 @@
-// Round Note controller — doctor's daily clinical notes on an admission.
+// Round Note controller - doctor's daily clinical notes on an admission.
 //
 // Supports two modes per entry:
-//   - SOAP (subjective / objective / assessment / plan) — structured
-//   - Free-form (freeText) — single block of text
+//   - SOAP (subjective / objective / assessment / plan) - structured
+//   - Free-form (freeText) - single block of text
 //
-// Both can coexist; the form picks one. Storage is permissive — null fields
+// Both can coexist; the form picks one. Storage is permissive - null fields
 // are fine.
 //
 // Permission gates set in routes:
@@ -99,7 +99,7 @@ async function createRoundNote(req, res) {
 }
 
 // ── Update a round note (only the author within 24 hours) ─
-// Notes are clinical records — generally append-only. We allow edits within
+// Notes are clinical records - generally append-only. We allow edits within
 // 24 hours of creation, only by the original author. After that, edits are
 // frozen for audit reasons.
 async function updateRoundNote(req, res) {

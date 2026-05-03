@@ -87,14 +87,14 @@ async function createUser(req, res) {
       return errorResponse(res, `Role must be one of: ${VALID_ROLES.join(', ')}`, 400);
     }
 
-    // Optional field cleanup — turn empty strings into nulls
+    // Optional field cleanup - turn empty strings into nulls
     const cleanPhone   = String(phone          || '').trim() || null;
     const cleanQual    = String(qualification  || '').trim() || null;
     const cleanSpec    = String(specialization || '').trim() || null;
     const cleanRegNo   = String(regNo          || '').trim() || null;
 
-    // For doctors, regNo and qualification are typically expected — warn (don't block) admin
-    // (not fatal — clinics may onboard doctors before they have reg cert in hand)
+    // For doctors, regNo and qualification are typically expected - warn (don't block) admin
+    // (not fatal - clinics may onboard doctors before they have reg cert in hand)
 
     // Determine target clinic: super admin sets it via URL param `:clinicId`,
     // regular admins implicitly use their own clinic from auth context.
@@ -132,7 +132,7 @@ async function createUser(req, res) {
       },
     });
 
-    // Audit log — track all user creates (regular admin or super admin)
+    // Audit log - track all user creates (regular admin or super admin)
     await logAudit(req, {
       clinicId: targetClinicId,
       action:   req.user?.role === 'SUPER_ADMIN' ? 'super.user_create' : 'user.create',
@@ -182,7 +182,7 @@ async function updateUser(req, res) {
         const resolvedNext = resolvePermissions({ role: newRole, permissions: permsOverride });
         if (!resolvedNext.manageUsers) {
           return errorResponse(res,
-            'You cannot remove your own "Manage Users" permission — it would lock you out.', 400);
+            'You cannot remove your own "Manage Users" permission - it would lock you out.', 400);
         }
       }
     }
@@ -208,7 +208,7 @@ async function updateUser(req, res) {
       }
     }
 
-    // Optional fields — empty strings become null (cleaner DB state)
+    // Optional fields - empty strings become null (cleaner DB state)
     const cleanOptional = (val) => {
       if (val === undefined) return undefined;
       const trimmed = String(val || '').trim();
@@ -234,7 +234,7 @@ async function updateUser(req, res) {
       },
     });
 
-    // Audit log — track changes made
+    // Audit log - track changes made
     const changedFields = Object.keys({
       ...(cleanName !== undefined ? { name: 1 } : {}),
       ...(phone !== undefined ? { phone: 1 } : {}),
@@ -329,7 +329,7 @@ async function getDoctors(req, res) {
   }
 }
 
-// ── Permissions metadata — for the admin UI to render the checkboxes ──
+// ── Permissions metadata - for the admin UI to render the checkboxes ──
 async function getPermissionsMeta(req, res) {
   try {
     const { ROLE_DEFAULTS } = require('../lib/permissions');

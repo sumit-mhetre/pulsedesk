@@ -85,9 +85,9 @@ export default function PatientDetailPage() {
           </div>
           <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div><p className="text-xs text-slate-400">Phone</p><p className="text-sm font-medium">{patient.phone}</p></div>
-            <div><p className="text-xs text-slate-400">Blood Group</p><p className="text-sm font-medium">{patient.bloodGroup || '—'}</p></div>
-            <div><p className="text-xs text-slate-400">Email</p><p className="text-sm font-medium truncate">{patient.email || '—'}</p></div>
-            <div><p className="text-xs text-slate-400">Address</p><p className="text-sm font-medium truncate">{patient.address || '—'}</p></div>
+            <div><p className="text-xs text-slate-400">Blood Group</p><p className="text-sm font-medium">{patient.bloodGroup || '-'}</p></div>
+            <div><p className="text-xs text-slate-400">Email</p><p className="text-sm font-medium truncate">{patient.email || '-'}</p></div>
+            <div><p className="text-xs text-slate-400">Address</p><p className="text-sm font-medium truncate">{patient.address || '-'}</p></div>
           </div>
         </div>
         {(patient.allergies?.length > 0 || patient.chronicConditions?.length > 0) && (
@@ -178,7 +178,7 @@ export default function PatientDetailPage() {
                         )}
                         {item.type === 'bill' && (
                           <>
-                            <p className="font-semibold text-sm text-slate-700">{item.data.billNo} — ₹{item.data.total.toLocaleString('en-IN')}</p>
+                            <p className="font-semibold text-sm text-slate-700">{item.data.billNo} - ₹{item.data.total.toLocaleString('en-IN')}</p>
                             <p className="text-xs text-slate-500">Paid: ₹{item.data.amountPaid.toLocaleString('en-IN')} • {item.data.paymentStatus}</p>
                           </>
                         )}
@@ -293,7 +293,7 @@ export default function PatientDetailPage() {
                   {v.temp  && <span className="text-sm bg-yellow-50 text-yellow-600 px-3 py-1 rounded-xl font-medium">Temp: {v.temp}°F</span>}
                   {v.spo2  && <span className="text-sm bg-cyan-50 text-cyan-600 px-3 py-1 rounded-xl font-medium">SpO2: {v.spo2}%</span>}
                   {v.pulse && <span className="text-sm bg-pink-50 text-pink-600 px-3 py-1 rounded-xl font-medium">Pulse: {v.pulse}/min</span>}
-                  {v.notes && <span className="text-sm text-slate-500 italic">— {v.notes}</span>}
+                  {v.notes && <span className="text-sm text-slate-500 italic">- {v.notes}</span>}
                 </div>
               </Card>
           ))}
@@ -397,7 +397,7 @@ function PatientDocumentsTab({ patientId }) {
 //
 // CHART INCLUSION: previously only fields with ≥2 numeric points were rendered
 // (a "trend" needs two points to draw a line). We've relaxed that to ≥1 so a
-// "spot reading" card shows a single dot inside the normal-range band — the
+// "spot reading" card shows a single dot inside the normal-range band - the
 // doctor sees the value, the date, and how it sits relative to normal even on
 // the first recording. A small caption clarifies that another date would draw
 // a trend line.
@@ -506,7 +506,7 @@ function PatientLabResultsTab({ patientId }) {
       }
     }
     for (const f of fieldMap.values()) f.points.sort((a, b) => a.dateMs - b.dateMs)
-    // ≥1 point — single-point fields will show as "spot readings"
+    // ≥1 point - single-point fields will show as "spot readings"
     return Array.from(fieldMap.values()).filter(f => f.points.length >= 1)
   }
 
@@ -653,7 +653,7 @@ function PatientLabResultsTab({ patientId }) {
         </div>
       </Card>
 
-      {/* Charts — one per (test × field) with ≥1 data points.
+      {/* Charts - one per (test × field) with ≥1 data points.
           Single-point fields render as a "spot reading" card with a dot + value caption.
           Multi-point fields render as a line trend. Both share the same card layout. */}
       {visibleTestKeys.length > 0 && (() => {
@@ -670,7 +670,7 @@ function PatientLabResultsTab({ patientId }) {
             <Card className="p-8 text-center">
               <TrendingUp className="w-10 h-10 text-slate-300 mx-auto mb-3"/>
               <p className="text-sm text-slate-500">
-                No numeric values yet — only textual results recorded so far.
+                No numeric values yet - only textual results recorded so far.
                 <br/>The full values table is below.
               </p>
             </Card>
@@ -707,13 +707,13 @@ function PatientLabResultsTab({ patientId }) {
                     <h4 className="font-semibold text-slate-800 text-sm truncate flex-1 min-w-0">{group.testName}</h4>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {isSinglePoint && (
-                        <span className="text-[10px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap" title="Only one reading recorded — add another date to see a trend line">
+                        <span className="text-[10px] bg-slate-100 text-slate-600 font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap" title="Only one reading recorded - add another date to see a trend line">
                           1 reading
                         </span>
                       )}
                       {hasRange && (
                         <span className="text-[10px] bg-success/10 text-success font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                          {field.normalLow ?? '—'}{typeof field.normalHigh === 'number' ? `–${field.normalHigh}` : '+'}
+                          {field.normalLow ?? '-'}{typeof field.normalHigh === 'number' ? `–${field.normalHigh}` : '+'}
                         </span>
                       )}
                     </div>
@@ -784,7 +784,7 @@ function PatientLabResultsTab({ patientId }) {
         )
       })()}
 
-      {/* Master table — every test × every date with values */}
+      {/* Master table - every test × every date with values */}
       {tableData.dates.length > 0 && (
         <Card className="p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
@@ -827,7 +827,7 @@ function PatientLabResultsTab({ patientId }) {
                           const flag = isOutOfRange(v, row.normalLow, row.normalHigh)
                           return (
                             <td key={d} className={`py-1.5 px-3 text-center whitespace-nowrap ${flag ? 'font-bold text-danger bg-red-50/50' : 'text-slate-800'}`}>
-                              {v != null && v !== '' ? v : <span className="text-slate-300">—</span>}
+                              {v != null && v !== '' ? v : <span className="text-slate-300">-</span>}
                             </td>
                           )
                         })}

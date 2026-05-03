@@ -77,7 +77,7 @@ export default function ViewDocumentPage() {
 
   return (
     <div className="space-y-4">
-      {/* Action bar — hidden on print */}
+      {/* Action bar - hidden on print */}
       <div className="print:hidden flex items-center justify-between">
         <PageHeader
           title={TYPE_TITLE[doc.type] || 'Certificate'}
@@ -95,7 +95,7 @@ export default function ViewDocumentPage() {
         </div>
       </div>
 
-      {/* Print area — mirrors Rx layout exactly */}
+      {/* Print area - mirrors Rx layout exactly */}
       <div
         className="relative bg-white rounded-2xl shadow-card border border-blue-50 p-6 max-w-3xl mx-auto print-area"
         style={{ lineHeight: lineHeightFor(cfg?.lineSpacing) }}
@@ -143,7 +143,7 @@ export default function ViewDocumentPage() {
         {/* paddingTop spacer */}
         <div style={{ height: `${(cfg?.paddingTop ?? 8) * 3.78}px` }} aria-hidden/>
 
-        {/* Document title — centered, large */}
+        {/* Document title - centered, large */}
         <div className="text-center mb-5">
           <h2 className="text-2xl font-black tracking-wider uppercase text-slate-900 print:text-black border-b-2 border-slate-300 inline-block pb-1 px-6">
             {TYPE_TITLE[doc.type]}

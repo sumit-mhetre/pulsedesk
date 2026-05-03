@@ -61,7 +61,7 @@ async function createTemplate(req, res) {
           advice:    advice    || null,
           nextVisit: nextVisit ? parseInt(nextVisit) : null,
           labTests:  labTests,
-          // Custom field values — only persist if the client sent a non-empty object.
+          // Custom field values - only persist if the client sent a non-empty object.
           // Same {[cfId]: string[]} shape as Prescription.customData.
           customData: customData && typeof customData === 'object' && Object.keys(customData).length > 0
             ? customData
@@ -250,7 +250,7 @@ async function saveAsTemplate(req, res) {
     });
 
     if (existing) {
-      // Update existing — increment version
+      // Update existing - increment version
       await prisma.$transaction(async (tx) => {
         await tx.templateMedicine.deleteMany({ where: { templateId: existing.id } });
         await tx.prescriptionTemplate.update({

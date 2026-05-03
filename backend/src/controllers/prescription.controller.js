@@ -15,7 +15,7 @@ async function generateRxNo(clinicId, doctorId) {
 // frequency: DAILY | ALT_DAYS | EVERY_3D | WEEKLY | SOS
 function calcQty(dosageCode, days, frequency = 'DAILY') {
   if (!dosageCode || !days) return null;
-  if (frequency === 'SOS') return null;  // As-needed — doctor fills manually
+  if (frequency === 'SOS') return null;  // As-needed - doctor fills manually
   const dosageMap = {
     '1-0-0': 1, '0-1-0': 1, '0-0-1': 1,
     '1-0-1': 2, '1-1-0': 2, '0-1-1': 2,
@@ -103,8 +103,8 @@ async function createPrescription(req, res) {
       medicines: rxMeds = [],
       labTests:  rxTests = [],
       customRxNo,
-      customData,   // { fieldId: stringValue, ... } — custom fields added by the clinic
-      vitals,       // snapshot of vitals taken at write-time — { systolicBP, diastolicBP, sugar, ... }
+      customData,   // { fieldId: stringValue, ... } - custom fields added by the clinic
+      vitals,       // snapshot of vitals taken at write-time - { systolicBP, diastolicBP, sugar, ... }
     } = req.body;
 
     const doctorId = req.user.id;
@@ -220,7 +220,7 @@ async function createPrescription(req, res) {
                 where: { id: med.medicineId, clinicId: req.clinicId },
                 data: { usageCount: { increment: 1 } },
               })
-              // Save per-doctor preference (dosage/timing/days/frequency/notes used last time) — non-blocking
+              // Save per-doctor preference (dosage/timing/days/frequency/notes used last time) - non-blocking
               if (med.dosage || med.timing || med.days || med.frequency || med.notesEn) {
                 prisma.doctorMedicinePreference.upsert({
                   where: { clinicId_doctorId_medicineId: { clinicId: req.clinicId, doctorId, medicineId: med.medicineId } },
@@ -233,7 +233,7 @@ async function createPrescription(req, res) {
         }
       }
 
-      // Add lab tests — only include those with valid labTestId
+      // Add lab tests - only include those with valid labTestId
       if (rxTests.length > 0) {
         const validTests = rxTests.filter(t => t.labTestId && t.labTestId !== 'undefined');
         // Deduplicate by labTestId
@@ -487,7 +487,7 @@ async function getDoctorPreferences(req, res) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  DRAFTS — autosave snapshots
+//  DRAFTS - autosave snapshots
 // ═══════════════════════════════════════════════════════════
 
 // Upsert draft for (doctor, patient).

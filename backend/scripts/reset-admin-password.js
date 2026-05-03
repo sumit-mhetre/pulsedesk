@@ -1,5 +1,5 @@
 // scripts/reset-admin-password.js
-// Standalone password reset utility — run on server (or locally against prod DB) when
+// Standalone password reset utility - run on server (or locally against prod DB) when
 // you're locked out and can't log in to trigger the forgot-password flow.
 //
 // Usage:

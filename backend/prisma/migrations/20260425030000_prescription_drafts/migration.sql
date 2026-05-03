@@ -1,4 +1,4 @@
--- PrescriptionDraft — in-flight autosave snapshots
+-- PrescriptionDraft - in-flight autosave snapshots
 CREATE TABLE "prescription_drafts" (
     "id"         TEXT NOT NULL,
     "clinicId"   TEXT NOT NULL,

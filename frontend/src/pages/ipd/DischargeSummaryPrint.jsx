@@ -258,7 +258,7 @@ export default function DischargeSummaryPrint() {
               {cfg.showPatient && <Row label="Patient Name" value={patient.name}/>}
               {(cfg.showAge || cfg.showGender) && (
                 <Row label="Age / Sex"
-                  value={`${cfg.showAge && patient.age ? patient.age + ' yrs' : ''}${cfg.showAge && cfg.showGender ? ' / ' : ''}${cfg.showGender && patient.gender ? patient.gender : ''}`.trim() || '—'}/>
+                  value={`${cfg.showAge && patient.age ? patient.age + ' yrs' : ''}${cfg.showAge && cfg.showGender ? ' / ' : ''}${cfg.showGender && patient.gender ? patient.gender : ''}`.trim() || '-'}/>
               )}
               {cfg.showPhone && patient.phone && <Row label="Phone" value={patient.phone}/>}
               {cfg.showAddress && patient.address && <Row label="Address" value={patient.address}/>}
@@ -363,7 +363,7 @@ export default function DischargeSummaryPrint() {
                     <div key={r.id} style={{ borderTop: '1px dotted #e5e7eb', padding: '3px 0' }}>
                       <strong>{r.testName}</strong>
                       {r.resultDate && <span style={{ color: '#6b7280' }}> ({format(new Date(r.resultDate), 'd MMM')})</span>}
-                      {r.freeTextResult && <span> — {r.freeTextResult}</span>}
+                      {r.freeTextResult && <span> - {r.freeTextResult}</span>}
                       {r.values?.length > 0 && (
                         <span style={{ color: '#374151' }}>
                           {' '}
@@ -400,7 +400,7 @@ export default function DischargeSummaryPrint() {
                   {data.medicationsInStay.map(m => (
                     <div key={m.id} style={{ borderTop: '1px dotted #e5e7eb', padding: '2px 0' }}>
                       <strong>{m.medicineName}</strong>
-                      {' '}— {m.dose} · {m.route} · {m.frequency}
+                      {' '}- {m.dose} · {m.route} · {m.frequency}
                       {m.status !== 'ACTIVE' && <span style={{ color: '#6b7280' }}> ({m.status})</span>}
                     </div>
                   ))}
@@ -453,8 +453,8 @@ export default function DischargeSummaryPrint() {
                       </td>
                       <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>{m.dose}</td>
                       <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>{m.frequency}</td>
-                      <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>{m.duration || '—'}</td>
-                      <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>{m.instructions || '—'}</td>
+                      <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>{m.duration || '-'}</td>
+                      <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>{m.instructions || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -581,7 +581,7 @@ function Row({ label, value }) {
   return (
     <div style={{ display: 'flex', gap: 8, padding: '2px 0' }}>
       <div style={{ width: 110, color: '#6b7280', flexShrink: 0 }}>{label}:</div>
-      <div style={{ color: '#1f2937', flex: 1 }}>{value || '—'}</div>
+      <div style={{ color: '#1f2937', flex: 1 }}>{value || '-'}</div>
     </div>
   )
 }

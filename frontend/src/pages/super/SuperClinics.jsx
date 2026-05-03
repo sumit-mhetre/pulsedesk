@@ -78,7 +78,7 @@ export default function SuperClinics() {
                   <tr key={c.id}>
                     <td>
                       <span className="font-mono text-xs font-semibold text-primary">
-                        {c.code || '—'}
+                        {c.code || '-'}
                       </span>
                     </td>
                     <td>
@@ -87,11 +87,11 @@ export default function SuperClinics() {
                         <p className="text-xs text-slate-400 font-mono">{c.id.slice(0, 8)}...</p>
                       </div>
                     </td>
-                    <td className="text-sm text-slate-500">{c.mobile || c.phone || '—'}</td>
+                    <td className="text-sm text-slate-500">{c.mobile || c.phone || '-'}</td>
                     <td><Badge variant={planColors[c.subscriptionPlan]}>{c.subscriptionPlan}</Badge></td>
                     <td><Badge variant={statusColors[c.status]}>{c.status}</Badge></td>
-                    <td className="text-sm font-medium text-slate-700">{c._count?.users ?? '—'}</td>
-                    <td className="text-sm font-medium text-slate-700">{c._count?.patients ?? '—'}</td>
+                    <td className="text-sm font-medium text-slate-700">{c._count?.users ?? '-'}</td>
+                    <td className="text-sm font-medium text-slate-700">{c._count?.patients ?? '-'}</td>
                     <td className="text-sm text-slate-500">{format(new Date(c.createdAt), 'dd MMM yy')}</td>
                     <td className="text-right">
                       <Button variant="outline" size="sm"

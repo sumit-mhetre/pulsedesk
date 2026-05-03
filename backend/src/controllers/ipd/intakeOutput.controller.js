@@ -1,4 +1,4 @@
-// Intake/Output controller — fluid balance tracking for an admission.
+// Intake/Output controller - fluid balance tracking for an admission.
 //
 // Each row records inputs (oral, IV, RT feed) and outputs (urine, drain,
 // vomit, stool count) at a point in time. Used clinically to monitor fluid

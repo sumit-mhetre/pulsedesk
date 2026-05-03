@@ -87,7 +87,7 @@ function PatientModal({ mode, initialForm, onClose, onSaved, navigate }) {
       try {
         const { data } = await api.get(`/patients/search?q=${form.phone}`)
         const dup = data.data?.find(p => p.phone === form.phone)
-        if (dup) setWarning(`⚠ Phone already used by ${dup.patientCode} — ${dup.name}`)
+        if (dup) setWarning(`⚠ Phone already used by ${dup.patientCode} - ${dup.name}`)
         else setWarning('')
       } catch {}
     }, 400)
@@ -363,7 +363,7 @@ export default function PatientsPage() {
                     {p.chronicConditions?.length > 0 && <Badge variant="warning">{p.chronicConditions[0]}</Badge>}
                   </div>
                   <p className="text-sm text-slate-400 mt-0.5">
-                    {p.age ? `${p.age}y` : '—'} {p.gender} • {p.phone}
+                    {p.age ? `${p.age}y` : '-'} {p.gender} • {p.phone}
                     {p._count?.prescriptions > 0 && ` • ${p._count.prescriptions} Rx`}
                   </p>
                 </div>

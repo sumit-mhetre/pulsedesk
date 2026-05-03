@@ -52,7 +52,7 @@ function authorize(...roles) {
   };
 }
 
-// Check specific permission — respects role defaults + per-user overrides.
+// Check specific permission - respects role defaults + per-user overrides.
 // SuperAdmin always passes. ADMIN/DOCTOR/RECEPTIONIST are resolved via permissions lib.
 function requirePermission(permission) {
   return (req, res, next) => {
@@ -64,7 +64,7 @@ function requirePermission(permission) {
 
     // Defensive: if the lib import failed, log clearly rather than throwing cryptic error
     if (!permissionsLib || typeof permissionsLib.userCan !== 'function') {
-      console.error('[requirePermission] permissions lib not loaded — check backend/src/lib/permissions.js');
+      console.error('[requirePermission] permissions lib not loaded - check backend/src/lib/permissions.js');
       return errorResponse(res, 'Server configuration error', 500);
     }
 
@@ -73,7 +73,7 @@ function requirePermission(permission) {
   };
 }
 
-// Backward-compatible alias — older code uses hasPermission(...)
+// Backward-compatible alias - older code uses hasPermission(...)
 const hasPermission = requirePermission;
 
 // Ensure user belongs to the clinic they're accessing

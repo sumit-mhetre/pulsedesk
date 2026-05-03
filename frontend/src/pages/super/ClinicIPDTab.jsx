@@ -1,4 +1,4 @@
-// IPD Configuration tab — embedded in the Super Admin's ClinicManageModal.
+// IPD Configuration tab - embedded in the Super Admin's ClinicManageModal.
 // Handles: enable/disable IPD per clinic, set facility type, set up bed inventory.
 //
 // Note: Super Admin only sets up bed STRUCTURE (number, type, ward, floor).
@@ -16,7 +16,7 @@ import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
 const FACILITY_OPTIONS = [
-  { value: 'CLINIC_ONLY',  label: 'Clinic Only',  hint: 'OPD only — no IPD' },
+  { value: 'CLINIC_ONLY',  label: 'Clinic Only',  hint: 'OPD only - no IPD' },
   { value: 'NURSING_HOME', label: 'Nursing Home', hint: 'Small inpatient setup' },
   { value: 'HOSPITAL',     label: 'Hospital',     hint: 'Larger inpatient setup' },
 ]
@@ -164,7 +164,7 @@ export default function ClinicIPDTab({ clinicId, onChanged }) {
               value={form.facilityType}
               onChange={e => { setForm(f => ({ ...f, facilityType: e.target.value })); setDirty(true) }}>
               {FACILITY_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label} — {opt.hint}</option>
+                <option key={opt.value} value={opt.value}>{opt.label} - {opt.hint}</option>
               ))}
             </select>
           </div>
@@ -207,7 +207,7 @@ export default function ClinicIPDTab({ clinicId, onChanged }) {
           {stats.lastAdmission && (
             <p className="text-xs text-slate-500 mt-3">
               Last admission: <span className="font-semibold text-slate-700">{stats.lastAdmission.admissionNumber}</span>
-              {' '}— {format(new Date(stats.lastAdmission.admittedAt), 'd MMM yyyy, hh:mm a')}
+              {' '}- {format(new Date(stats.lastAdmission.admittedAt), 'd MMM yyyy, hh:mm a')}
             </p>
           )}
         </Card>
@@ -258,8 +258,8 @@ export default function ClinicIPDTab({ clinicId, onChanged }) {
                   <tr key={bed.id}>
                     <td className="font-semibold text-slate-800 text-sm">{bed.bedNumber}</td>
                     <td>{BED_TYPES.find(t => t.value === bed.bedType)?.label || bed.bedType}</td>
-                    <td className="text-slate-600">{bed.ward || '—'}</td>
-                    <td className="text-slate-600">{bed.floor || '—'}</td>
+                    <td className="text-slate-600">{bed.ward || '-'}</td>
+                    <td className="text-slate-600">{bed.floor || '-'}</td>
                     <td>
                       <Badge variant={STATUS_VARIANTS[bed.status]}>{bed.status}</Badge>
                     </td>
@@ -290,7 +290,7 @@ export default function ClinicIPDTab({ clinicId, onChanged }) {
               <p className="font-semibold text-slate-800 text-sm">IPD module disabled</p>
               <p className="text-xs text-slate-600 mt-1">
                 Bed management, admissions, and inpatient features are hidden from this clinic.
-                Existing data is preserved — re-enabling restores access.
+                Existing data is preserved - re-enabling restores access.
               </p>
             </div>
           </div>
@@ -329,7 +329,7 @@ export default function ClinicIPDTab({ clinicId, onChanged }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Bed form modal — used for both single Add and Edit (no rate field)
+// Bed form modal - used for both single Add and Edit (no rate field)
 // ─────────────────────────────────────────────────────────
 function BedFormModal({ bed, onClose, onSave, onDelete }) {
   const isNew = !bed
@@ -445,7 +445,7 @@ function BedFormModal({ bed, onClose, onSave, onDelete }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Bulk add beds modal — Super Admin setup tool (no rate)
+// Bulk add beds modal - Super Admin setup tool (no rate)
 // ─────────────────────────────────────────────────────────
 function BulkAddBedsModal({ clinicId, onClose, onCreated }) {
   const [form, setForm] = useState({
@@ -543,7 +543,7 @@ function BulkAddBedsModal({ clinicId, onClose, onCreated }) {
         </p>
         {form.ward && <p className="text-xs text-slate-500 mt-1">All in ward: <strong>{form.ward}</strong></p>}
         <p className="text-xs text-slate-500 mt-1 italic">
-          Daily rate will default to ₹0 — clinic admin can update from their Bed Management page.
+          Daily rate will default to ₹0 - clinic admin can update from their Bed Management page.
         </p>
       </div>
     </Modal>

@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
       await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() })
       setSent(true)
     } catch (err) {
-      // Backend always returns success to prevent enumeration — only network/rate-limit errors land here
+      // Backend always returns success to prevent enumeration - only network/rate-limit errors land here
       const msg = err?.response?.data?.message || 'Could not process request. Please try again.'
       setError(msg)
     } finally {

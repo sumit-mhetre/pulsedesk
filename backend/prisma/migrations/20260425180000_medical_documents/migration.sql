@@ -69,7 +69,7 @@ ALTER TABLE "medical_document_templates"
   ADD CONSTRAINT "medical_document_templates_clinicId_fkey"
   FOREIGN KEY ("clinicId") REFERENCES "clinics"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- Seed default document templates for ALL existing clinics (idempotent — only inserts if not present)
+-- Seed default document templates for ALL existing clinics (idempotent - only inserts if not present)
 INSERT INTO "medical_document_templates" ("id", "clinicId", "type", "name", "isDefault", "diagnosis", "remarks", "data", "createdAt", "updatedAt")
 SELECT
   gen_random_uuid()::text,
@@ -84,25 +84,25 @@ SELECT
   NOW()
 FROM "clinics" c
 CROSS JOIN (VALUES
-  ('FITNESS_CERT', 'General fitness — Employment', TRUE,
+  ('FITNESS_CERT', 'General fitness - Employment', TRUE,
    'No abnormality detected on physical examination.', '',
    '{"verdict":"FIT","fitnessFor":"Employment","validityMonths":6,"vitals":{}}'),
   ('FITNESS_CERT', 'Pre-employment fitness', FALSE,
    'Patient is in good general health.',
    'Recommended for office / desk-based roles.',
    '{"verdict":"FIT","fitnessFor":"Pre-employment","validityMonths":12,"vitals":{}}'),
-  ('FITNESS_CERT', 'Sports fitness — adult', FALSE,
+  ('FITNESS_CERT', 'Sports fitness - adult', FALSE,
    'Cardiovascular and musculoskeletal exam normal.', '',
    '{"verdict":"FIT","fitnessFor":"Sports","validityMonths":6,"vitals":{}}'),
-  ('MEDICAL_CERT', 'Viral fever — 3 days rest', TRUE,
+  ('MEDICAL_CERT', 'Viral fever - 3 days rest', TRUE,
    'Viral fever with body ache and headache',
    'Patient advised bed rest, plenty of fluids, and prescribed medication.',
    '{"defaultRestDays":3}'),
-  ('MEDICAL_CERT', 'Acute gastroenteritis — 2 days', FALSE,
+  ('MEDICAL_CERT', 'Acute gastroenteritis - 2 days', FALSE,
    'Acute gastroenteritis',
    'Patient advised oral rehydration, light diet, and prescribed medication.',
    '{"defaultRestDays":2}'),
-  ('MEDICAL_CERT', 'Migraine / severe headache — 1 day', FALSE,
+  ('MEDICAL_CERT', 'Migraine / severe headache - 1 day', FALSE,
    'Acute migraine',
    'Patient advised rest in a quiet, darkened environment.',
    '{"defaultRestDays":1}'),

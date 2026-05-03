@@ -350,7 +350,7 @@ function EditReportModal({ report, onClose, onSave }) {
 }
 
 function formatCell(val, type) {
-  if (val === null || val === undefined || val === '') return '—'
+  if (val === null || val === undefined || val === '') return '-'
   if (type === 'currency') return '₹' + Number(val).toLocaleString('en-IN', { maximumFractionDigits: 2 })
   if (type === 'date' || val instanceof Date) {
     const d = val instanceof Date ? val : new Date(val)

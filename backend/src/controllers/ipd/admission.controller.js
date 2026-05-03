@@ -1,4 +1,4 @@
-// IPD admission controller — handles the full admission lifecycle.
+// IPD admission controller - handles the full admission lifecycle.
 //
 // Permission gates (set in routes file):
 //   - listAdmissions, getAdmission     → manageIPD (anyone in IPD can view)
@@ -55,7 +55,7 @@ function computeDaysAdmitted(admittedAt, endAt = new Date()) {
   const start = new Date(admittedAt)
   const end = endAt instanceof Date ? endAt : new Date(endAt)
 
-  // Strip time — count by calendar day boundary
+  // Strip time - count by calendar day boundary
   const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime()
   const endDay   = new Date(end.getFullYear(),   end.getMonth(),   end.getDate()).getTime()
   const days = Math.floor((endDay - startDay) / (1000 * 60 * 60 * 24)) + 1
@@ -278,7 +278,7 @@ async function createAdmission(req, res) {
   }
 }
 
-// ── Update admission (limited — no patient/bed change here) ──
+// ── Update admission (limited - no patient/bed change here) ──
 // Fields like notes, diagnosis, attendant info, deposit can be updated
 // after admission. Bed transfer is a separate endpoint (Step 4 / separate flow).
 async function updateAdmission(req, res) {
@@ -387,7 +387,7 @@ async function dischargeAdmission(req, res) {
         },
       })
 
-      // Free the bed — mark for cleaning
+      // Free the bed - mark for cleaning
       if (existing.bedId) {
         await tx.bed.update({
           where: { id: existing.bedId },

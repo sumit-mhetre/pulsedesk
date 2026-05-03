@@ -1,4 +1,4 @@
-// IPD Charges tab — line-item ledger of all chargeable items.
+// IPD Charges tab - line-item ledger of all chargeable items.
 //
 // Layout:
 //   - Summary card with category breakdown + total

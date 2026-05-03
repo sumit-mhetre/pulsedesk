@@ -99,7 +99,7 @@ function buildWhere(type, clinicId, dateRange, filters = {}, currentUser = null)
     if (dateRange.to)   where[dateField].lte = endOfDay(new Date(dateRange.to));
   }
 
-  // Doctor scoping — if role DOCTOR, restrict to own patients/prescriptions/appointments
+  // Doctor scoping - if role DOCTOR, restrict to own patients/prescriptions/appointments
   const isRestricted = currentUser && currentUser.role === 'DOCTOR';
   if (isRestricted && type !== 'patients') {
     where.doctorId = currentUser.id;

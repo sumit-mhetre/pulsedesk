@@ -8,7 +8,7 @@ const ctrl = require('../controllers/clinic.controller');
 // Otherwise `GET /me` and `PUT /me` match the `/:id` handler with id="me"
 // and demand SUPER_ADMIN rights.
 
-// ── Clinic (self) routes — any authenticated user ─────────
+// ── Clinic (self) routes - any authenticated user ─────────
 router.get('/me', authenticate, ctrl.getMyClinic);
 router.put('/me', authenticate, requirePermission('manageSettings'), ctrl.updateClinic);
 
@@ -16,13 +16,13 @@ router.put('/me', authenticate, requirePermission('manageSettings'), ctrl.update
 // Get all clinics
 router.get('/', authenticate, authorize('SUPER_ADMIN'), ctrl.getAllClinics);
 
-// Create clinic (admin user is OPTIONAL — see controller for the wantsAdmin logic)
+// Create clinic (admin user is OPTIONAL - see controller for the wantsAdmin logic)
 router.post('/',
   authenticate,
   authorize('SUPER_ADMIN'),
   [
     body('name').notEmpty().withMessage('Clinic name required'),
-    // Admin fields validated conditionally inside the controller — here we only ensure
+    // Admin fields validated conditionally inside the controller - here we only ensure
     // that if any are sent, they're typed correctly.
     body('adminEmail').optional({ checkFalsy: true }).isEmail().withMessage('Valid admin email required'),
     body('adminPassword').optional({ checkFalsy: true }).isLength({ min: 6 }).withMessage('Password min 6 characters'),

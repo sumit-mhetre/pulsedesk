@@ -1,14 +1,14 @@
-// IPD bed controller — clinic-scoped CRUD + bed board view.
+// IPD bed controller - clinic-scoped CRUD + bed board view.
 //
 // Permission model:
 //   - listBeds, getBedBoard      → manageIPD (anyone in IPD can view)
 //   - createBed, updateBed       → manageBeds (admin/doctor/receptionist)
 //   - deleteBed (deactivate)     → manageBeds
 //   - updateBedRate              → manageIPDBilling (admin/doctor/receptionist)
-//                                   — rate is a billing config, separate gate
+//                                   - rate is a billing config, separate gate
 //
 // Status constraints:
-//   - OCCUPIED status cannot be set manually — only through admission flow
+//   - OCCUPIED status cannot be set manually - only through admission flow
 //   - VACANT cannot be set when bed has currentAdmissionId (must discharge first)
 
 const prisma = require('../../lib/prisma')
@@ -36,7 +36,7 @@ async function listBeds(req, res) {
   }
 }
 
-// ── Bed board — grouped by ward, with current admission preview ──
+// ── Bed board - grouped by ward, with current admission preview ──
 async function getBedBoard(req, res) {
   try {
     const beds = await prisma.bed.findMany({
@@ -85,7 +85,7 @@ async function getBedBoard(req, res) {
 }
 
 // ── Create a single bed (clinic admin) ────────────────────
-// Daily rate is optional — defaults to 0, can be set later.
+// Daily rate is optional - defaults to 0, can be set later.
 async function createBed(req, res) {
   try {
     const { bedNumber, bedType, ward, floor, notes, status } = req.body
@@ -239,7 +239,7 @@ async function bulkCreateBeds(req, res) {
   }
 }
 
-// ── Update bed details (NOT rate — see updateBedRate) ─────
+// ── Update bed details (NOT rate - see updateBedRate) ─────
 async function updateBed(req, res) {
   try {
     const existing = await prisma.bed.findFirst({
@@ -257,13 +257,13 @@ async function updateBed(req, res) {
       if (dup) return errorResponse(res, `Bed ${bedNumber} already exists`, 409)
     }
 
-    // Cannot manually set OCCUPIED — only via admission
+    // Cannot manually set OCCUPIED - only via admission
     if (status === 'OCCUPIED' && existing.status !== 'OCCUPIED') {
-      return errorResponse(res, 'Cannot set OCCUPIED manually — admit a patient instead', 400)
+      return errorResponse(res, 'Cannot set OCCUPIED manually - admit a patient instead', 400)
     }
     // Cannot mark VACANT if bed has active admission
     if (status === 'VACANT' && existing.currentAdmissionId) {
-      return errorResponse(res, 'Cannot mark vacant — discharge the patient first', 400)
+      return errorResponse(res, 'Cannot mark vacant - discharge the patient first', 400)
     }
 
     const data = {}
@@ -325,7 +325,7 @@ async function deleteBed(req, res) {
     if (!existing) return errorResponse(res, 'Bed not found', 404)
 
     if (existing.currentAdmissionId) {
-      return errorResponse(res, 'Cannot delete — bed is currently occupied', 400)
+      return errorResponse(res, 'Cannot delete - bed is currently occupied', 400)
     }
 
     await prisma.bed.update({

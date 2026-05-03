@@ -7,7 +7,7 @@
 
 ---
 
-## Step 1 — Create the Database
+## Step 1 - Create the Database
 
 Open pgAdmin or psql and run:
 
@@ -17,7 +17,7 @@ CREATE DATABASE pulsedesk;
 
 ---
 
-## Step 2 — Backend Setup
+## Step 2 - Backend Setup
 
 ```bash
 # Navigate to backend
@@ -54,7 +54,7 @@ Backend will run on: **http://localhost:5000**
 
 ---
 
-## Step 3 — Frontend Setup
+## Step 3 - Frontend Setup
 
 Open a **new terminal window**:
 
@@ -73,7 +73,7 @@ Frontend will run on: **http://localhost:5173**
 
 ---
 
-## Step 4 — Open in Browser
+## Step 4 - Open in Browser
 
 Go to: **http://localhost:5173**
 

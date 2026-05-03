@@ -1,7 +1,7 @@
 import { memo } from 'react'
 
 /**
- * SimpleRx EMR Logo component — reusable, adaptive colors.
+ * SimpleRx EMR Logo component - reusable, adaptive colors.
  *
  * Props:
  *   variant   'light' (default) → blue text on white/light background
@@ -26,7 +26,7 @@ function Logo({ variant = 'light', size = 'md', showText = true, className = '' 
   const emrSize  = { sm: 'text-[9px]', md: 'text-[10px]', lg: 'text-xs', xl: 'text-sm' }[size] || 'text-[10px]'
   const gap      = { sm: 'gap-2', md: 'gap-2.5', lg: 'gap-3', xl: 'gap-3.5' }[size] || 'gap-2.5'
 
-  // Text color: adaptive — matches background context
+  // Text color: adaptive - matches background context
   const textColor = isDark ? 'text-white' : 'text-primary'
   const emrColor  = isDark ? 'text-white/80' : 'text-primary'
 

@@ -253,7 +253,7 @@
     border-collapse: collapse !important;
   }
 
-  /* Subtle header shading on table header row — prints as very light grey */
+  /* Subtle header shading on table header row - prints as very light grey */
   .print-area thead tr {
     background: #eee !important;
     -webkit-print-color-adjust: exact !important;

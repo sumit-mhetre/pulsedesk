@@ -1,4 +1,4 @@
-// Admissions list — paginated table with status filter, search, date range.
+// Admissions list - paginated table with status filter, search, date range.
 //
 // Shows: admission number, patient, doctor, bed, admitted date, status,
 // running days, current bed-rent total. Click row → admission detail page.
@@ -196,12 +196,12 @@ export default function AdmissionsListPage() {
                           {[a.patient?.patientCode, a.patient?.age != null ? `${a.patient.age}y` : null, a.patient?.gender].filter(Boolean).join(' • ')}
                         </p>
                       </td>
-                      <td className="text-slate-700 text-sm">{a.primaryDoctor?.name || '—'}</td>
+                      <td className="text-slate-700 text-sm">{a.primaryDoctor?.name || '-'}</td>
                       <td>
                         {a.bed ? (
                           <div className="text-xs">
                             <p className="font-semibold text-slate-700"><BedDouble className="w-3 h-3 inline mr-1"/>{a.bed.bedNumber}</p>
-                            <p className="text-slate-500">{a.bed.ward || '—'}</p>
+                            <p className="text-slate-500">{a.bed.ward || '-'}</p>
                           </div>
                         ) : <span className="text-slate-400 text-xs italic">Released</span>}
                       </td>

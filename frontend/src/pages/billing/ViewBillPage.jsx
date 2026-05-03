@@ -117,7 +117,7 @@ export default function ViewBillPage() {
         </Card>
       )}
 
-      {/* Print page rules — paper size + orientation from PageDesigner. */}
+      {/* Print page rules - paper size + orientation from PageDesigner. */}
       <style>{`
         @media print {
           @page {

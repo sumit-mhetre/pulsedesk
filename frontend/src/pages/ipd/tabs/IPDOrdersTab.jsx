@@ -1,4 +1,4 @@
-// IPD Orders tab — lab tests, imaging, diet, physiotherapy, special instructions.
+// IPD Orders tab - lab tests, imaging, diet, physiotherapy, special instructions.
 // Distinct from medications (which have their own tab + MAR).
 //
 // Each order has lifecycle: ORDERED → ACKNOWLEDGED → IN_PROGRESS → COMPLETED.

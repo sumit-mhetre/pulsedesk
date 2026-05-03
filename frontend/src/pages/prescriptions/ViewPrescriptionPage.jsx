@@ -6,7 +6,7 @@ import api from '../../lib/api'
 import { format } from 'date-fns'
 import useAuthStore from '../../store/authStore'
 
-// Only timing translates — everything else stays English
+// Only timing translates - everything else stays English
 // Notes translation for liquids/drops (Marathi)
 const LIQUID_NOTES_EN = ['5ml twice daily','5ml thrice daily','2.5ml twice daily','10ml twice daily','2 drops twice daily','2 drops thrice daily','1 teaspoon thrice daily','2 teaspoons twice daily','As directed','Apply thin layer twice daily']
 const LIQUID_NOTES_MR = ['दिवसातून 2 वेळा 5ml','दिवसातून 3 वेळा 5ml','दिवसातून 2 वेळा 2.5ml','दिवसातून 2 वेळा 10ml','दिवसातून 2 वेळा 2 थेंब','दिवसातून 3 वेळा 2 थेंब','दिवसातून 3 वेळा 1 चमचा','दिवसातून 2 वेळा 2 चमचे','सांगितल्याप्रमाणे','दिवसातून 2 वेळा पातळ थर लावा']
@@ -46,7 +46,7 @@ function getFrequencyLabel(code, lang) {
 const DAYS_UNIT_HI = { day:'दिन', days:'दिन', week:'हफ्ता', weeks:'हफ्ते', month:'महीना', months:'महीने', year:'साल', years:'साल' }
 const DAYS_UNIT_MR = { day:'दिवस', days:'दिवस', week:'आठवडा', weeks:'आठवडे', month:'महिना', months:'महिने', year:'वर्ष', years:'वर्षे' }
 function translateDays(days, lang) {
-  if (!days) return '—'
+  if (!days) return '-'
   if (lang === 'en') return days
   const m = String(days).match(/^(\d+)\s*(day|days|week|weeks|month|months|year|years)\s*$/i)
   if (!m) return days  // unrecognized format → show as-is (don't break custom durations)
@@ -124,7 +124,7 @@ export default function ViewPrescriptionPage() {
     order.forEach((k, i) => { map[k] = i + 1 })
     return map
   })()
-  // Custom fields (configured by clinic) — array of { id, name, type }
+  // Custom fields (configured by clinic) - array of { id, name, type }
   const rxCustomFields = (rxFormCfg && Array.isArray(rxFormCfg.customFields))
     ? rxFormCfg.customFields.filter(cf => cf && cf.id && (cf.name || '').trim())
     : []
@@ -139,12 +139,12 @@ export default function ViewPrescriptionPage() {
   const patient = rx.patient
   const canEdit = ['DOCTOR','ADMIN'].includes(user?.role)
 
-  // Complaint & Diagnosis — stored as "tag1 || tag2"
+  // Complaint & Diagnosis - stored as "tag1 || tag2"
   const complaints = rx.complaint ? rx.complaint.split('||').map(s=>s.trim()).filter(Boolean) : []
   const diagnoses  = rx.diagnosis ? rx.diagnosis.split('||').map(s=>s.trim()).filter(Boolean) : []
   const adviceList = rx.advice    ? rx.advice.split('\n').filter(Boolean) : []
 
-  // ── Language labels — ONLY timing translates, rest stays English ──
+  // ── Language labels - ONLY timing translates, rest stays English ──
   // Labels for headings/fields stay English regardless of lang
   const t = {
     date:'Date', patient:'Patient', age:'Age', gender:'Gender',
@@ -209,7 +209,7 @@ export default function ViewPrescriptionPage() {
         </div>
       </div>
 
-      {/* Print page rules — paper size + orientation from PageDesigner.
+      {/* Print page rules - paper size + orientation from PageDesigner.
           @page only takes effect when window.print() is invoked. */}
       <style>{`
         @media print {
@@ -225,7 +225,7 @@ export default function ViewPrescriptionPage() {
         lineHeight: lineHeightFor(cfg?.lineSpacing),
       }}>
 
-        {/* Letterhead background — covers the entire print area */}
+        {/* Letterhead background - covers the entire print area */}
         {clinic?.letterheadMode && clinic?.letterheadUrl && (
           <img
             src={clinic.letterheadUrl}
@@ -237,7 +237,7 @@ export default function ViewPrescriptionPage() {
 
         <div className="relative" style={{ zIndex: 1 }}>
 
-        {/* Header banner — full-width image. Replaces the text header below if uploaded.
+        {/* Header banner - full-width image. Replaces the text header below if uploaded.
             When letterhead mode is ON, the entire letterhead image already serves as the page bg,
             so we skip BOTH the banner and the text header. */}
         {!clinic?.letterheadMode && clinic?.headerImageUrl && (
@@ -251,7 +251,7 @@ export default function ViewPrescriptionPage() {
           </div>
         )}
 
-        {/* Text-based clinic header — shown when:
+        {/* Text-based clinic header - shown when:
             - letterhead mode is OFF, AND
             - header banner is missing OR hideTextOnHeader is OFF (user wants both image + text) */}
         {!clinic?.letterheadMode && (!clinic?.headerImageUrl || !clinic?.hideTextOnHeader) && (
@@ -279,23 +279,23 @@ export default function ViewPrescriptionPage() {
         </div>
         )}
 
-        {/* Spacer — paddingTop after header (custom mm-to-px conversion: 1mm ≈ 3.78px) */}
+        {/* Spacer - paddingTop after header (custom mm-to-px conversion: 1mm ≈ 3.78px) */}
         <div style={{ height: `${(cfg?.paddingTop ?? 8) * 3.78}px` }} aria-hidden/>
 
-        {/* Patient info + date — inline, no background */}
+        {/* Patient info + date - inline, no background */}
         {/*
             Layout (per client's prescription pad):
               [BOLD OPD code]   Name (age, gender) - phone                        Date: 25-Apr-2026
             All parts honor toggles in Settings → Layout Designer → Patient Details.
         */}
         <div className="mb-3 border-b border-slate-300 pb-3 text-sm flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          {/* OPD / patient code — bold, leads the line */}
+          {/* OPD / patient code - bold, leads the line */}
           {show('showOPD') && patient?.patientCode && (
             <span className="font-bold text-slate-900 print:text-black tracking-wide">
               {patient.patientCode}
             </span>
           )}
-          {/* Single combined patient line — name + (age, gender) + phone */}
+          {/* Single combined patient line - name + (age, gender) + phone */}
           {show('showPatient') && (
             <span className="font-semibold text-slate-900">
               {patient?.name}
@@ -319,7 +319,7 @@ export default function ViewPrescriptionPage() {
           </span>
         </div>
 
-        {/* Optional contact / medical info row — only renders if any toggle is ON and field has data */}
+        {/* Optional contact / medical info row - only renders if any toggle is ON and field has data */}
         {(() => {
           const bits = []
           if (cfg?.showEmail       && patient?.email)      bits.push(<><span className="text-slate-500">Email:</span> {patient.email}</>)
@@ -345,22 +345,22 @@ export default function ViewPrescriptionPage() {
           <p className="mb-3 text-sm"><span className="font-bold">⚠ Allergy:</span> {patient.allergies.join(', ')}</p>
         )}
 
-        {/* Body sections — wrapped in a flex-col so the doctor's saved fieldOrder
+        {/* Body sections - wrapped in a flex-col so the doctor's saved fieldOrder
             (from the rx_form config) drives the printed sequence. */}
         <div className="flex flex-col">
-        {/* Complaint — inline */}
+        {/* Complaint - inline */}
         {show('showComplaint') && complaints.length > 0 && (
           <p className="mb-1.5 text-sm" style={{ order: rxOrderMap.complaint }}><span className="font-bold text-slate-900">Chief Complaint:</span> <span className="text-slate-800">{complaints.join(', ')}</span></p>
         )}
 
-        {/* Diagnosis — inline */}
+        {/* Diagnosis - inline */}
         {show('showDiagnosis') && diagnoses.length > 0 && (
           <p className="mb-1.5 text-sm" style={{ order: rxOrderMap.diagnosis }}><span className="font-bold text-slate-900">Diagnosis:</span> <span className="text-slate-800">{diagnoses.join(', ')}</span></p>
         )}
 
-        {/* Vitals — snapshot stored on the Rx itself (rx.vitals). Only renders if the
+        {/* Vitals - snapshot stored on the Rx itself (rx.vitals). Only renders if the
             doctor entered any values AND the print toggle is on. Format is compact:
-            "BP 120/80 • Sugar 110 • Weight 72 kg" — semicolon-style for one-liner.
+            "BP 120/80 • Sugar 110 • Weight 72 kg" - semicolon-style for one-liner.
             The order key matches the form's `vitals` slot. */}
         {show('showVitals') && rx.vitals && typeof rx.vitals === 'object' && (() => {
           const v = rx.vitals
@@ -391,7 +391,7 @@ export default function ViewPrescriptionPage() {
         })()}
 
         {/* Medicines */}
-        {/* Medicines section — always rendered if any medicines exist (locked-on in PageDesigner). */}
+        {/* Medicines section - always rendered if any medicines exist (locked-on in PageDesigner). */}
         {rx.medicines?.length > 0 && (
           <div className="mb-4" style={{ order: rxOrderMap.medicines }}>
             <div className="flex items-center gap-2 mb-1.5">
@@ -423,7 +423,7 @@ export default function ViewPrescriptionPage() {
               <tbody>
                 {rx.medicines.map((med, idx) => {
                   const parts = []
-                  if (show('showWhen'))      parts.push(med.timing ? getTimingLabel(med.timing, lang) : '—')
+                  if (show('showWhen'))      parts.push(med.timing ? getTimingLabel(med.timing, lang) : '-')
                   if (show('showFrequency')) parts.push(getFrequencyLabel(med.frequency, lang))
                   if (show('showDays'))      parts.push(translateDays(med.days, lang))
                   const combinedCell = parts.join(' - ')
@@ -439,19 +439,19 @@ export default function ViewPrescriptionPage() {
                           <p className="text-xs text-slate-600 mt-0.5 italic">{translateNote(med.notesEn, lang)}</p>
                         )}
                       </td>
-                      {show('showDosage') && <td className="py-1.5 px-2 text-center font-mono text-slate-800 border border-slate-400 align-top">{med.dosage||'—'}</td>}
+                      {show('showDosage') && <td className="py-1.5 px-2 text-center font-mono text-slate-800 border border-slate-400 align-top">{med.dosage||'-'}</td>}
                       {compactPrint ? (
                         (show('showWhen') || show('showFrequency') || show('showDays')) && (
                           <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{combinedCell}</td>
                         )
                       ) : (
                         <>
-                          {show('showWhen')      && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
+                          {show('showWhen')      && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{med.timing ? getTimingLabel(med.timing, lang) : '-'}</td>}
                           {show('showFrequency') && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{getFrequencyLabel(med.frequency, lang)}</td>}
                           {show('showDays')      && <td className="py-1.5 px-2 text-center text-slate-800 border border-slate-400 align-top">{translateDays(med.days, lang)}</td>}
                         </>
                       )}
-                      {show('showQty') && <td className="py-1.5 px-2 text-center font-bold text-slate-900 border border-slate-400 align-top">{med.qty||'—'}</td>}
+                      {show('showQty') && <td className="py-1.5 px-2 text-center font-bold text-slate-900 border border-slate-400 align-top">{med.qty||'-'}</td>}
                     </tr>
                   )
                 })}
@@ -464,11 +464,11 @@ export default function ViewPrescriptionPage() {
           <p className="mb-1.5 text-sm" style={{ order: rxOrderMap.labTests }}><span className="font-bold text-slate-900">Lab Tests:</span> <span className="text-slate-800">{rx.labTests.map(lt => lt.labTestName).join(', ')}</span></p>
         )}
 
-        {/* Test Outcomes — recorded lab values rendered as a table with date columns.
+        {/* Test Outcomes - recorded lab values rendered as a table with date columns.
             Each (testName × resultDate) is one stored row; values may be a structured
             list (CBC sub-fields) or a single freeTextResult (Peripheral Smear, etc.).
             Out-of-range values are bolded so paper prints stay readable in B/W.
-            Hidden when no results recorded — gating flag won't show an empty section. */}
+            Hidden when no results recorded - gating flag won't show an empty section. */}
         {show('showLabResults') && rx.labResults?.length > 0 && (() => {
           // Unique result dates, newest-first (matches the entry modal's column order)
           const dates = Array.from(new Set(rx.labResults.map(r => r.resultDate)))
@@ -489,7 +489,7 @@ export default function ViewPrescriptionPage() {
           }
 
           // For a single test, collect the unique field metadata across all its dates.
-          // (Different visits may record different sub-fields — union them all.)
+          // (Different visits may record different sub-fields - union them all.)
           const collectFields = (test) => {
             const fieldMap = new Map()
             let hasFreeText = false
@@ -511,7 +511,7 @@ export default function ViewPrescriptionPage() {
           }
 
           // Treat numeric values outside [normalLow, normalHigh] as out of range. Non-numeric
-          // values (e.g. "Negative", "Reactive") are skipped — no false-positive bolding.
+          // values (e.g. "Negative", "Reactive") are skipped - no false-positive bolding.
           const isOutOfRange = (value, low, high) => {
             if (value == null || value === '') return false
             const n = parseFloat(value)
@@ -567,7 +567,7 @@ export default function ViewPrescriptionPage() {
                                   const flag = isOutOfRange(v, meta.normalLow, meta.normalHigh)
                                   return (
                                     <td key={d} className={`py-1 px-2 text-center text-slate-800 ${flag ? 'font-bold' : ''}`}>
-                                      {v != null && v !== '' ? v : '—'}
+                                      {v != null && v !== '' ? v : '-'}
                                     </td>
                                   )
                                 })}
@@ -580,7 +580,7 @@ export default function ViewPrescriptionPage() {
                                 </td>
                                 {dates.map(d => (
                                   <td key={d} className="py-1 px-2 text-center text-slate-800">
-                                    {test.rowsByDate[d]?.freeTextResult || '—'}
+                                    {test.rowsByDate[d]?.freeTextResult || '-'}
                                   </td>
                                 ))}
                               </tr>
@@ -621,19 +621,19 @@ export default function ViewPrescriptionPage() {
           )
         })()}
 
-        {/* Custom fields — only those that (a) have a value, (b) are still configured
+        {/* Custom fields - only those that (a) have a value, (b) are still configured
             by the clinic, AND (c) have their per-field 🖨 print toggle on. The legacy
-            master `showCustomFields` toggle still acts as a global kill-switch — if
+            master `showCustomFields` toggle still acts as a global kill-switch - if
             it's explicitly false, no custom fields print regardless of per-field flags.
             Per-field flags live in cfg.customFieldPrint = {[cfId]: bool}; default true. */}
         {show('showCustomFields') && rxCustomFields.map(cf => {
-          // Per-cf print toggle — defaults to true if not set.
+          // Per-cf print toggle - defaults to true if not set.
           const cfPrintMap = (cfg && typeof cfg.customFieldPrint === 'object' && cfg.customFieldPrint) || {}
           if (cfPrintMap[cf.id] === false) return null
 
           const raw = rxCustomData[cf.id]
           // Multi-tag custom fields store arrays. Older Rxs may have a single string
-          // from before the upgrade — render either gracefully.
+          // from before the upgrade - render either gracefully.
           let display = ''
           if (Array.isArray(raw)) {
             display = raw.map(x => String(x ?? '').trim()).filter(Boolean).join(', ')
@@ -651,10 +651,10 @@ export default function ViewPrescriptionPage() {
 
         </div>{/* end flex-col body sections */}
 
-        {/* Spacer — paddingBottom before footer area */}
+        {/* Spacer - paddingBottom before footer area */}
         <div style={{ height: `${(cfg?.paddingBottom ?? 8) * 3.78}px` }} aria-hidden/>
 
-        {/* Optional clinic footer image — appears above the signature/watermark row */}
+        {/* Optional clinic footer image - appears above the signature/watermark row */}
         {show('showFooterImage') && clinic?.footerImageUrl && (
           <div className="border-t border-slate-100 pt-3 mt-4 flex justify-center">
             <img
@@ -668,13 +668,13 @@ export default function ViewPrescriptionPage() {
 
         {/* Footer */}
         <div className="border-t border-slate-100 pt-4 flex justify-between items-end mt-6">
-          {/* SimpleRx EMR watermark — always shown (locked branding, not user-toggleable) */}
+          {/* SimpleRx EMR watermark - always shown (locked branding, not user-toggleable) */}
           <div className="text-xs text-slate-400">
             <p>Generated by SimpleRx EMR</p>
             <p>{format(new Date(rx.date),'dd MMM yyyy, hh:mm a')}</p>
           </div>
           <div className="text-right flex items-end gap-3">
-            {/* Doctor's stamp/seal — printed beside signature if uploaded */}
+            {/* Doctor's stamp/seal - printed beside signature if uploaded */}
             {show('showStampImage') && doctor?.stamp && (
               <img src={doctor.stamp} alt="stamp" className="h-16 w-16 object-contain"/>
             )}

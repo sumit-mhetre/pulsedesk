@@ -36,7 +36,7 @@ export default function SuperCreateClinic() {
       const { data } = await api.post('/clinics', body)
       setDirty(false)
       setCreated({ ...data.data, createAdmin })
-      toast.success(createAdmin ? 'Clinic + admin created!' : 'Clinic created — manage it from Super Admin')
+      toast.success(createAdmin ? 'Clinic + admin created!' : 'Clinic created - manage it from Super Admin')
     } catch {
     } finally { setSaving(false) }
   }
@@ -51,7 +51,7 @@ export default function SuperCreateClinic() {
         <p className="text-slate-500 text-sm mb-6">
           {created.admin
             ? 'Share these details with the clinic admin.'
-            : 'No admin account created — manage this clinic from Super Admin → Manage button.'}
+            : 'No admin account created - manage this clinic from Super Admin → Manage button.'}
         </p>
 
         <div className="bg-background rounded-2xl p-5 text-left space-y-3 mb-6">
@@ -92,7 +92,7 @@ export default function SuperCreateClinic() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Admin toggle — controls whether Admin Account card is required */}
+        {/* Admin toggle - controls whether Admin Account card is required */}
         <Card className="mb-6">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
@@ -132,7 +132,7 @@ export default function SuperCreateClinic() {
             </div>
           </Card>
 
-          {/* Admin account — only when createAdmin is true */}
+          {/* Admin account - only when createAdmin is true */}
           {createAdmin ? (
             <Card title="Admin Account">
               <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 mb-4">
@@ -149,7 +149,7 @@ export default function SuperCreateClinic() {
             <Card title="Super Admin Managed">
               <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-900 space-y-2">
                 <p className="font-semibold">No admin account will be created.</p>
-                <p>You (Super Admin) will manage this clinic via the <strong>Manage</strong> button on the All Clinics page — Info, Users, Stats, Plan changes, etc.</p>
+                <p>You (Super Admin) will manage this clinic via the <strong>Manage</strong> button on the All Clinics page - Info, Users, Stats, Plan changes, etc.</p>
                 <p>You can add doctors and receptionists to this clinic any time from the Manage modal's Users tab.</p>
               </div>
             </Card>

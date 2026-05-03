@@ -1,11 +1,11 @@
-// Nursing Note controller — nurse's per-shift observations + care actions.
+// Nursing Note controller - nurse's per-shift observations + care actions.
 //
 // Each entry attributed to one shift (MORNING / AFTERNOON / NIGHT) and one
 // nurse (req.user). Includes optional handover notes for next shift.
 //
 // Permission gates set in routes:
 //   read   → manageIPD
-//   write  → recordNursingNotes (Admin, Nurse — not Doctor by default)
+//   write  → recordNursingNotes (Admin, Nurse - not Doctor by default)
 
 const prisma = require('../../lib/prisma')
 const { successResponse, errorResponse } = require('../../lib/response')

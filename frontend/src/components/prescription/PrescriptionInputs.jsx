@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 // - Type → filter existing items instantly
 // - Select from dropdown → value set
 // - Type something not in list → kept as free text, saved silently on prescription save
-// - NO "Add to list" button — fully automatic
+// - NO "Add to list" button - fully automatic
 export function Autocomplete({
   value, onChange, items = [], placeholder, label,
   displayKey = 'nameEn', lang = 'en', className = '',
@@ -23,7 +23,7 @@ export function Autocomplete({
     const handler = (e) => {
       if (!dropRef.current?.contains(e.target) && !inputRef.current?.contains(e.target)) {
         setOpen(false)
-        // When blurring with free text — pass it up as plain string
+        // When blurring with free text - pass it up as plain string
         if (query && query !== value) {
           onChange({ nameEn: query, _isNew: true })
         }
@@ -67,7 +67,7 @@ export function Autocomplete({
     if (e.key === 'Escape') setOpen(false)
     if (e.key === 'ArrowDown' && filtered.length > 0) {
       e.preventDefault()
-      // Focus first item — handled by mouse for now
+      // Focus first item - handled by mouse for now
     }
   }
 

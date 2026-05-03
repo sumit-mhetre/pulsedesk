@@ -72,7 +72,7 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Print routes — full screen, no DashLayout wrapper.
+      {/* Print routes - full screen, no DashLayout wrapper.
           Authenticated but no sidebar / header so window.print() outputs only
           the document. Pattern matches existing prescription/bill print pages. */}
       <Route element={<PrivateRoute />}>
@@ -149,7 +149,7 @@ export default function App() {
             <Route path="/master-data"          element={<MasterDataPage />} />
           </Route>
 
-          {/* IPD module — sidebar hides routes when ipdEnabled=false; backend
+          {/* IPD module - sidebar hides routes when ipdEnabled=false; backend
               re-enforces with requireIPD middleware. */}
           <Route element={<RoleRoute requires={['manageIPD']} />}>
             <Route path="/ipd/dashboard"           element={<IPDDashboardPage />} />

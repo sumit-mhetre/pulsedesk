@@ -108,7 +108,7 @@ export default function QueuePage() {
       const params = selectedDoctor ? `?doctorId=${selectedDoctor}` : ''
       const { data } = await api.get(`/appointments/queue/next${params}`)
       if (!data.data) { toast('No more patients waiting', { icon: '✅' }); return }
-      toast.success(`Calling Token #${data.data.tokenNo} — ${data.data.patient.name}`)
+      toast.success(`Calling Token #${data.data.tokenNo} - ${data.data.patient.name}`)
       fetchQueue()
     } catch {}
   }
@@ -142,7 +142,7 @@ export default function QueuePage() {
 
       {/* Compact toolbar: search + filters all on one row (wraps on narrow screens) */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        {/* Search — flex-grow so it takes up available space */}
+        {/* Search - flex-grow so it takes up available space */}
         <div ref={searchWrapRef} className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -207,7 +207,7 @@ export default function QueuePage() {
           )}
         </div>
 
-        {/* Doctor filter — only shown for multi-doctor clinics (2+) */}
+        {/* Doctor filter - only shown for multi-doctor clinics (2+) */}
         {doctors.length > 1 && (
           <select className="form-select w-48 flex-shrink-0" value={selectedDoctor}
             onChange={e => setSelectedDoctor(e.target.value)}>
@@ -259,7 +259,7 @@ export default function QueuePage() {
                     #{a.tokenNo}
                   </div>
 
-                  {/* Patient Info — clickable, goes to profile */}
+                  {/* Patient Info - clickable, goes to profile */}
                   <button type="button"
                     onClick={() => navigate(`/patients/${a.patient.id}`)}
                     className="flex-1 min-w-0 text-left hover:opacity-70 transition-opacity">
@@ -305,7 +305,7 @@ export default function QueuePage() {
         )}
       </Card>
 
-      {/* Add Patient modal — reuses the same modal from PatientsPage */}
+      {/* Add Patient modal - reuses the same modal from PatientsPage */}
       {showAddModal && (
         <PatientModal
           mode="add"

@@ -1,4 +1,4 @@
-// Intake/Output (I/O) tab — fluid balance tracking.
+// Intake/Output (I/O) tab - fluid balance tracking.
 //
 // Shows: daily totals at top (intake / output / balance per day), then full
 // table of individual records below. New entries via inline modal.
@@ -15,7 +15,7 @@ import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
 const SHIFTS = [
-  { value: '',          label: '— None —' },
+  { value: '',          label: '- None -' },
   { value: 'MORNING',   label: 'Morning' },
   { value: 'AFTERNOON', label: 'Afternoon' },
   { value: 'NIGHT',     label: 'Night' },
@@ -180,13 +180,13 @@ function Row({ r, currentUserId, onDelete }) {
         <p className="text-slate-400">{format(new Date(r.recordedAt), 'HH:mm')}</p>
       </td>
       <td>{r.shift && <Badge variant="accent">{r.shift}</Badge>}</td>
-      <td className="text-sm">{r.oralIntake ?? '—'}</td>
-      <td className="text-sm">{r.ivFluids ?? '—'}</td>
-      <td className="text-sm">{r.rylesTubeFeed ?? '—'}</td>
-      <td className="text-sm">{r.urineOutput ?? '—'}</td>
-      <td className="text-sm">{r.drainOutput ?? '—'}</td>
-      <td className="text-sm">{r.vomit ?? '—'}</td>
-      <td className="text-sm">{r.stoolCount ?? '—'}</td>
+      <td className="text-sm">{r.oralIntake ?? '-'}</td>
+      <td className="text-sm">{r.ivFluids ?? '-'}</td>
+      <td className="text-sm">{r.rylesTubeFeed ?? '-'}</td>
+      <td className="text-sm">{r.urineOutput ?? '-'}</td>
+      <td className="text-sm">{r.drainOutput ?? '-'}</td>
+      <td className="text-sm">{r.vomit ?? '-'}</td>
+      <td className="text-sm">{r.stoolCount ?? '-'}</td>
       <td className="text-xs text-slate-500">{r.recordedBy?.name}</td>
       <td className="text-right">
         {canDelete && (

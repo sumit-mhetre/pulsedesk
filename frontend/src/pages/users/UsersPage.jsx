@@ -20,7 +20,7 @@ export default function UsersPage() {
   const [modal, setModal] = useState(null)        // 'create' | 'edit' | 'reset'
   const [selected, setSelected] = useState(null)
   const [form, setForm] = useState({})
-  const [permissions, setPermissions] = useState({})  // flat { key: bool } — always 14 keys
+  const [permissions, setPermissions] = useState({})  // flat { key: bool } - always 14 keys
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})  // field-level inline errors
 
@@ -329,7 +329,7 @@ export default function UsersPage() {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal open={modal === 'edit'} onClose={() => setModal(null)} title={`Edit — ${selected?.name || ''}`} size="lg"
+      <Modal open={modal === 'edit'} onClose={() => setModal(null)} title={`Edit - ${selected?.name || ''}`} size="lg"
         footer={<>
           <Button variant="ghost" onClick={() => setModal(null)}>Cancel</Button>
           <Button variant="primary" onClick={handleEdit} loading={saving}>Save Changes</Button>
@@ -355,7 +355,7 @@ export default function UsersPage() {
       </Modal>
 
       {/* Reset Password Modal */}
-      <Modal open={modal === 'reset'} onClose={() => setModal(null)} title={`Reset Password — ${selected?.name || ''}`} size="sm"
+      <Modal open={modal === 'reset'} onClose={() => setModal(null)} title={`Reset Password - ${selected?.name || ''}`} size="sm"
         footer={<>
           <Button variant="ghost" onClick={() => setModal(null)}>Cancel</Button>
           <Button variant="primary" onClick={handleReset} loading={saving}>Reset</Button>

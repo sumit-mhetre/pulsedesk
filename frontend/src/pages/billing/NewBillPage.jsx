@@ -36,7 +36,7 @@ function ItemSearch({ value, billingItems, onChange, onSelect, onEnter, idx }) {
               onSelect(filtered[0]); setQuery(filtered[0].name); setOpen(false)
               onEnter && onEnter(idx)
             } else if (query.length > 0) {
-              // Custom item — just move to next
+              // Custom item - just move to next
               onEnter && onEnter(idx)
               setOpen(false)
             }
@@ -115,7 +115,7 @@ export default function NewBillPage() {
     }
   }, [])
 
-  // Patient search — load all on focus
+  // Patient search - load all on focus
   const fetchPatients = async (q = '') => {
     try {
       const { data } = await api.get(`/patients/search?q=${q}`)
@@ -316,13 +316,13 @@ export default function NewBillPage() {
           </Card>
         )}
 
-        {/* ③ Bill Items — inline table like medicines */}
+        {/* ③ Bill Items - inline table like medicines */}
         <Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold flex-shrink-0">{patient ? '3' : '2'}</span>
               Bill Items
-              <span className="text-xs text-slate-400 font-normal ml-1">— press Enter to jump to next row</span>
+              <span className="text-xs text-slate-400 font-normal ml-1">- press Enter to jump to next row</span>
             </h3>
             <Button variant="outline" size="sm" icon={<Plus className="w-3.5 h-3.5"/>} onClick={addItem}>Add Row</Button>
           </div>
@@ -433,7 +433,7 @@ export default function NewBillPage() {
               </div>
             </div>
 
-            {/* Amount Paid — auto-filled with total */}
+            {/* Amount Paid - auto-filled with total */}
             <div>
               <label className="form-label">Amount Paid (₹)</label>
               <input type="number" min="0" max={total}
@@ -458,7 +458,7 @@ export default function NewBillPage() {
               <div className={`mt-1 p-3 rounded-xl border-2 transition-colors
                 ${payStatus === 'Paid' ? 'border-success bg-green-50' : payStatus === 'Partial' ? 'border-warning bg-orange-50' : 'border-slate-200 bg-slate-50'}`}>
                 <p className={`font-bold text-sm ${payStatus === 'Paid' ? 'text-success' : payStatus === 'Partial' ? 'text-warning' : 'text-slate-400'}`}>
-                  {payStatus === 'Paid' ? '✅ Fully Paid' : payStatus === 'Partial' ? '⚡ Partial Payment' : '—'}
+                  {payStatus === 'Paid' ? '✅ Fully Paid' : payStatus === 'Partial' ? '⚡ Partial Payment' : '-'}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Paid: ₹{paid.toLocaleString('en-IN')} {balance > 0 && `| Balance: ₹${balance.toLocaleString('en-IN')}`}

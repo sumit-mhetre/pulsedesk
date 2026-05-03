@@ -1,4 +1,4 @@
-// Consents tab — track admission, surgery, anesthesia, and other consents.
+// Consents tab - track admission, surgery, anesthesia, and other consents.
 // Pre-loaded standard text templates per consent type (English).
 // User can edit before saving. Optional scan URL for uploaded paper consent.
 

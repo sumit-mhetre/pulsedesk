@@ -1,4 +1,4 @@
-// Centralised audit logging helper — keeps controllers simple.
+// Centralised audit logging helper - keeps controllers simple.
 // Usage: await logAudit(req, { clinicId, action, entity, entityId, details })
 // - For super-admin actions: req.user.role === 'SUPER_ADMIN' → flagged + actorEmail captured
 // - For regular user actions: userId captured from req.user.id
@@ -9,7 +9,7 @@ const prisma = require('./prisma');
 async function logAudit(req, { clinicId, action, entity, entityId = null, details = null }) {
   try {
     if (!clinicId) {
-      console.warn('[audit] missing clinicId — skipping');
+      console.warn('[audit] missing clinicId - skipping');
       return;
     }
     const isSuper = req?.user?.role === 'SUPER_ADMIN';

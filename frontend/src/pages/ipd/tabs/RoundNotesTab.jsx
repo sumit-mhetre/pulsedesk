@@ -1,4 +1,4 @@
-// Round Notes tab — doctor's daily clinical entries.
+// Round Notes tab - doctor's daily clinical entries.
 // Toggle between Free-form (default) and Structured SOAP.
 //
 // Used on AdmissionDetailPage as one of the tabs.
@@ -135,10 +135,10 @@ function NoteCard({ note, currentUserId, onEdit }) {
       <div className="mt-1.5">
         {isSOAP ? (
           <div className="space-y-1 text-sm">
-            {note.subjective && <SoapField label="S — Subjective" value={note.subjective}/>}
-            {note.objective  && <SoapField label="O — Objective"  value={note.objective}/>}
-            {note.assessment && <SoapField label="A — Assessment" value={note.assessment}/>}
-            {note.plan       && <SoapField label="P — Plan"       value={note.plan}/>}
+            {note.subjective && <SoapField label="S - Subjective" value={note.subjective}/>}
+            {note.objective  && <SoapField label="O - Objective"  value={note.objective}/>}
+            {note.assessment && <SoapField label="A - Assessment" value={note.assessment}/>}
+            {note.plan       && <SoapField label="P - Plan"       value={note.plan}/>}
             {note.freeText   && <SoapField label="Note"          value={note.freeText}/>}
           </div>
         ) : (
@@ -265,25 +265,25 @@ function NoteForm({ admissionId, initial, onClose, onSaved }) {
       ) : (
         <div className="space-y-3">
           <div className="form-group">
-            <label className="form-label">S — Subjective</label>
+            <label className="form-label">S - Subjective</label>
             <textarea className="form-input" rows={2} value={form.subjective}
               onChange={e => setForm(f => ({ ...f, subjective: e.target.value }))}
               placeholder="Patient's reported symptoms, complaints..."/>
           </div>
           <div className="form-group">
-            <label className="form-label">O — Objective</label>
+            <label className="form-label">O - Objective</label>
             <textarea className="form-input" rows={2} value={form.objective}
               onChange={e => setForm(f => ({ ...f, objective: e.target.value }))}
               placeholder="Examination findings, vitals, lab results..."/>
           </div>
           <div className="form-group">
-            <label className="form-label">A — Assessment</label>
+            <label className="form-label">A - Assessment</label>
             <textarea className="form-input" rows={2} value={form.assessment}
               onChange={e => setForm(f => ({ ...f, assessment: e.target.value }))}
               placeholder="Clinical assessment, working diagnosis..."/>
           </div>
           <div className="form-group">
-            <label className="form-label">P — Plan</label>
+            <label className="form-label">P - Plan</label>
             <textarea className="form-input" rows={2} value={form.plan}
               onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}
               placeholder="Treatment plan, investigations, follow-up..."/>

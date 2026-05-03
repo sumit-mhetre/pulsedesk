@@ -1,7 +1,7 @@
-// IPD Charges controller — line-item ledger of all chargeable items during
+// IPD Charges controller - line-item ledger of all chargeable items during
 // admission (medicines, lab, procedures, doctor visits, consumables, etc).
 //
-// Bed rent is NOT stored here — it's calculated from admittedAt/dischargedAt
+// Bed rent is NOT stored here - it's calculated from admittedAt/dischargedAt
 // at billing time. All other charges go in this table.
 //
 // Permission gates set in routes:

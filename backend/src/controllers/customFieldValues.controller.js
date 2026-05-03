@@ -6,14 +6,14 @@
 // render suggestions for both built-in masters (complaints/diagnoses) and these.
 //
 // The fieldId is the cf_* id from the rx_form PageDesign config. We don't FK to it
-// because PageDesign config is JSON (no rows), so orphans are possible — they just
+// because PageDesign config is JSON (no rows), so orphans are possible - they just
 // silently stop being shown when the matching custom field is removed from config.
 
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse } = require('../lib/response');
 
 // GET /api/master/custom-field-values?fieldId=cf_xxx
-// If fieldId is omitted, returns ALL values for the clinic — used by the Rx form
+// If fieldId is omitted, returns ALL values for the clinic - used by the Rx form
 // which fetches once and slices by fieldId locally to avoid N requests on mount.
 const getAll = async (req, res) => {
   try {

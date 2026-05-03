@@ -3,7 +3,7 @@ import { Sparkles } from 'lucide-react'
 import api from '../../lib/api'
 
 /**
- * TemplatePicker — fetches templates of a given type, lets user pick one,
+ * TemplatePicker - fetches templates of a given type, lets user pick one,
  * fires onPick(template) so the parent form pre-fills its fields.
  *
  * Props:
@@ -50,7 +50,7 @@ export default function TemplatePicker({ type, onPick }) {
           if (tpl) onPick(tpl)
         }}
       >
-        <option value="">— Choose a template —</option>
+        <option value="">- Choose a template -</option>
         {templates.map(t => (
           <option key={t.id} value={t.id}>
             {t.isDefault ? '★ ' : ''}{t.name}

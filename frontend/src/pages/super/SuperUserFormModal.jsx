@@ -16,7 +16,7 @@ export default function SuperUserFormModal({ clinicId, mode, initialUser, onClos
     qualification: '', specialization: '', regNo: '',
     isActive: true,
   }))
-  // Capabilities (permissions) — flat { key: bool }, always 14 keys
+  // Capabilities (permissions) - flat { key: bool }, always 14 keys
   const [permissions, setPermissions] = useState(() => getDefaultsForRole('DOCTOR'))
   const [errors, setErrors] = useState({})
 
@@ -77,7 +77,7 @@ export default function SuperUserFormModal({ clinicId, mode, initialUser, onClos
     if (!validate()) return
     setSaving(true)
     try {
-      // Compute overrides — only the keys that differ from role defaults
+      // Compute overrides - only the keys that differ from role defaults
       const overrides = computeOverrides(form.role, permissions)
 
       if (isEdit) {
@@ -170,7 +170,7 @@ export default function SuperUserFormModal({ clinicId, mode, initialUser, onClos
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" className="w-4 h-4" checked={form.isActive} onChange={set('isActive')}/>
               <span className="text-sm font-medium text-slate-700">Account is active</span>
-              <span className="text-xs text-slate-400">— uncheck to disable login</span>
+              <span className="text-xs text-slate-400">- uncheck to disable login</span>
             </label>
           </div>
         )}

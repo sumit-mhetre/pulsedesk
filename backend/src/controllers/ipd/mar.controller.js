@@ -1,9 +1,9 @@
-// MAR (Medication Administration Record) controller — nurses mark each
+// MAR (Medication Administration Record) controller - nurses mark each
 // scheduled dose as Given / Refused / Held / Missed.
 //
 // When marked GIVEN, an IPDCharge of type MEDICINE is auto-created if the
 // medicine has a price. (For v1 we don't have per-medicine pricing on the
-// Medicine master — so by default no auto-charge. Receptionist can manually
+// Medicine master - so by default no auto-charge. Receptionist can manually
 // add medicine charges from the Charges tab. Future enhancement: add
 // `defaultPrice` to Medicine model, then this hook activates.)
 //

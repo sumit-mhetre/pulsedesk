@@ -5,16 +5,16 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
 /**
- * ImageUploader — drag-drop image uploader with optional 3-tier processing modal.
+ * ImageUploader - drag-drop image uploader with optional 3-tier processing modal.
  *
  * Props:
  *   kind         'logo' | 'footer' | 'letterhead' | 'signature' | 'stamp'
  *   value        current image URL (or null/undefined)
- *   onChange     (newUrl|null) => void  — called on successful upload or remove
+ *   onChange     (newUrl|null) => void  - called on successful upload or remove
  *   label        section title
  *   description  helper text
- *   aspectHint   '16:9' | 'square' | 'wide' | 'free'  — preview box shape
- *   askProcessing true/false — whether to show the 3-tier modal (defaults to true for signature/stamp/letterhead)
+ *   aspectHint   '16:9' | 'square' | 'wide' | 'free'  - preview box shape
+ *   askProcessing true/false - whether to show the 3-tier modal (defaults to true for signature/stamp/letterhead)
  *   maxBytes     reject larger than this (default 5MB)
  */
 const PROCESSING_DEFAULTS = {
@@ -77,7 +77,7 @@ export default function ImageUploader({
       onChange?.(data.data.url)
       toast.success('Uploaded')
     } catch (err) {
-      // api.js already toasted from interceptor — no extra toast
+      // api.js already toasted from interceptor - no extra toast
     } finally {
       setBusy(false)
       setPendingFile(null)

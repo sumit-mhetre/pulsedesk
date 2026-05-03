@@ -74,7 +74,7 @@ function transformationsFor(processing) {
 /**
  * Upload a buffer to Cloudinary.
  *
- * @param {Buffer} buffer       — file bytes
+ * @param {Buffer} buffer       - file bytes
  * @param {object} opts
  *   - kind        'logo'|'footer'|'letterhead'|'signature'|'stamp'
  *   - entityId    clinicId or userId (used for folder pathing)
@@ -94,7 +94,7 @@ async function uploadBuffer(buffer, { kind, entityId, processing = 'original', f
         folder,
         resource_type: 'image',
         transformation: transformationsFor(processing),
-        // Random unique public_id per upload — avoids stale cached collisions
+        // Random unique public_id per upload - avoids stale cached collisions
         use_filename: false,
         unique_filename: true,
         overwrite: false,
@@ -116,7 +116,7 @@ async function uploadBuffer(buffer, { kind, entityId, processing = 'original', f
   });
 }
 
-/** Delete a file by its public_id. Best-effort — swallows errors. */
+/** Delete a file by its public_id. Best-effort - swallows errors. */
 async function deleteByPublicId(publicId) {
   if (!publicId) return false;
   try {

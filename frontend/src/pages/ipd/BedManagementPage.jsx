@@ -1,8 +1,8 @@
-// Bed Management Page — clinic-side admin tool for full bed CRUD.
+// Bed Management Page - clinic-side admin tool for full bed CRUD.
 // Permission gates:
 //   - Page access:        manageBeds (admin/doctor/receptionist by default)
 //   - Create / edit / deactivate: manageBeds
-//   - Edit daily rate:    manageIPDBilling — separate inline gate, since rate is billing config
+//   - Edit daily rate:    manageIPDBilling - separate inline gate, since rate is billing config
 //
 // Layout: header + summary tiles + filter + sortable table with inline rate editor.
 // Edit/Add uses a modal. Bulk Add available too. Distinct from Bed Board which is
@@ -107,7 +107,7 @@ export default function BedManagementPage() {
     }
   }
 
-  // Filtering — client side because list is small
+  // Filtering - client side because list is small
   const filteredBeds = beds.filter(bed => {
     if (filterType !== 'all' && bed.bedType !== filterType) return false
     if (search) {
@@ -236,8 +236,8 @@ export default function BedManagementPage() {
                   <tr key={bed.id}>
                     <td className="font-semibold text-slate-800 text-sm">{bed.bedNumber}</td>
                     <td>{BED_TYPES.find(t => t.value === bed.bedType)?.label || bed.bedType}</td>
-                    <td className="text-slate-600">{bed.ward || '—'}</td>
-                    <td className="text-slate-600">{bed.floor || '—'}</td>
+                    <td className="text-slate-600">{bed.ward || '-'}</td>
+                    <td className="text-slate-600">{bed.floor || '-'}</td>
                     <td>
                       <RateCell
                         bed={bed}
@@ -290,7 +290,7 @@ export default function BedManagementPage() {
 }
 
 // ─────────────────────────────────────────────────────────
-// Inline rate editor — read-only badge → click to edit (if permitted)
+// Inline rate editor - read-only badge → click to edit (if permitted)
 // ─────────────────────────────────────────────────────────
 function RateCell({ bed, canEdit, editing, onStartEdit, onCancel, onSave }) {
   const [value, setValue] = useState(bed.dailyRate || 0)
@@ -336,7 +336,7 @@ function RateCell({ bed, canEdit, editing, onStartEdit, onCancel, onSave }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Bed form modal — Add or Edit (no rate field — that's inline)
+// Bed form modal - Add or Edit (no rate field - that's inline)
 // ─────────────────────────────────────────────────────────
 function BedFormModal({ bed, onClose, onSave, onDelete }) {
   const isNew = !bed
@@ -454,7 +454,7 @@ function BedFormModal({ bed, onClose, onSave, onDelete }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Bulk add modal — clinic admin (no rate)
+// Bulk add modal - clinic admin (no rate)
 // ─────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────
 // Bulk Add Beds modal -- auto-suggests prefix and start number based on

@@ -1,4 +1,4 @@
-// Overview tab — admission summary + clinical details + attendant + billing.
+// Overview tab - admission summary + clinical details + attendant + billing.
 // This is the original content of the AdmissionDetailPage, now extracted
 // into a tab component so the page can host other tabs alongside it.
 

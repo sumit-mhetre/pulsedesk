@@ -1,9 +1,9 @@
 -- ═══════════════════════════════════════════════════════════════════════
--- IPD Module — Database migration
+-- IPD Module - Database migration
 -- ═══════════════════════════════════════════════════════════════════════
 -- Adds 9 new enums, 15 new tables, and small additions to 6 existing tables.
 -- All operations are idempotent (IF NOT EXISTS / DO blocks) so reruns are safe.
--- All new columns on existing tables are nullable / default-valued — zero
+-- All new columns on existing tables are nullable / default-valued - zero
 -- breakage to existing OPD code.
 -- ═══════════════════════════════════════════════════════════════════════
 
@@ -63,17 +63,17 @@ ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'NURSE';
 
 -- ─── PART 3: ADD COLUMNS TO EXISTING TABLES ───────────────────────────
 
--- Clinic — IPD config fields
+-- Clinic - IPD config fields
 ALTER TABLE "clinics" ADD COLUMN IF NOT EXISTS "facilityType" "FacilityType" NOT NULL DEFAULT 'CLINIC_ONLY';
 ALTER TABLE "clinics" ADD COLUMN IF NOT EXISTS "ipdEnabled" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "clinics" ADD COLUMN IF NOT EXISTS "ipdNumberCounters" JSONB;
 ALTER TABLE "clinics" ADD COLUMN IF NOT EXISTS "ipdSettings" JSONB;
 
--- Bill — link to admission + bill type
+-- Bill - link to admission + bill type
 ALTER TABLE "bills" ADD COLUMN IF NOT EXISTS "admissionId" TEXT;
 ALTER TABLE "bills" ADD COLUMN IF NOT EXISTS "billType" TEXT;
 
--- Prescription — link to admission + prescription type
+-- Prescription - link to admission + prescription type
 ALTER TABLE "prescriptions" ADD COLUMN IF NOT EXISTS "admissionId" TEXT;
 ALTER TABLE "prescriptions" ADD COLUMN IF NOT EXISTS "prescriptionType" TEXT NOT NULL DEFAULT 'OPD';
 

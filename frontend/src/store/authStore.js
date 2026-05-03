@@ -6,7 +6,7 @@ const useAuthStore = create((set, get) => ({
   isAuthenticated: false,
   isLoading: true,
 
-  // Initialize — check if token exists and fetch user
+  // Initialize - check if token exists and fetch user
   init: async () => {
     const token = localStorage.getItem('accessToken')
     if (!token) {

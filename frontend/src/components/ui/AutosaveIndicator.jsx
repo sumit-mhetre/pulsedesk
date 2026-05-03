@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Cloud, CloudOff, AlertCircle, Loader2, Check } from 'lucide-react'
 
 /**
- * AutosaveIndicator — tiny pill showing draft save state.
+ * AutosaveIndicator - tiny pill showing draft save state.
  * Designed to sit somewhere unobtrusive (bottom of form, next to Save button, etc).
  *
  * Props:
@@ -44,7 +44,7 @@ export default function AutosaveIndicator({ status, lastSavedAt }) {
     return (
       <span className={`${pill} bg-amber-50 text-amber-700 border border-amber-100`}>
         <CloudOff className="w-3 h-3"/>
-        Offline — will save when back online
+        Offline - will save when back online
       </span>
     )
   }

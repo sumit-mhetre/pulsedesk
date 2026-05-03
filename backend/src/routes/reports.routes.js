@@ -10,15 +10,15 @@ router.get('/diagnoses',   authenticate, requirePermission('viewReports'), ctrl.
 router.get('/patients',    authenticate, requirePermission('viewReports'), ctrl.getPatientStats);
 router.get('/collection',  authenticate, requirePermission('viewReports'), ctrl.getCollectionSummary);
 
-// New — Dashboard
+// New - Dashboard
 router.get('/dashboard',   authenticate, requirePermission('viewReports'), ctrl.getDashboard);
 
-// New — Custom query + meta
+// New - Custom query + meta
 router.get ('/meta',       authenticate, requirePermission('viewReports'), ctrl.getReportMeta);
 router.post('/query',      authenticate, requirePermission('viewReports'), ctrl.runQuery);
 router.post('/export',     authenticate, requirePermission('viewReports'), ctrl.exportReport);
 
-// New — Saved reports
+// New - Saved reports
 router.get   ('/saved',         authenticate, requirePermission('viewReports'), ctrl.listSavedReports);
 router.post  ('/saved',         authenticate, requirePermission('viewReports'), ctrl.createSavedReport);
 router.put   ('/saved/:id',     authenticate, requirePermission('viewReports'), ctrl.updateSavedReport);

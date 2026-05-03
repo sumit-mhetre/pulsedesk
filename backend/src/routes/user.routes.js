@@ -4,16 +4,16 @@ const { validate } = require('../middleware/validate.middleware');
 const { authenticate, requirePermission } = require('../middleware/auth.middleware');
 const ctrl = require('../controllers/user.controller');
 
-// Get all doctors (for dropdowns — any authenticated user)
+// Get all doctors (for dropdowns - any authenticated user)
 router.get('/doctors', authenticate, ctrl.getDoctors);
 
-// Permissions metadata — any authenticated user who can manage users can fetch
+// Permissions metadata - any authenticated user who can manage users can fetch
 router.get('/permissions-meta', authenticate, requirePermission('manageUsers'), ctrl.getPermissionsMeta);
 
 // Update my profile
 router.put('/me', authenticate, ctrl.updateMyProfile);
 
-// Admin routes — now gated by manageUsers permission
+// Admin routes - now gated by manageUsers permission
 router.get('/', authenticate, requirePermission('manageUsers'), ctrl.getUsers);
 
 router.post('/',

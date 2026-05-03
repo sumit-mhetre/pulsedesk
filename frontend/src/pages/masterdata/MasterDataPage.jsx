@@ -376,7 +376,7 @@ export default function MasterDataPage() {
 
   // Gate "Load Default Data" by permission. Admin gets it true by default. Doctors get false
   // by default, but admin can grant it per-doctor via Capabilities editor. SUPER_ADMIN
-  // bypasses this UI — they use the Manage modal's Actions tab instead.
+  // bypasses this UI - they use the Manage modal's Actions tab instead.
   const canSeed   = usePermission('loadDefaultMasterData')
 
   const currentTab = TABS.find(t => t.key === activeTab)
@@ -533,7 +533,7 @@ export default function MasterDataPage() {
     <div className="fade-in">
       <PageHeader title="Master Data" subtitle="Configure medicines, tests, complaints and all reference data" />
 
-      {/* Seed banner — admin only */}
+      {/* Seed banner - admin only */}
       {canSeed && items.length === 0 && !loading && !search && (
         <SeedImporter onDone={fetchItems} />
       )}
@@ -545,7 +545,7 @@ export default function MasterDataPage() {
       )}
       {canSeed && showSeed && <SeedImporter onDone={() => { setShowSeed(false); fetchItems() }} />}
 
-      {/* Doctor/Receptionist with empty data — show simple empty state instead of seed prompt */}
+      {/* Doctor/Receptionist with empty data - show simple empty state instead of seed prompt */}
       {!canSeed && items.length === 0 && !loading && !search && (
         <Card className="mb-4">
           <div className="text-center py-6 text-sm text-slate-500">

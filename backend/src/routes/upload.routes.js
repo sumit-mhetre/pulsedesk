@@ -4,7 +4,7 @@ const { authenticate, requirePermission } = require('../middleware/auth.middlewa
 const { errorResponse } = require('../lib/response');
 const ctrl = require('../controllers/upload.controller');
 
-// In-memory storage — buffers are streamed straight to Cloudinary, never written to disk.
+// In-memory storage - buffers are streamed straight to Cloudinary, never written to disk.
 const upload = multer({
   storage: multer.memoryStorage(),
   limits:  { fileSize: 5 * 1024 * 1024 }, // 5MB cap
@@ -31,7 +31,7 @@ function handleUpload(req, res, next) {
 // Permission picker: clinic-level kinds need manageSettings; doctor's own signature/stamp = createPrescriptions (any doctor)
 function permissionForKind(req, res, next) {
   const kind = req.body?.kind;
-  // We can't yet read body.kind reliably here because multer hasn't run yet — so we apply both gates
+  // We can't yet read body.kind reliably here because multer hasn't run yet - so we apply both gates
   // Actually we already have it via multipart parse. Body kind is just the form field.
   if (!kind) return next();  // controller will reject
 

@@ -4,13 +4,13 @@ const { validate } = require('../middleware/validate.middleware');
 const { authenticate, requirePermission } = require('../middleware/auth.middleware');
 const ctrl = require('../controllers/patient.controller');
 
-// Reads — any authenticated user can view patients
+// Reads - any authenticated user can view patients
 router.get('/search',    authenticate, ctrl.searchPatients);
 router.get('/next-code', authenticate, ctrl.getNextCode);
 router.get('/',          authenticate, ctrl.getPatients);
 router.get('/:id',       authenticate, ctrl.getPatient);
 
-// Writes — require managePatients
+// Writes - require managePatients
 router.post('/',
   authenticate,
   requirePermission('managePatients'),

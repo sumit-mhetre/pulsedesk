@@ -180,7 +180,7 @@ export default function NewDocumentPage() {
         />
       </div>
 
-      {/* Type switcher (only for new docs — locked when editing) */}
+      {/* Type switcher (only for new docs - locked when editing) */}
       {!isEdit && (
         <Card>
           <div className="flex gap-2">

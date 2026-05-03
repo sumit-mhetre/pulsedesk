@@ -18,7 +18,7 @@ function requireIPD(permission) {
     // configure IPD on a clinic before it's actually enabled).
     if (user.role === 'SUPER_ADMIN') return next()
 
-    // Check IPD enabled at clinic level — req.user.clinic comes from auth middleware
+    // Check IPD enabled at clinic level - req.user.clinic comes from auth middleware
     // which now includes ipdEnabled + facilityType after the IPD module rollout.
     if (!user.clinic?.ipdEnabled) {
       return errorResponse(res, 'IPD module not enabled for this clinic', 403, {

@@ -12,7 +12,7 @@
 
 const path = require('path');
 
-// Force load .env.development — never touch production with this script
+// Force load .env.development - never touch production with this script
 const envDevPath = path.resolve(__dirname, '..', '.env.development');
 require('dotenv').config({ path: envDevPath });
 
@@ -22,7 +22,7 @@ const host = hostMatch ? hostMatch[1] : '(unknown)';
 
 const SAFE_HOSTS = ['localhost', '127.0.0.1', '::1'];
 if (!SAFE_HOSTS.includes(host)) {
-  console.error(`\n🛑 Refusing to run — DATABASE_URL host is "${host}", not localhost.`);
+  console.error(`\n🛑 Refusing to run - DATABASE_URL host is "${host}", not localhost.`);
   console.error('   This script is for local development only.\n');
   process.exit(1);
 }

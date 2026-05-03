@@ -8,7 +8,7 @@ const { toPDF }  = require('../lib/exportPdf');
 const { toDOCX } = require('../lib/exportDocx');
 
 // ═══════════════════════════════════════════════════════════
-//  LEGACY ENDPOINTS — backward compatibility
+//  LEGACY ENDPOINTS - backward compatibility
 // ═══════════════════════════════════════════════════════════
 
 async function getDailyReport(req, res) {
@@ -114,7 +114,7 @@ async function getTopDiagnoses(req, res) {
     // Map to unified `name` for frontend
     const mapped = diagnoses.map(d => ({
       id: d.id,
-      name: d.nameEn || d.nameHi || d.nameMr || '—',
+      name: d.nameEn || d.nameHi || d.nameMr || '-',
       nameEn: d.nameEn, nameHi: d.nameHi, nameMr: d.nameMr,
       usageCount: d.usageCount,
     }));
@@ -171,7 +171,7 @@ async function getCollectionSummary(req, res) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  NEW — DASHBOARD
+//  NEW - DASHBOARD
 // ═══════════════════════════════════════════════════════════
 
 async function getDashboard(req, res) {
@@ -340,7 +340,7 @@ async function getDashboard(req, res) {
       topMedicines: topMeds,
       topDiagnoses: topDiagnosesInRange.length
         ? topDiagnosesInRange
-        : topDiag.map(d => ({ name: d.nameEn || d.nameHi || d.nameMr || '—', count: d.usageCount })),
+        : topDiag.map(d => ({ name: d.nameEn || d.nameHi || d.nameMr || '-', count: d.usageCount })),
       doctorStats,
     });
   } catch (err) {
@@ -350,7 +350,7 @@ async function getDashboard(req, res) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  NEW — CUSTOM REPORT QUERY
+//  NEW - CUSTOM REPORT QUERY
 // ═══════════════════════════════════════════════════════════
 
 async function getReportMeta(req, res) {
@@ -398,7 +398,7 @@ async function runQuery(req, res) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  NEW — EXPORT
+//  NEW - EXPORT
 // ═══════════════════════════════════════════════════════════
 
 async function exportReport(req, res) {
@@ -485,7 +485,7 @@ function buildSubtitle(config, total) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  NEW — SAVED REPORTS
+//  NEW - SAVED REPORTS
 // ═══════════════════════════════════════════════════════════
 
 async function listSavedReports(req, res) {

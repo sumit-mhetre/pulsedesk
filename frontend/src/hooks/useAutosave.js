@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import api from '../lib/api'
 
 /**
- * useAutosave — silently upserts a prescription draft every N seconds while dirty.
+ * useAutosave - silently upserts a prescription draft every N seconds while dirty.
  *
  * Usage:
  *   const { status, lastSavedAt, saveNow, discard } = useAutosave({
@@ -16,7 +16,7 @@ import api from '../lib/api'
  *
  * Design:
  *  - Compares stringified form state to last-saved version; only saves if changed.
- *  - Network errors do NOT toast — this is silent. status switches to 'offline'.
+ *  - Network errors do NOT toast - this is silent. status switches to 'offline'.
  *  - On unmount, flushes one final save if dirty.
  *  - Safe to call with enabled=false; becomes a no-op.
  */

@@ -612,7 +612,7 @@ export default function DischargeSummaryTab({ admission }) {
                   <div key={r.id} className="text-xs text-slate-700 border-b border-slate-200 last:border-0 py-1">
                     <span className="font-medium">{r.testName}</span>
                     {r.resultDate && <span className="text-slate-500 ml-2">({format(new Date(r.resultDate), 'd MMM')})</span>}
-                    {r.freeTextResult && <span className="text-slate-600 ml-2">— {r.freeTextResult}</span>}
+                    {r.freeTextResult && <span className="text-slate-600 ml-2">- {r.freeTextResult}</span>}
                     {r.values?.length > 0 && (
                       <span className="text-slate-600 ml-2">
                         {r.values.map(v => `${v.fieldLabel}: ${v.value}${v.fieldUnit ? ' ' + v.fieldUnit : ''}`).join(', ')}
@@ -689,7 +689,7 @@ export default function DischargeSummaryTab({ admission }) {
             <select className="form-select" disabled={!editable}
               value={form.conditionAtDischarge}
               onChange={e => setForm(f => ({ ...f, conditionAtDischarge: e.target.value }))}>
-              <option value="">— Select —</option>
+              <option value="">- Select -</option>
               <option value="STABLE">Stable</option>
               <option value="IMPROVED">Improved</option>
               <option value="STATUS_QUO">Status Quo</option>
@@ -754,7 +754,7 @@ export default function DischargeSummaryTab({ admission }) {
                         <td className={`px-2 py-2 ${noDuration ? 'text-warning font-semibold' : 'text-slate-700'}`}>
                           {noDuration ? '⚠ set duration' : m.duration}
                         </td>
-                        <td className="px-2 py-2 text-slate-700">{m.instructions || '—'}</td>
+                        <td className="px-2 py-2 text-slate-700">{m.instructions || '-'}</td>
                         <td className="px-2 py-2">
                           {editable && (
                             <div className="flex items-center gap-1 justify-end">

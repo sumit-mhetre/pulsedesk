@@ -1,4 +1,4 @@
-// IPD Vitals tab — time-series readings with quick-entry inline row.
+// IPD Vitals tab - time-series readings with quick-entry inline row.
 //
 // Quick row at top: type values inline → press Save → vital recorded.
 // Below: chronological table of readings.
@@ -80,7 +80,7 @@ export default function VitalsTab({ admission }) {
     }
   }
 
-  // Chart data — pulse + temperature + spo2 over time, oldest → newest
+  // Chart data - pulse + temperature + spo2 over time, oldest → newest
   const chartData = [...vitals].reverse().map(v => ({
     time: format(new Date(v.recordedAt), 'd MMM HH:mm'),
     pulse: v.pulse,
@@ -269,15 +269,15 @@ function VitalRow({ v, currentUserId, onDelete }) {
         <p className="text-slate-700">{format(new Date(v.recordedAt), 'd MMM')}</p>
         <p className="text-slate-400">{format(new Date(v.recordedAt), 'HH:mm')}</p>
       </td>
-      <td className="text-sm font-mono px-2 py-1.5">{v.bp || '—'}</td>
-      <td className="text-sm px-2 py-1.5">{v.pulse ?? '—'}</td>
-      <td className="text-sm px-2 py-1.5">{v.temperature ?? '—'}</td>
-      <td className="text-sm px-2 py-1.5">{v.spo2 ?? '—'}</td>
-      <td className="text-sm px-2 py-1.5">{v.respRate ?? '—'}</td>
-      <td className="text-sm px-2 py-1.5">{v.bloodSugar ?? '—'}</td>
-      <td className="text-sm px-2 py-1.5">{v.painScore ?? '—'}</td>
-      <td className="text-xs text-slate-500 px-2 py-1.5">{v.recordedBy?.name || '—'}</td>
-      <td className="text-xs text-slate-500 max-w-[180px] truncate px-2 py-1.5">{v.notes || '—'}</td>
+      <td className="text-sm font-mono px-2 py-1.5">{v.bp || '-'}</td>
+      <td className="text-sm px-2 py-1.5">{v.pulse ?? '-'}</td>
+      <td className="text-sm px-2 py-1.5">{v.temperature ?? '-'}</td>
+      <td className="text-sm px-2 py-1.5">{v.spo2 ?? '-'}</td>
+      <td className="text-sm px-2 py-1.5">{v.respRate ?? '-'}</td>
+      <td className="text-sm px-2 py-1.5">{v.bloodSugar ?? '-'}</td>
+      <td className="text-sm px-2 py-1.5">{v.painScore ?? '-'}</td>
+      <td className="text-xs text-slate-500 px-2 py-1.5">{v.recordedBy?.name || '-'}</td>
+      <td className="text-xs text-slate-500 max-w-[180px] truncate px-2 py-1.5">{v.notes || '-'}</td>
       <td className="text-right px-2 py-1.5">
         {canDelete && (
           <button onClick={() => onDelete(v.id)}

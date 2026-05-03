@@ -150,7 +150,7 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
       try {
         const { data } = await api.get(`/patients/search?q=${form.phone}`)
         const dup = data.data?.find(p => p.phone === form.phone)
-        setWarning(dup ? `Phone already used by ${dup.patientCode} — ${dup.name}` : '')
+        setWarning(dup ? `Phone already used by ${dup.patientCode} - ${dup.name}` : '')
       } catch {}
     }, 400)
     return () => clearTimeout(t)
@@ -172,7 +172,7 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
     return true
   }
 
-  // Handle backdrop click — show confirm if form is dirty
+  // Handle backdrop click - show confirm if form is dirty
   const handleBackdropClick = () => {
     if (isDirty) setConfirmClose(true)
     else onClose()
@@ -291,7 +291,7 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
                 {showNameDrop && nameResults.length > 0 && (
                   <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-blue-100 max-h-44 overflow-y-auto">
                     <p className="px-3 py-1.5 text-xs font-semibold text-primary bg-blue-50 uppercase tracking-wide">
-                      Existing Patients — click to view
+                      Existing Patients - click to view
                     </p>
                     {nameResults.map(p=>(
                       <button key={p.id} type="button"
@@ -361,7 +361,7 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
                   onChange={e=>{ setForm(f=>({...f,dob:e.target.value})); setIsDirty(true); if(fieldErrors.age)setFieldErrors(p=>({...p,age:''})) }}/>
               </div>
             </div>
-            <p className="text-xs text-slate-400 -mt-2">Enter age in years <strong>or</strong> pick date of birth — age auto-fills from DOB</p>
+            <p className="text-xs text-slate-400 -mt-2">Enter age in years <strong>or</strong> pick date of birth - age auto-fills from DOB</p>
 
             {/* Preferred Language */}
             <div className="grid grid-cols-2 gap-3">
@@ -403,7 +403,7 @@ export function PatientModal({ mode, initialForm, onClose, onSaved, navigate, ca
                 value={form.address} onChange={set('address')}/>
             </div>
 
-            {/* Allergies + Chronic — only in edit mode */}
+            {/* Allergies + Chronic - only in edit mode */}
             {mode === 'edit' && (
               <>
                 <div className="border-t border-slate-100 pt-4">

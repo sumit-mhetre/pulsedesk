@@ -1,4 +1,4 @@
-// IPD Vitals controller — time-series readings for an admission.
+// IPD Vitals controller - time-series readings for an admission.
 //
 // Different from OPD VitalRecord (1 per Rx). Here vitals are recorded
 // frequently (every 4 hours typically, more in ICU). Used for trend charts
@@ -48,7 +48,7 @@ async function listVitals(req, res) {
 
 // ── Create a vital record ─────────────────────────────────
 // Body: { recordedAt, bp, pulse, temperature, spo2, respRate, bloodSugar, painScore, notes }
-// At least one numeric field should have a value, but we don't enforce —
+// At least one numeric field should have a value, but we don't enforce -
 // occasionally only notes are added.
 async function createVital(req, res) {
   try {
@@ -61,7 +61,7 @@ async function createVital(req, res) {
       notes,
     } = req.body
 
-    // Sanity checks — reject obviously bogus values rather than silently store
+    // Sanity checks - reject obviously bogus values rather than silently store
     const numericChecks = [
       ['pulse',       pulse,       30,  250],
       ['temperature', temperature, 90,  115],   // °F; tolerate °C if user used °C (interpret 30-45 range)

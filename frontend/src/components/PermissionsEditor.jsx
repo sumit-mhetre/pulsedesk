@@ -5,13 +5,13 @@ import {
   getDefaultsForRole,
 } from '../lib/permissions'
 
-// ── Capabilities editor (formerly "Permissions" — UI label only) ──
+// ── Capabilities editor (formerly "Permissions" - UI label only) ──
 // Reusable across clinic-admin Users page AND super-admin user form modal.
 //
 // Props:
-//   role         — current role (DOCTOR / RECEPTIONIST / ADMIN)
-//   permissions  — flat { key: bool } map (always 14 keys)
-//   setPermissions — setter (same shape as useState setter)
+//   role         - current role (DOCTOR / RECEPTIONIST / ADMIN)
+//   permissions  - flat { key: bool } map (always 14 keys)
+//   setPermissions - setter (same shape as useState setter)
 export default function PermissionsEditor({ role, permissions, setPermissions }) {
   const defaults = useMemo(() => getDefaultsForRole(role), [role])
 

@@ -1,4 +1,4 @@
-// Consultations tab — request internal (in-clinic doctor) or external
+// Consultations tab - request internal (in-clinic doctor) or external
 // (named outside specialist) consultations during admission.
 //
 // Internal: pick a doctor from clinic users → record reason
@@ -288,7 +288,7 @@ function RequestModal({ admission, onClose, onSaved }) {
                   ? 'border-primary bg-blue-50 text-primary'
                   : 'border-slate-200 text-slate-600 hover:border-primary'}`}>
               <Stethoscope className="w-4 h-4"/>
-              Internal — Doctor in clinic
+              Internal - Doctor in clinic
             </button>
             <button type="button"
               onClick={() => setMode('external')}
@@ -297,7 +297,7 @@ function RequestModal({ admission, onClose, onSaved }) {
                   ? 'border-primary bg-blue-50 text-primary'
                   : 'border-slate-200 text-slate-600 hover:border-primary'}`}>
               <Building2 className="w-4 h-4"/>
-              External — Outside specialist
+              External - Outside specialist
             </button>
           </div>
         </div>
@@ -307,10 +307,10 @@ function RequestModal({ admission, onClose, onSaved }) {
             <label className="form-label">Pick Doctor *</label>
             <select className="form-select" value={form.consultantDoctorId}
               onChange={e => setForm(f => ({ ...f, consultantDoctorId: e.target.value }))}>
-              <option value="">— Select a doctor —</option>
+              <option value="">- Select a doctor -</option>
               {doctors.map(d => (
                 <option key={d.id} value={d.id}>
-                  {d.name}{d.specialization ? ` — ${d.specialization}` : ''}
+                  {d.name}{d.specialization ? ` - ${d.specialization}` : ''}
                 </option>
               ))}
             </select>
@@ -376,7 +376,7 @@ function ResponseModal({ consult, onClose, onSaved }) {
   }
 
   return (
-    <Modal open onClose={onClose} title={`Response — ${consult.consultantName}`} size="md"
+    <Modal open onClose={onClose} title={`Response - ${consult.consultantName}`} size="md"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>

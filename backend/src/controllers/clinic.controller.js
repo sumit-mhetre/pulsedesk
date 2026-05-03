@@ -29,7 +29,7 @@ async function createClinic(req, res) {
     const {
       name, address, phone, mobile, email, tagline, gst,
       subscriptionPlan, subscriptionEnd,
-      // First admin user details — OPTIONAL: if all blank, no admin user created
+      // First admin user details - OPTIONAL: if all blank, no admin user created
       adminName, adminEmail, adminPassword, adminPhone,
     } = req.body;
 
@@ -115,7 +115,7 @@ async function createClinic(req, res) {
       { clinic: result.clinic, admin: adminSafe },
       adminSafe
         ? 'Clinic created with admin account'
-        : 'Clinic created — manage from Super Admin (no admin account created)',
+        : 'Clinic created - manage from Super Admin (no admin account created)',
       201
     );
   } catch (err) {
@@ -204,7 +204,7 @@ async function updateClinic(req, res) {
     if (gst              !== undefined) data.gst = gst;
     if (letterheadMode   !== undefined) data.letterheadMode = !!letterheadMode;
     if (hideTextOnHeader !== undefined) data.hideTextOnHeader = !!hideTextOnHeader;
-    // Image URL fields — accept null (clear) or string (set). Upload endpoint sets these
+    // Image URL fields - accept null (clear) or string (set). Upload endpoint sets these
     // directly, but this allows admins to clear them via the clinic update form too.
     if (logo             !== undefined) data.logo = logo || null;
     if (headerImageUrl   !== undefined) data.headerImageUrl = headerImageUrl || null;
@@ -317,11 +317,11 @@ async function seedDefaultData(tx, clinicId) {
   await tx.dosageOption.createMany({ data: dosages.map(d => ({ ...d, clinicId })) });
   await tx.timingOption.createMany({ data: timings.map(t => ({ ...t, clinicId })) });
 
-  // Default Document Templates — 3 fitness, 3 medical, 2 referral
+  // Default Document Templates - 3 fitness, 3 medical, 2 referral
   const docTemplates = [
     // ── FITNESS ──
     {
-      type: 'FITNESS_CERT', name: 'General fitness — Employment', isDefault: true,
+      type: 'FITNESS_CERT', name: 'General fitness - Employment', isDefault: true,
       diagnosis: 'No abnormality detected on physical examination.',
       remarks: '',
       data: { verdict: 'FIT', fitnessFor: 'Employment', validityMonths: 6, vitals: {} },
@@ -333,7 +333,7 @@ async function seedDefaultData(tx, clinicId) {
       data: { verdict: 'FIT', fitnessFor: 'Pre-employment', validityMonths: 12, vitals: {} },
     },
     {
-      type: 'FITNESS_CERT', name: 'Sports fitness — adult', isDefault: false,
+      type: 'FITNESS_CERT', name: 'Sports fitness - adult', isDefault: false,
       diagnosis: 'Cardiovascular and musculoskeletal exam normal.',
       remarks: '',
       data: { verdict: 'FIT', fitnessFor: 'Sports', validityMonths: 6, vitals: {} },
@@ -341,19 +341,19 @@ async function seedDefaultData(tx, clinicId) {
 
     // ── MEDICAL CERT (sick leave) ──
     {
-      type: 'MEDICAL_CERT', name: 'Viral fever — 3 days rest', isDefault: true,
+      type: 'MEDICAL_CERT', name: 'Viral fever - 3 days rest', isDefault: true,
       diagnosis: 'Viral fever with body ache and headache',
       remarks: 'Patient advised bed rest, plenty of fluids, and prescribed medication.',
       data: { defaultRestDays: 3 },
     },
     {
-      type: 'MEDICAL_CERT', name: 'Acute gastroenteritis — 2 days', isDefault: false,
+      type: 'MEDICAL_CERT', name: 'Acute gastroenteritis - 2 days', isDefault: false,
       diagnosis: 'Acute gastroenteritis',
       remarks: 'Patient advised oral rehydration, light diet, and prescribed medication.',
       data: { defaultRestDays: 2 },
     },
     {
-      type: 'MEDICAL_CERT', name: 'Migraine / severe headache — 1 day', isDefault: false,
+      type: 'MEDICAL_CERT', name: 'Migraine / severe headache - 1 day', isDefault: false,
       diagnosis: 'Acute migraine',
       remarks: 'Patient advised rest in a quiet, darkened environment.',
       data: { defaultRestDays: 1 },
@@ -472,7 +472,7 @@ async function getClinicStats(req, res) {
         orderBy: { createdAt: 'desc' },
         select: { createdAt: true },
       }),
-      // Proxy for "last login" — most-recently-updated user record
+      // Proxy for "last login" - most-recently-updated user record
       prisma.user.findFirst({
         where: { clinicId: id },
         orderBy: { updatedAt: 'desc' },
@@ -498,7 +498,7 @@ async function getClinicStats(req, res) {
           AND "createdAt" >= NOW() - INTERVAL '12 months'
         GROUP BY 1 ORDER BY 1
       `,
-      // Peak hours — Rx count by hour of day
+      // Peak hours - Rx count by hour of day
       prisma.$queryRaw`
         SELECT extract(hour from "createdAt")::int as hour,
                count(*)::int as count
@@ -523,7 +523,7 @@ async function getClinicStats(req, res) {
         activeUsers,
       },
       activity: {
-        // Note: No login tracking yet — using user record updatedAt as proxy
+        // Note: No login tracking yet - using user record updatedAt as proxy
         lastUserUpdate:   mostRecentUserUpdate?.updatedAt || null,
         lastPrescription: lastRxAt,
         isInactive,
@@ -556,7 +556,7 @@ async function resetAdminPassword(req, res) {
     });
     if (!admin) return errorResponse(res, 'No admin user found for this clinic', 404);
 
-    // Generate temp password (8 chars: 4 letters + 4 digits) — readable, easy to share
+    // Generate temp password (8 chars: 4 letters + 4 digits) - readable, easy to share
     const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // exclude I/O for clarity
     const digits  = '23456789';                    // exclude 0/1 for clarity
     let temp = '';

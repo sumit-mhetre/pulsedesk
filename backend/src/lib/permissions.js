@@ -159,7 +159,7 @@ function getDefaultsForRole(role) {
   return filled
 }
 
-// Resolves effective permissions for a user — role defaults + per-user overrides.
+// Resolves effective permissions for a user - role defaults + per-user overrides.
 function resolvePermissions(user) {
   if (!user) return {}
   const defaults = getDefaultsForRole(user.role)
@@ -189,7 +189,7 @@ function computeOverrides(role, fullPermissions) {
   return overrides
 }
 
-// Express middleware factory — drop-in for routes.
+// Express middleware factory - drop-in for routes.
 // Use as: router.get('/path', authenticate, requirePermission('manageIPD'), ctrl.handler)
 function requirePermission(permissionKey) {
   return (req, res, next) => {

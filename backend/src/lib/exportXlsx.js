@@ -118,10 +118,10 @@ async function toXLSX({ title = 'Report', subtitle = '', columnsMeta, rows, summ
 function flattenSummary(summary, prefix = '') {
   const out = [];
   for (const [k, v] of Object.entries(summary || {})) {
-    const key = prefix ? `${prefix} — ${k}` : k;
+    const key = prefix ? `${prefix} - ${k}` : k;
     if (v && typeof v === 'object' && !Array.isArray(v)) {
       for (const [k2, v2] of Object.entries(v)) {
-        out.push([`${key} — ${k2}`, v2]);
+        out.push([`${key} - ${k2}`, v2]);
       }
     } else if (Array.isArray(v)) {
       out.push([key, v.map(x => Array.isArray(x) ? x.join(': ') : x).join('; ')]);

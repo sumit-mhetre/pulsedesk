@@ -1,9 +1,9 @@
-// Consents controller — track admission, surgery, anesthesia, and other
+// Consents controller - track admission, surgery, anesthesia, and other
 // consent forms per admission.
 //
 // Pre-loaded standard consent text templates. Patient acknowledges, paper
 // scan can be uploaded as documentUrl. v1 doesn't enforce mandatory
-// consents — it's tracking + audit only.
+// consents - it's tracking + audit only.
 //
 // Permission gates set in routes:
 //   read   → manageIPD

@@ -1,11 +1,11 @@
-// Bed Board — visual grid view with top-view illustrated bed cards.
+// Bed Board - visual grid view with top-view illustrated bed cards.
 //
 // Each card shows a top-down bed illustration that conveys status:
-//   VACANT   — empty bed, ready
-//   OCCUPIED — patient face on pillow, blanket drawn over body, "z" sleep marks
-//   CLEANING — bed with sparkles around it (housekeeping in progress)
-//   RESERVED — bed with RESERVED tag overlaid
-//   BLOCKED  — faded bed with hard-hat icon (out of service)
+//   VACANT   - empty bed, ready
+//   OCCUPIED - patient face on pillow, blanket drawn over body, "z" sleep marks
+//   CLEANING - bed with sparkles around it (housekeeping in progress)
+//   RESERVED - bed with RESERVED tag overlaid
+//   BLOCKED  - faded bed with hard-hat icon (out of service)
 //
 // Click behavior:
 //   VACANT or RESERVED → "Admit Patient" (navigates to /ipd/admissions/new)
@@ -56,7 +56,7 @@ function BedSVG({ status }) {
 
   return (
     <svg width="74" height="92" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      {/* Bed frame (top view — looking down at the bed) */}
+      {/* Bed frame (top view - looking down at the bed) */}
       <rect x="10" y="6" width="60" height="88" rx="4"
         fill="white" stroke={t.strong} strokeWidth="1.2"
         opacity={status === 'BLOCKED' ? 0.7 : 1}/>
@@ -69,7 +69,7 @@ function BedSVG({ status }) {
         fill="white" stroke={t.border} strokeWidth="0.8"
         opacity={status === 'BLOCKED' ? 0.7 : 1}/>
 
-      {/* Patient face on pillow + blanket — only for OCCUPIED */}
+      {/* Patient face on pillow + blanket - only for OCCUPIED */}
       {status === 'OCCUPIED' && (
         <>
           <ellipse cx="40" cy="22" rx="6" ry="5" fill="#F0997B"/>
@@ -96,7 +96,7 @@ function BedSVG({ status }) {
           fill={mattressColor} opacity={mattressOpacity}/>
       )}
 
-      {/* Subtle dashed center line on Vacant — adds 'made up bed' feel */}
+      {/* Subtle dashed center line on Vacant - adds 'made up bed' feel */}
       {status === 'VACANT' && (
         <line x1="14" y1="62" x2="66" y2="62" stroke="#97C459" strokeWidth="0.5" strokeDasharray="2 2"/>
       )}
@@ -189,7 +189,7 @@ function BedCard({ bed, canAdmit, canMarkClean, onAdmit, onView, onMarkClean }) 
       {/* Footer info */}
       {adm ? (
         <div className="border-t mt-1 pt-1.5" style={{ borderColor: `${t.border}40` }}>
-          <p className="text-[11px] font-semibold truncate" style={{ color: t.text }}>{adm.patient?.name || '—'}</p>
+          <p className="text-[11px] font-semibold truncate" style={{ color: t.text }}>{adm.patient?.name || '-'}</p>
           <p className="text-[9px] font-mono truncate" style={{ color: t.strong }}>{adm.admissionNumber}</p>
           {adm.admittedAt && (
             <p className="text-[9px]" style={{ color: t.strong, opacity: 0.7 }}>

@@ -142,7 +142,7 @@ async function createBill(req, res) {
           },
         });
       } catch (e) {
-        // Don't fail the bill if queue insert hits a race condition — log only
+        // Don't fail the bill if queue insert hits a race condition - log only
         console.warn('[createBill] auto-queue failed (non-fatal):', e?.message);
       }
 

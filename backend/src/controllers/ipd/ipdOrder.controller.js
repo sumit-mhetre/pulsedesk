@@ -1,4 +1,4 @@
-// IPD Orders controller — lab tests, imaging, diet, physiotherapy, and
+// IPD Orders controller - lab tests, imaging, diet, physiotherapy, and
 // special instructions ordered during an inpatient admission.
 //
 // Distinct from medication orders (which have their own controller + MAR).
@@ -121,7 +121,7 @@ async function createOrder(req, res) {
 
 // ── Update order status ───────────────────────────────────
 // Body: { status, notes? }
-// Status transitions are loosely enforced — caller specifies, we record.
+// Status transitions are loosely enforced - caller specifies, we record.
 async function updateStatus(req, res) {
   try {
     const order = await prisma.iPDOrder.findFirst({

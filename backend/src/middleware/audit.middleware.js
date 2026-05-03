@@ -16,12 +16,12 @@ async function audit(req, action, entity, entityId = null, details = null) {
       }
     })
   } catch (err) {
-    // Non-blocking — never crash the main request
+    // Non-blocking - never crash the main request
     console.error('Audit log error:', err.message)
   }
 }
 
-// ── Audit middleware — auto-logs all mutating requests ────
+// ── Audit middleware - auto-logs all mutating requests ────
 function auditMiddleware(req, res, next) {
   const originalJson = res.json.bind(res)
 

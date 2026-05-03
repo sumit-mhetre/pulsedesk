@@ -1,4 +1,4 @@
--- Password reset tokens — one-time use, 1-hour expiry
+-- Password reset tokens - one-time use, 1-hour expiry
 CREATE TABLE "password_reset_tokens" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,

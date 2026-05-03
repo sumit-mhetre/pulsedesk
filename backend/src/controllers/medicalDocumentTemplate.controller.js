@@ -32,7 +32,7 @@ async function createTemplate(req, res) {
       return errorResponse(res, 'Template name is required', 400);
     }
 
-    // Unique name per type per clinic — pre-check to give friendly error
+    // Unique name per type per clinic - pre-check to give friendly error
     const exists = await prisma.medicalDocumentTemplate.findFirst({
       where: { clinicId: req.clinicId, type, name: name.trim() },
     });

@@ -619,7 +619,7 @@ const LAB_TEST_TEMPLATES = {
   },
 
   // ──────────────────────────────────────────────────────────────────
-  // SEROLOGY (qualitative — single positive/negative result, but useful
+  // SEROLOGY (qualitative - single positive/negative result, but useful
   // to keep as structured field for trending of titers)
   // ──────────────────────────────────────────────────────────────────
 
@@ -932,7 +932,7 @@ const LAB_TEST_TEMPLATES = {
   },
 
   // ──────────────────────────────────────────────────────────────────
-  // MICROBIOLOGY (cultures — keep simple structured fields for organism + sensitivity)
+  // MICROBIOLOGY (cultures - keep simple structured fields for organism + sensitivity)
   // ──────────────────────────────────────────────────────────────────
 
   'Blood Culture & Sensitivity': {

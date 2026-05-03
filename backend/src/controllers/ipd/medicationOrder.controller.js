@@ -1,4 +1,4 @@
-// Medication Order controller — inpatient prescriptions with frequency-based
+// Medication Order controller - inpatient prescriptions with frequency-based
 // MAR (Medication Administration Record) auto-scheduling.
 //
 // When an order is created, we auto-generate MAR rows from startDate to today
@@ -13,7 +13,7 @@
 //   QID  = 06:00, 12:00, 18:00, 22:00
 //   HS   = 22:00              (at bedtime)
 //   STAT = (one-time, immediate)
-//   SOS  = (as needed, no schedule — nurse creates row when given)
+//   SOS  = (as needed, no schedule - nurse creates row when given)
 //   Q4H  = every 4 hours from start (06, 10, 14, 18, 22, 02)
 //   Q6H  = every 6 hours (06, 12, 18, 00)
 //   Q8H  = every 8 hours (08, 16, 00)
@@ -21,12 +21,12 @@
 // Permission gates set in routes:
 //   read   → manageIPD
 //   write  → manageMedicationOrders (Admin, Doctor)
-//   admin  → recordMAR (Admin, Nurse — to administer doses)
+//   admin  → recordMAR (Admin, Nurse - to administer doses)
 
 const prisma = require('../../lib/prisma')
 const { successResponse, errorResponse } = require('../../lib/response')
 
-// Hardcoded standard times (24-hour). Deliberate v1 choice — predictable,
+// Hardcoded standard times (24-hour). Deliberate v1 choice - predictable,
 // matches typical Indian small-clinic conventions. To switch to per-clinic
 // configurable schedules, replace this with a clinic.ipdSettings.marSchedule
 // lookup and merge with these defaults.
@@ -37,7 +37,7 @@ const FREQUENCY_TIMES = {
   QID:  ['06:00', '12:00', '18:00', '22:00'],
   HS:   ['22:00'],
   STAT: [],   // single dose at startDate, scheduled = startDate exactly
-  SOS:  [],   // as-needed — no auto schedule, nurse adds when given
+  SOS:  [],   // as-needed - no auto schedule, nurse adds when given
   Q4H:  ['06:00', '10:00', '14:00', '18:00', '22:00', '02:00'],
   Q6H:  ['06:00', '12:00', '18:00', '00:00'],
   Q8H:  ['08:00', '16:00', '00:00'],
@@ -176,7 +176,7 @@ async function createOrder(req, res) {
       return errorResponse(res, 'medicineName is required when medicineId is not provided', 400)
     }
 
-    // Allergy check — soft warning, requires override flag if conflict
+    // Allergy check - soft warning, requires override flag if conflict
     const conflicts = checkAllergies(admission.patient, resolvedName)
     if (conflicts.length > 0 && !allergyOverride) {
       return errorResponse(res, 'Patient has known allergies that may conflict', 409, {
@@ -298,7 +298,7 @@ async function stopOrder(req, res) {
 }
 
 // ── Refresh future MAR slots for an active order ──────────
-// Called periodically by the MAR view (or after a long gap). Idempotent —
+// Called periodically by the MAR view (or after a long gap). Idempotent -
 // won't create duplicate slots for times already present.
 async function refreshSchedule(req, res) {
   try {

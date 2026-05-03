@@ -13,7 +13,7 @@ import useAuthStore from '../../store/authStore'
 const DOSAGE_OPTS = ['1-0-0','0-1-0','0-0-1','1-0-1','1-1-0','0-1-1','1-1-1','1-1-1-1','OD','BD','TDS','QID','HS','SOS','STAT']
 const DAYS_OPTS   = ['1','2','3','5','7','10','14','15','21','30']
 
-// ── Smart days input — type number → shows N days/weeks/months/years ──
+// ── Smart days input - type number → shows N days/weeks/months/years ──
 function SmartDaysInput({ value, onChange }) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
@@ -95,7 +95,7 @@ const TIMING_OPTS = [
   { code:'WM', label:'With Milk' }, { code:'WW', label:'With Water' },
   { code:'MO', label:'Morning Only' }, { code:'AN', label:'At Night' },
 ]
-// Frequency — how often across days (different from Timing which is when within a day)
+// Frequency - how often across days (different from Timing which is when within a day)
 const FREQ_OPTS = [
   { code:'DAILY',    label:'Daily' },
   { code:'ALT_DAYS', label:'Alternate Days' },
@@ -111,10 +111,10 @@ const emptyMed    = { medicineId:'',medicineName:'',medicineType:'tablet',generi
 const LIQUID_NOTES_EN = ['5ml twice daily','5ml thrice daily','2.5ml twice daily','10ml twice daily','2 drops twice daily','2 drops thrice daily','1 teaspoon thrice daily','2 teaspoons twice daily','As directed','Apply thin layer twice daily']
 const LIQUID_NOTES_MR = ['दिवसातून 2 वेळा 5ml','दिवसातून 3 वेळा 5ml','दिवसातून 2 वेळा 2.5ml','दिवसातून 2 वेळा 10ml','दिवसातून 2 वेळा 2 थेंब','दिवसातून 3 वेळा 2 थेंब','दिवसातून 3 वेळा 1 चमचा','दिवसातून 2 वेळा 2 चमचे','सांगितल्याप्रमाणे','दिवसातून 2 वेळा पातळ थर लावा']
 
-// Frequency divisor — how many days between doses
+// Frequency divisor - how many days between doses
 const FREQ_DIV = { DAILY: 1, ALT_DAYS: 2, EVERY_3D: 3, WEEKLY: 7 }
 
-// Infer medicine type from a typed-in name. Order matters — most specific first.
+// Infer medicine type from a typed-in name. Order matters - most specific first.
 // Returns ONLY values present in the backend MedicineType enum:
 // tablet | capsule | liquid | drops | cream | sachet | injection | inhaler | powder
 const inferMedicineType = (name) => {
@@ -152,7 +152,7 @@ const calcQty = (dosage, days, type='tablet', frequency='DAILY') => {
   return String(t * doses)
 }
 
-// Normalize a duration value to include a unit — bare numbers default to "days".
+// Normalize a duration value to include a unit - bare numbers default to "days".
 // Examples: "5" → "5 days" | "7 weeks" → "7 weeks" | "" → null | "  5  " → "5 days"
 const normalizeDays = (d) => {
   if (d === null || d === undefined) return null
@@ -162,13 +162,13 @@ const normalizeDays = (d) => {
   return s                                   // already has a unit (days/weeks/months/years)
 }
 
-// Shift any Sunday to Monday — clinics are closed Sundays, so the Next Visit date
+// Shift any Sunday to Monday - clinics are closed Sundays, so the Next Visit date
 // should never land on one. Applied to every value we put into the next-visit field
 // (auto-set from medicines, manual pick, template load, draft restore). Accepts a
 // 'yyyy-MM-dd' string and returns a 'yyyy-MM-dd' string; passes through empty/invalid.
 const shiftSundayToMonday = (yyyyMmDd) => {
   if (!yyyyMmDd) return yyyyMmDd
-  // Parse explicitly without timezone — same trick used elsewhere in this file.
+  // Parse explicitly without timezone - same trick used elsewhere in this file.
   const d = new Date(yyyyMmDd + 'T00:00:00')
   if (isNaN(d.getTime())) return yyyyMmDd
   if (d.getDay() === 0) return format(addDays(d, 1), 'yyyy-MM-dd')
@@ -293,7 +293,7 @@ function MedInput({ value, medicineId, onSelect, onTyped, medicines, rowIndex, r
     if (exact) {
       sel(exact)  // treat as if selected
     } else {
-      // Save as custom typed medicine — no id yet, backend will create it
+      // Save as custom typed medicine - no id yet, backend will create it
       onTyped && onTyped(typed, rowIndex)
     }
   }
@@ -405,7 +405,7 @@ function GenericInput({ medicineId, value, canEdit, onSaved }) {
   if (!canEdit && value) {
     return <p className="text-xs text-slate-500 italic mt-0.5 truncate">{value}</p>
   }
-  // Read-only state (no value, no edit permission) — render nothing
+  // Read-only state (no value, no edit permission) - render nothing
   if (!canEdit) return null
 
   // Edit state
@@ -534,7 +534,7 @@ function TagInput({ tags, onAdd, onRemove, items, placeholder }) {
   const [bump,setBump] = useState(0)
   const ref = useRef(null)
 
-  // Always recalculate — exclude already added tags
+  // Always recalculate - exclude already added tags
   const filtered = items
     .filter(i => !tags.includes(i.nameEn))
     .filter(i => q.length===0 || i.nameEn?.toLowerCase().includes(q.toLowerCase()))
@@ -890,7 +890,7 @@ export default function NewPrescriptionPage() {
   const lastUsed    = useRef({ dosage:'1-0-1', days:'5 days', timing:'AF' })
   const [rxTests,   setRxTests]   = useState([])
   const [rxAdvice,  setRxAdvice]  = useState([])
-  // Lab Results / Test Outcomes — Phase 2 of lab feature.
+  // Lab Results / Test Outcomes - Phase 2 of lab feature.
   // Shape: [{ tempId, id?, labTestId?, testName, testCategory?, resultDate (yyyy-MM-dd),
   //           expectedFields?: [{key,label,unit,normalLow,normalHigh}],
   //           values: {fieldKey: string}, freeTextResult?: string, notes?: string }]
@@ -917,7 +917,7 @@ export default function NewPrescriptionPage() {
     }
   }, [])
   const [printLang, setPrintLang] = useState('en')
-  // customRxNo removed — Rx number is now always auto-generated
+  // customRxNo removed - Rx number is now always auto-generated
   const [saving,    setSaving]    = useState(false)
   const [lastRx,    setLastRx]    = useState(null)
   const [doctorPrefs,  setDoctorPrefs]  = useState({})
@@ -925,17 +925,17 @@ export default function NewPrescriptionPage() {
   const [allTemplates, setAllTemplates] = useState([])
   const [pageDesign,   setPageDesign]   = useState(null)
   const [pdLoaded,     setPdLoaded]     = useState(false)
-  // customData shape: { cf_id: string[] } — multi-tag values per clinic-defined custom field.
-  // Loaded from the saved prescription on edit (normalized — see edit-loader below) or
+  // customData shape: { cf_id: string[] } - multi-tag values per clinic-defined custom field.
+  // Loaded from the saved prescription on edit (normalized - see edit-loader below) or
   // starts empty for a new Rx. Old single-string values from before multi-tag are
   // automatically wrapped to arrays on load.
   const [customData,   setCustomData]   = useState({})
-  // customFieldValues — flat list of { id, nameEn, fieldId } across all custom fields
+  // customFieldValues - flat list of { id, nameEn, fieldId } across all custom fields
   // for the clinic. We slice by fieldId locally when rendering each TagInput, which
   // means we fetch ONCE on mount instead of N times (one per custom field).
   const [customFieldValues, setCustomFieldValues] = useState([])
 
-  // Medicine IDs sorted by "recently prescribed" for this doctor — shown at top of medicine dropdown
+  // Medicine IDs sorted by "recently prescribed" for this doctor - shown at top of medicine dropdown
   const recentMedIds = useMemo(() => {
     return Object.entries(doctorPrefs)
       .filter(([, p]) => p && p.updatedAt)
@@ -1092,7 +1092,7 @@ export default function NewPrescriptionPage() {
         if (pd.data.data?.config) { setPageDesign(pd.data.data.config); setPdLoaded(true) }
         else setPdLoaded(true)
       } catch { setPdLoaded(true) }
-      // Load Rx PRINT config — we only need defaultPrintLang from it for now
+      // Load Rx PRINT config - we only need defaultPrintLang from it for now
       try {
         const printPd = await api.get('/page-design?type=prescription')
         const lang = printPd.data?.data?.config?.defaultPrintLang
@@ -1147,7 +1147,7 @@ export default function NewPrescriptionPage() {
       setRxAdvice(rx.advice ? rx.advice.split('\n').filter(Boolean).map((a,i)=>({ id:'adv_'+i, name:a })) : [])
       setNextVisit(rx.nextVisit ? format(new Date(rx.nextVisit),'yyyy-MM-dd') : '')
       setPrintLang(rx.printLang||'en')
-      // Custom field values — backend stores nullable JSON. Normalize to { cf_id: string[] }.
+      // Custom field values - backend stores nullable JSON. Normalize to { cf_id: string[] }.
       // Older Rxs may have stored a single string per field (pre multi-tag); wrap those
       // into 1-element arrays so the form's TagInput sees a consistent shape.
       const rawCD = rx.customData && typeof rx.customData === 'object' ? rx.customData : {}
@@ -1159,7 +1159,7 @@ export default function NewPrescriptionPage() {
         else                       normalizedCD[k] = []
       }
       setCustomData(normalizedCD)
-      // Vitals snapshot — restore the values entered when this Rx was originally
+      // Vitals snapshot - restore the values entered when this Rx was originally
       // saved. We merge into the existing default vitals state (with units etc.)
       // and auto-expand the vitals section if any value was previously entered.
       if (rx.vitals && typeof rx.vitals === 'object') {
@@ -1199,7 +1199,7 @@ export default function NewPrescriptionPage() {
         }
       })
       setRxLabResults(items)
-    }).catch(() => {})  // non-blocking — empty array if endpoint fails
+    }).catch(() => {})  // non-blocking - empty array if endpoint fails
   }, [editId, isEdit])
 
   const fetchPatients = async (q='') => {
@@ -1224,9 +1224,9 @@ export default function NewPrescriptionPage() {
     if (!outcomesOpen) return
     const existing = Array.from(new Set(
       rxLabResults.map(r => r.resultDate).filter(Boolean)
-    )).sort((a, b) => b.localeCompare(a))   // descending — newest first / leftmost
+    )).sort((a, b) => b.localeCompare(a))   // descending - newest first / leftmost
     setOutcomesDates(existing.length > 0 ? existing : [format(new Date(), 'yyyy-MM-dd')])
-    // Hydrate added set from any rows that already have a labTestId — both the
+    // Hydrate added set from any rows that already have a labTestId - both the
     // explicit-pick set and the implicit-via-values set unify here, so the body
     // shows everything that's relevant when reopening an existing prescription.
     setAddedLabTestIds(new Set(rxLabResults.map(r => r.labTestId).filter(Boolean)))
@@ -1234,7 +1234,7 @@ export default function NewPrescriptionPage() {
     setOutcomesPickerOpen(false)
     setOpenCategories({})
     setShowAllCategories(false)
-    // intentionally only depend on outcomesOpen — we sync once per modal open
+    // intentionally only depend on outcomesOpen - we sync once per modal open
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outcomesOpen])
 
@@ -1270,7 +1270,7 @@ export default function NewPrescriptionPage() {
     })
   }
 
-  // Remove a date column. Always confirms (even for empty columns) — accidentally
+  // Remove a date column. Always confirms (even for empty columns) - accidentally
   // dropping a column you just added is annoying. Always keeps at least one column.
   // If values exist, queues server-side deletion and drops the rows too.
   const removeDate = (date) => {
@@ -1350,7 +1350,7 @@ export default function NewPrescriptionPage() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
   }, [labTestList])
 
-  // Body content selector — three modes (search query no longer affects body):
+  // Body content selector - three modes (search query no longer affects body):
   //   1. "Show all" toggled → render every category (browse mode)
   //   2. Default → only categories that contain a labTest the user picked from
   //      the search dropdown OR a labTest that already has values entered
@@ -1369,9 +1369,9 @@ export default function NewPrescriptionPage() {
       .filter(([, rows]) => rows.length > 0)
   }, [outcomesFieldsByCategory, showAllCategories, addedLabTestIds, rxLabResults])
 
-  // Picker dropdown items — one entry per CATEGORY (not per test). Clicking a
+  // Picker dropdown items - one entry per CATEGORY (not per test). Clicking a
   // category adds ALL its tests to the body at once. This matches how doctors
-  // think — "I need a full lipid profile", not "I need LDL, then HDL, then…".
+  // think - "I need a full lipid profile", not "I need LDL, then HDL, then…".
   // A category is hidden from the picker once all its tests are already added.
   // Search query filters by category name OR any sub-test name within (so typing
   // "ldl" still surfaces LIPID PROFILE).
@@ -1389,7 +1389,7 @@ export default function NewPrescriptionPage() {
     }
     let list = Array.from(map.values()).map(c => ({
       ...c,
-      // The actual ids that aren't already added — what would be appended on click
+      // The actual ids that aren't already added - what would be appended on click
       remainingIds: c.labTestIds.filter(id => !addedLabTestIds.has(id)),
     })).filter(c => c.remainingIds.length > 0)
 
@@ -1412,7 +1412,7 @@ export default function NewPrescriptionPage() {
   }, [rxLabResults, labTestList])
 
   // Total filled value cells across all (test × date × field) combinations.
-  // With multi-date, every individual cell counts — so 3 dates × 2 fields all
+  // With multi-date, every individual cell counts - so 3 dates × 2 fields all
   // filled = 6, not 1. Useful as a "you have X data points" cue.
   const outcomesFilledCount = useMemo(() => {
     let n = 0
@@ -1440,7 +1440,7 @@ export default function NewPrescriptionPage() {
   // Write a value for a field row at a specific date. Lazily creates a result
   // row when the user types the first value, and removes the row entirely when
   // all its fields are cleared (so empty rows never get persisted on save).
-  // Each date column has its own row in rxLabResults — keeps history clean for
+  // Each date column has its own row in rxLabResults - keeps history clean for
   // longitudinal charts (HbA1c trend, BP progression, etc).
   const setRowValue = (row, date, value) => {
     const v = String(value ?? '')
@@ -1448,7 +1448,7 @@ export default function NewPrescriptionPage() {
       const idx = prev.findIndex(r => r.labTestId === row.labTestId && r.resultDate === date)
 
       if (idx === -1) {
-        // No row yet — only create when there's actually something to save
+        // No row yet - only create when there's actually something to save
         if (!v.trim()) return prev
         const labTest = (labTestList || []).find(l => l.id === row.labTestId)
         const expectedFields = Array.isArray(labTest?.expectedFields) && labTest.expectedFields.length
@@ -1558,7 +1558,7 @@ export default function NewPrescriptionPage() {
     setDirty(true)
   }
 
-  // Remove a test from the body — drops it from the added set AND deletes any
+  // Remove a test from the body - drops it from the added set AND deletes any
   // value rows it has across all dates (queueing server-side deletion if those
   // rows were already saved). Confirms before destroying any entered values.
   const removeAddedLabTest = (labTestId) => {
@@ -1687,7 +1687,7 @@ export default function NewPrescriptionPage() {
       if (!u[rowIdx]) return prev
       u[rowIdx] = {
         ...u[rowIdx],
-        medicineId:   '',           // no id yet — backend will auto-create
+        medicineId:   '',           // no id yet - backend will auto-create
         medicineName: name.trim(),
         medicineType: inferMedicineType(name),  // smart-detect from name (cream/syrup/drops/capsule/etc.)
       }
@@ -1720,7 +1720,7 @@ export default function NewPrescriptionPage() {
     toast.success(`"${val}" applied to all rows`)
   }
 
-  // Detect script — Devanagari (Hindi/Marathi) or English
+  // Detect script - Devanagari (Hindi/Marathi) or English
   const detectLang = (text) => {
     if (/[ऀ-ॿ]/.test(text)) return printLang === 'mr' ? 'mr' : 'hi'
     return 'en'
@@ -1810,7 +1810,7 @@ export default function NewPrescriptionPage() {
       if (t.medicines?.length>0) setRxMeds([...t.medicines,{...emptyMed}])
       if (t.labTests?.length>0)  setRxTests(t.labTests.map((name,i)=>({id:'tlab_'+i,name})))
       if (t.advice)              setRxAdvice(t.advice.split('\n').filter(Boolean).map((a,i)=>({id:'adv_'+i,name:a})))
-      // Custom field values from template — normalize to multi-tag arrays.
+      // Custom field values from template - normalize to multi-tag arrays.
       // Old templates may have stored single strings; wrap them so the form's
       // TagInput sees a consistent {[cfId]: string[]} shape.
       if (t.customData && typeof t.customData === 'object') {
@@ -1880,7 +1880,7 @@ export default function NewPrescriptionPage() {
       // Strip custom field values down to fields actually configured by the clinic.
       // If a custom field has been deleted from cfg, its old values are dropped on save.
       // Each value is now an array of tags (multi-tag input). We filter out empty arrays
-      // and trim each individual tag — empty trim'd tags get dropped silently.
+      // and trim each individual tag - empty trim'd tags get dropped silently.
       const cfIds = new Set(customFieldsConfig.map(cf => cf.id))
       const cleanCustomData = {}
       for (const [k, v] of Object.entries(customData || {})) {
@@ -1894,7 +1894,7 @@ export default function NewPrescriptionPage() {
       // values the doctor saw at write-time. Independent of the patient timeline POST
       // above (which writes a VitalRecord row). If nothing was entered, send null
       // so the controller stores NULL (and the Print tab's "Vitals" toggle simply
-      // has nothing to render — toggle stays harmlessly on).
+      // has nothing to render - toggle stays harmlessly on).
       const cleanVitals = (() => {
         if (!showVitals) return null
         const out = {}
@@ -1927,7 +1927,7 @@ export default function NewPrescriptionPage() {
         toast.success(`Prescription ${data.data.rxNo} saved!`)
       }
 
-      // ── Save lab results (Test Outcomes) — fire-and-forget per row, non-blocking on Rx success ──
+      // ── Save lab results (Test Outcomes) - fire-and-forget per row, non-blocking on Rx success ──
       try {
         // Delete removed ones
         for (const id of deletedLabResultIds) {
@@ -1976,7 +1976,7 @@ export default function NewPrescriptionPage() {
       } catch {}
 
       setDirty(false)
-      // Mark today's queue entry as Done — fire-and-forget, idempotent on backend
+      // Mark today's queue entry as Done - fire-and-forget, idempotent on backend
       if (patient?.id) {
         api.post(`/appointments/queue/today/${patient.id}/complete`, {}, { silent: true }).catch(() => {})
       }
@@ -1984,7 +1984,7 @@ export default function NewPrescriptionPage() {
       if (mode === 'print') {
         navigate(`/prescriptions/${savedId}?print=1`)
       } else {
-        // 'stay' — keep user on the form but switch to edit mode so further Saves update
+        // 'stay' - keep user on the form but switch to edit mode so further Saves update
         if (!isEdit) navigate(`/prescriptions/${savedId}/edit`, { replace: true })
       }
     } catch {} finally { setSaving(false) }
@@ -2002,7 +2002,7 @@ export default function NewPrescriptionPage() {
   return (
     <>
     <div className="fade-in max-w-5xl mx-auto">
-      {/* Sticky header — stays pinned while the form scrolls */}
+      {/* Sticky header - stays pinned while the form scrolls */}
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-sm -mx-3 sm:-mx-6 px-3 sm:px-6 py-3 mb-4 border-b border-blue-100">
         <div className="flex items-center gap-2 sm:gap-3">
           <button onClick={()=>navigate('/prescriptions')} className="btn-ghost btn-icon flex-shrink-0"><ArrowLeft className="w-5 h-5"/></button>
@@ -2021,7 +2021,7 @@ export default function NewPrescriptionPage() {
         </div>
       </div>
 
-      {/* Patient block — sits OUTSIDE the reorderable section list. Always first. */}
+      {/* Patient block - sits OUTSIDE the reorderable section list. Always first. */}
       <div id="sec-patient" className="scroll-mt-20 mb-4"><Card>
         <h3 className="font-bold text-slate-700 mb-3">Patient</h3>
         {!patient ? (
@@ -2066,7 +2066,7 @@ export default function NewPrescriptionPage() {
           )}
         </Card></div>
 
-      {/* Reorderable section list — flex-col + per-section `order` lets the doctor's
+      {/* Reorderable section list - flex-col + per-section `order` lets the doctor's
           preferred order (saved in pageDesign.fieldOrder) drive the layout. Patient
           block is OUTSIDE this container so it always stays at the top, and the
           action bar at the bottom is also OUTSIDE so it always stays at the bottom. */}
@@ -2173,7 +2173,7 @@ export default function NewPrescriptionPage() {
           </div>
           <p className="text-xs text-slate-400 mb-3">💡 Click <strong className="text-primary">↓</strong> in headers to apply value to all rows</p>
 
-          {/* ── Medicine table — desktop ── */}
+          {/* ── Medicine table - desktop ── */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full" style={{tableLayout:'fixed'}}>
             <colgroup>
@@ -2253,7 +2253,7 @@ export default function NewPrescriptionPage() {
                         placeholder={isNT ? '1' : ''}
                         onChange={e=>updateMed(idx,'qty',e.target.value)}/>
                     </td>
-                    {/* Notes — smart suggestions per medicine type, server-synced on submit */}
+                    {/* Notes - smart suggestions per medicine type, server-synced on submit */}
                     <td className="py-1.5 px-1">
                       <NotesInput
                         value={med.notesEn}
@@ -2274,7 +2274,7 @@ export default function NewPrescriptionPage() {
           </table>
           </div>
 
-          {/* ── Medicine rows — mobile card style ── */}
+          {/* ── Medicine rows - mobile card style ── */}
           <div className="md:hidden space-y-3">
             {rxMeds.map((med, idx) => (
               <div key={idx} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
@@ -2377,9 +2377,9 @@ export default function NewPrescriptionPage() {
             allowCustom={true}/>
         </Card></div>
 
-        {/* Custom fields — clinic-defined extra fields rendered as multi-tag TagInputs.
+        {/* Custom fields - clinic-defined extra fields rendered as multi-tag TagInputs.
             Each TagInput's items are filtered locally from the flat customFieldValues
-            list by fieldId — fetched once on mount, sliced per render. New values typed
+            list by fieldId - fetched once on mount, sliced per render. New values typed
             here get auto-saved to the master on Rx save (see autoSaveToMaster). */}
         {customFieldsConfig.map(cf => {
           const tags = Array.isArray(customData[cf.id]) ? customData[cf.id] : []
@@ -2422,7 +2422,7 @@ export default function NewPrescriptionPage() {
           )
         })}
 
-        {/* Next Visit & Settings — kept as a single card so admin niceties
+        {/* Next Visit & Settings - kept as a single card so admin niceties
             (Print Language) live alongside the date the doctor actually
             cares about. Reorderable as the `nextVisit` section. */}
         <div id="sec-nextvisit" className="scroll-mt-20"
@@ -2516,8 +2516,8 @@ export default function NewPrescriptionPage() {
       )}
     </div>
 
-    {/* Test Outcomes — full-screen modal that feels like a dedicated page.
-        Lives inside the Rx form so state (rxLabResults) stays in one place — no routing,
+    {/* Test Outcomes - full-screen modal that feels like a dedicated page.
+        Lives inside the Rx form so state (rxLabResults) stays in one place - no routing,
         no draft sync, no data loss risk. Click left FAB to open. Outcomes auto-save when
         the parent Rx is saved (same flow as before).
         Design: categorized accordion. Click a category → ALL its individual test fields
@@ -2525,10 +2525,10 @@ export default function NewPrescriptionPage() {
         applies to the whole batch (cascades on change). Search filters across all fields. */}
     {outcomesOpen && (
       <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-stretch justify-center p-3 sm:p-6 no-print print:hidden animate-in fade-in">
-        {/* Modal stays open until user explicitly clicks X or Done — clicking on the
+        {/* Modal stays open until user explicitly clicks X or Done - clicking on the
             backdrop while filling forms used to close it accidentally. */}
         <div className="bg-background w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4">
-          {/* Header — patient context + close */}
+          {/* Header - patient context + close */}
           <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200 bg-white flex-shrink-0">
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
@@ -2555,7 +2555,7 @@ export default function NewPrescriptionPage() {
             </button>
           </div>
 
-          {/* Top date picker — used only for ADDING a new date column. The actual
+          {/* Top date picker - used only for ADDING a new date column. The actual
               date chips with edit/remove live inside each expanded category in
               context with the input rows below. Pick a date here and it gets
               added as a column visible in every category. */}
@@ -2580,12 +2580,12 @@ export default function NewPrescriptionPage() {
             </span>
           </div>
 
-          {/* Search picker — TagSearch-style typeahead.
+          {/* Search picker - TagSearch-style typeahead.
               • Click → dropdown shows full lab-tests catalog (sorted by category → name)
               • Type → live filter
               • Click a result → test added to body for value entry, dropdown stays open
               • Already-added tests are excluded from results
-              The body itself is no longer filtered by this query — it shows added tests only. */}
+              The body itself is no longer filtered by this query - it shows added tests only. */}
           <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-slate-200 bg-white flex-shrink-0">
             <div className="relative flex-1 min-w-[200px]"
                  onBlur={(e) => {
@@ -2668,7 +2668,7 @@ export default function NewPrescriptionPage() {
             </button>
           </div>
 
-          {/* Body — scrollable. Categories listed; click to expand → field rows with inline textboxes. */}
+          {/* Body - scrollable. Categories listed; click to expand → field rows with inline textboxes. */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
             {outcomesFilteredCategories.length === 0 && outcomesOrphanRows.length === 0 ? (
               (labTestList || []).length === 0 ? (
@@ -2682,14 +2682,14 @@ export default function NewPrescriptionPage() {
                   No tests match <strong>"{outcomesSearchQuery}"</strong>. Try a shorter query.
                 </div>
               ) : (
-                /* Default — nothing entered yet, friendly entry hint */
+                /* Default - nothing entered yet, friendly entry hint */
                 <div className="bg-blue-50/60 border border-blue-200 rounded-xl py-10 px-6 text-center">
                   <Search className="w-10 h-10 text-primary/40 mx-auto mb-3"/>
                   <p className="text-sm text-slate-700 font-medium">Search to record a test result</p>
                   <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
                     Type a test name or field above (try <strong>Hb</strong>, <strong>LDL</strong>, or <strong>TSH</strong>)
                     <br className="hidden sm:inline"/>
-                    {' '}— or {' '}
+                    {' '}- or {' '}
                     <button type="button" onClick={expandAllCategories}
                       className="text-primary hover:underline font-medium">
                       browse all categories
@@ -2719,7 +2719,7 @@ export default function NewPrescriptionPage() {
                   }
                 }
                 const testsInCat = testGroups.size
-                // Grid template — label column (flexible) + N fixed-width input columns + 1 trailing column for ✕
+                // Grid template - label column (flexible) + N fixed-width input columns + 1 trailing column for ✕
                 // colWidth = 9rem so the date chip ([📅 04/29/2026 ✕]) fits cleanly above its input column
                 const colWidth = '9rem'
                 const gridTemplate = `minmax(0, 1fr) ${outcomesDates.map(() => colWidth).join(' ')} 1.25rem`
@@ -2742,7 +2742,7 @@ export default function NewPrescriptionPage() {
                     </button>
                     {open && (
                       <div className="border-t border-slate-100 overflow-x-auto">
-                        {/* Date chips row — uses the SAME grid template as the input rows below
+                        {/* Date chips row - uses the SAME grid template as the input rows below
                             so each chip sits directly above its input column. Chip = column.
                             Edit the date inside a chip to change that whole column; click ✕ to
                             remove it (always confirms). Adding a date is handled exclusively by
@@ -2775,7 +2775,7 @@ export default function NewPrescriptionPage() {
                         </div>
                         {Array.from(testGroups.entries()).map(([labTestId, group], groupIdx) => {
                           // For single-field tests we skip the per-test header and put a tiny ✕ on
-                          // the row itself — saves a whole line of vertical space per test, which
+                          // the row itself - saves a whole line of vertical space per test, which
                           // adds up fast for biochemistry-style panels with 10+ entries.
                           // Multi-field tests (CBC, Lipid Profile) keep the header so the test name
                           // is unambiguous when several fields stack underneath.
@@ -2812,7 +2812,7 @@ export default function NewPrescriptionPage() {
                                 <div key={row.rowKey}
                                   className={`grid items-center gap-x-3 px-4 py-1 border-t border-slate-50 transition ${anyFlagged ? 'bg-red-50/30' : 'hover:bg-blue-50/30'}`}
                                   style={{ gridTemplateColumns: gridTemplate }}>
-                                  {/* Label cell — right-aligned, with reference range pill */}
+                                  {/* Label cell - right-aligned, with reference range pill */}
                                   <div className="text-right text-sm text-slate-700 min-w-0 flex items-center justify-end gap-2">
                                     <span className="truncate">
                                       {row.label}
@@ -2835,7 +2835,7 @@ export default function NewPrescriptionPage() {
                                           key={d}
                                           type="text"
                                           className="form-input text-sm py-1 px-2 w-full"
-                                          placeholder="—"
+                                          placeholder="-"
                                           value={v}
                                           onChange={(e) => setRowValue(row, d, e.target.value)}
                                           title={`Result on ${d}`}/>
@@ -2847,13 +2847,13 @@ export default function NewPrescriptionPage() {
                                         type="text"
                                         inputMode="decimal"
                                         className={`form-input text-sm py-1 px-2 w-full text-right ${flagged ? 'bg-red-50 border-red-300 text-danger font-semibold focus:border-red-400 focus:ring-red-200' : ''}`}
-                                        placeholder="—"
+                                        placeholder="-"
                                         value={v}
                                         onChange={(e) => setRowValue(row, d, e.target.value)}
                                         title={flagged ? `Out of normal range on ${d}` : `Value on ${d}`}/>
                                     )
                                   })}
-                                  {/* Trailing ✕ — single-field tests use this to remove themselves;
+                                  {/* Trailing ✕ - single-field tests use this to remove themselves;
                                       multi-field tests render an empty span to keep grid alignment. */}
                                   {isSingle && labTestId ? (
                                     <button type="button"
@@ -2877,7 +2877,7 @@ export default function NewPrescriptionPage() {
               })
             )}
 
-            {/* Orphan rows — saved values that don't map to current master data.
+            {/* Orphan rows - saved values that don't map to current master data.
                 Surfaced separately so users can review/clean up legacy free-text outcomes.
                 Each orphan keeps its own resultDate displayed since it may not align
                 with the current dates list. */}
@@ -2887,7 +2887,7 @@ export default function NewPrescriptionPage() {
                   <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0"/>
                   <span className="font-semibold text-sm text-slate-800 uppercase tracking-wide">Custom (Saved)</span>
                   <span className="text-xs text-slate-400">({outcomesOrphanRows.length})</span>
-                  <span className="text-xs text-slate-500 hidden sm:inline">— legacy entries not in current master</span>
+                  <span className="text-xs text-slate-500 hidden sm:inline">- legacy entries not in current master</span>
                 </div>
                 <div className="border-t border-amber-100">
                   {outcomesOrphanRows.map((r) => (
@@ -2916,7 +2916,7 @@ export default function NewPrescriptionPage() {
             )}
           </div>
 
-          {/* Footer — count + Done button. Test outcomes save when the parent Rx is saved. */}
+          {/* Footer - count + Done button. Test outcomes save when the parent Rx is saved. */}
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-200 bg-white flex-shrink-0">
             <p className="text-xs text-slate-500 hidden sm:block">
               {outcomesFilledCount > 0
@@ -2946,7 +2946,7 @@ export default function NewPrescriptionPage() {
       <div className="space-y-2 text-sm text-slate-700">
         <p>
           You were filling a prescription for <strong>{patient?.name}</strong>
-          {resumeDraft?.updatedAt && <> {' — '}last saved {timeSince(resumeDraft.updatedAt)}.</>}
+          {resumeDraft?.updatedAt && <> {' - '}last saved {timeSince(resumeDraft.updatedAt)}.</>}
         </p>
         <p className="text-slate-500 text-xs">
           Click <strong>Continue Editing</strong> to restore it, or <strong>Discard Draft</strong> to start fresh.

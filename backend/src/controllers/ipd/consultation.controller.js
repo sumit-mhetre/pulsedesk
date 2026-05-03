@@ -1,10 +1,10 @@
-// Consultations controller — cross-specialty referrals during admission.
+// Consultations controller - cross-specialty referrals during admission.
 //
 // Two modes (per Q1=c, both supported):
 //   - Internal: pick a doctor in this clinic (consultantDoctorId set)
 //   - External: just enter consultant name + specialty (no link)
 //
-// No notification system in v1 — internal consultants see their requests
+// No notification system in v1 - internal consultants see their requests
 // when they log in (could add a notification bell in a later step).
 //
 // Permission gates set in routes:
@@ -69,7 +69,7 @@ async function createConsultation(req, res) {
     let resolvedSpec = consultantSpecialty
 
     if (consultantDoctorId) {
-      // Internal — fetch from clinic users
+      // Internal - fetch from clinic users
       const doctor = await prisma.user.findFirst({
         where: {
           id: consultantDoctorId,

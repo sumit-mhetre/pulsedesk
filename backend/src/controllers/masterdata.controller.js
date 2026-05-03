@@ -158,7 +158,7 @@ const medicineCtrl = {
   },
 
   // Focused endpoint for inline generic-name edit from the prescription form.
-  // Doctor/Admin only — enforced on the route via requireRoles middleware.
+  // Doctor/Admin only - enforced on the route via requireRoles middleware.
   setGeneric: async (req, res) => {
     try {
       const { genericName } = req.body;

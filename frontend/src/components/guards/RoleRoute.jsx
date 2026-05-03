@@ -18,10 +18,10 @@ export default function RoleRoute({ roles = [], requires = [] }) {
   const user = useAuthStore(s => s.user)
   const notifiedRef = useRef(false)
 
-  // Permission list — must have all
+  // Permission list - must have all
   const hasAllPermissions = requires.length === 0 || requires.every(p => can(user, p))
 
-  // Role list — must be one of
+  // Role list - must be one of
   const hasRole = roles.length === 0 || roles.includes(user?.role)
 
   const allowed = hasAllPermissions && hasRole

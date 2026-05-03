@@ -125,9 +125,9 @@ async function listClinicBeds(req, res) {
   }
 }
 
-// ── Bulk add beds (Super Admin — initial setup) ───────────
+// ── Bulk add beds (Super Admin - initial setup) ───────────
 // Body: { bedType, ward, floor, prefix, startNumber, count, padDigits }
-// Daily rate defaults to 0 — clinic admin sets it later via Bed Management page.
+// Daily rate defaults to 0 - clinic admin sets it later via Bed Management page.
 async function bulkCreateBeds(req, res) {
   try {
     const { bedType, ward, floor, prefix = '', startNumber = 1, count, padDigits = 3 } = req.body
@@ -227,10 +227,10 @@ async function updateClinicBed(req, res) {
     }
 
     if (status === 'OCCUPIED' && existing.status !== 'OCCUPIED') {
-      return errorResponse(res, 'Cannot set OCCUPIED manually — admit a patient instead', 400)
+      return errorResponse(res, 'Cannot set OCCUPIED manually - admit a patient instead', 400)
     }
     if (status === 'VACANT' && existing.currentAdmissionId) {
-      return errorResponse(res, 'Cannot mark vacant — bed is occupied', 400)
+      return errorResponse(res, 'Cannot mark vacant - bed is occupied', 400)
     }
 
     const data = {}
@@ -260,7 +260,7 @@ async function deleteClinicBed(req, res) {
     })
     if (!existing) return errorResponse(res, 'Bed not found', 404)
     if (existing.currentAdmissionId) {
-      return errorResponse(res, 'Cannot delete — bed is occupied', 400)
+      return errorResponse(res, 'Cannot delete - bed is occupied', 400)
     }
     await prisma.bed.update({
       where: { id: req.params.bedId },

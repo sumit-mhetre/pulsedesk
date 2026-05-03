@@ -1,4 +1,4 @@
--- SavedReport — custom report configs users can save + rerun
+-- SavedReport - custom report configs users can save + rerun
 CREATE TABLE "saved_reports" (
     "id"          TEXT NOT NULL,
     "clinicId"    TEXT NOT NULL,

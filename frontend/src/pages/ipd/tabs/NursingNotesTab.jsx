@@ -1,4 +1,4 @@
-// Nursing Notes tab — nurse's per-shift observations + care actions.
+// Nursing Notes tab - nurse's per-shift observations + care actions.
 //
 // Note (UX): nurses typically work in 8-hour shifts. The form auto-suggests
 // the current shift based on time of day, but lets them override.

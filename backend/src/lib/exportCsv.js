@@ -1,4 +1,4 @@
-// CSV exporter — no dependencies, proper escaping
+// CSV exporter - no dependencies, proper escaping
 //
 // Usage:
 //   const csv = toCSV(columnsMeta, rows);

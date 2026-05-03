@@ -161,9 +161,9 @@ export default function DocumentsListPage() {
                             <p className="text-xs text-slate-400 font-mono">{d.patient.patientCode}</p>
                           )}
                         </td>
-                        <td className="py-2 px-2 text-slate-600">{d.doctor?.name || '—'}</td>
+                        <td className="py-2 px-2 text-slate-600">{d.doctor?.name || '-'}</td>
                         <td className="py-2 px-2 text-slate-500 text-xs">
-                          {d.createdAt ? format(new Date(d.createdAt), 'dd MMM yyyy') : '—'}
+                          {d.createdAt ? format(new Date(d.createdAt), 'dd MMM yyyy') : '-'}
                         </td>
                         <td className="py-2 px-2 text-right">
                           <div className="inline-flex gap-1">

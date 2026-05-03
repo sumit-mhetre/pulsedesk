@@ -254,7 +254,7 @@ function ResultDisplay({ result, onEdit, onDelete, compact }) {
                 </p>
                 {(v.normalLow !== null || v.normalHigh !== null) && (
                   <p className="text-[10px] text-slate-400">
-                    Normal: {v.normalLow ?? '—'} - {v.normalHigh ?? '—'}
+                    Normal: {v.normalLow ?? '-'} - {v.normalHigh ?? '-'}
                   </p>
                 )}
               </div>
@@ -388,7 +388,7 @@ function ResultFormModal({ admission, labTests, initial, onClose, onSaved }) {
           {!isEdit && (
             <select className="form-select" value={form.labTestId}
               onChange={e => onPickTest(e.target.value)}>
-              <option value="">— Pick from catalog (or type custom name below) —</option>
+              <option value="">- Pick from catalog (or type custom name below) -</option>
               {labTests.map(t => (
                 <option key={t.id} value={t.id}>
                   {t.name}{t.category ? ` (${t.category})` : ''}
@@ -431,7 +431,7 @@ function ResultFormModal({ admission, labTests, initial, onClose, onSaved }) {
                       {v.fieldLabel}{v.fieldUnit ? ` (${v.fieldUnit})` : ''}
                       {(v.normalLow !== null || v.normalHigh !== null) && (
                         <span className="text-slate-400 font-normal ml-1">
-                          [{v.normalLow ?? '—'} - {v.normalHigh ?? '—'}]
+                          [{v.normalLow ?? '-'} - {v.normalHigh ?? '-'}]
                         </span>
                       )}
                     </label>

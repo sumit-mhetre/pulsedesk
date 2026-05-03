@@ -66,7 +66,7 @@ export const medicines = [
   { name:"Alprazolam 0.25mg", type:"tablet", category:"Anxiolytic", defaultDosage:"0-0-1", defaultDays:7, defaultTiming:"HS", notesEn:"At bedtime. Do not drive after taking", notesHi:"सोते समय। लेने के बाद गाड़ी न चलाएं", notesMr:"झोपताना. घेतल्यानंतर गाडी चालवू नका" },
 ];
 
-// Standard test field arrays — kept in this file (frontend) to avoid cross-runtime imports.
+// Standard test field arrays - kept in this file (frontend) to avoid cross-runtime imports.
 // Backend mirror lives at backend/src/lib/labTestFields.js. Keep the two in sync if either changes.
 const __CBC_FIELDS = [
   { key:'hemoglobin',  label:'Hb',                unit:'g/dL',         normalLow:13,    normalHigh:17 },
@@ -224,7 +224,7 @@ const __PSA_FIELDS = [
 ];
 // ── New multi-field constants for the expanded categories below ─────────────
 // Reference ranges below match what most Indian labs (SRL, Metropolis, Thyrocare) report.
-// `null` low/high means "no fixed cutoff" — typical for IgG/IgM titres reported as index/ratio.
+// `null` low/high means "no fixed cutoff" - typical for IgG/IgM titres reported as index/ratio.
 const __TORCH_IGG_FIELDS = [
   { key:'toxoIgG',    label:'Toxoplasma IgG',  unit:'IU/mL', normalLow:null, normalHigh:null },
   { key:'rubellaIgG', label:'Rubella IgG',     unit:'IU/mL', normalLow:null, normalHigh:null },
@@ -515,9 +515,9 @@ export const complaints = [
   { nameEn:"Swelling on face / legs",        nameHi:"चेहरे / पैरों पर सूजन",    nameMr:"चेहरा / पायावर सूज" },
   { nameEn:"Insomnia / Sleeplessness",       nameHi:"नींद न आना",                nameMr:"झोप न लागणे" },
   { nameEn:"Constipation",                   nameHi:"कब्ज",                      nameMr:"बद्धकोष्ठता" },
-  { nameEn:"Child — Fever",                  nameHi:"बच्चे को बुखार",            nameMr:"मुलाला ताप" },
-  { nameEn:"Child — Cough & Cold",           nameHi:"बच्चे को खांसी सर्दी",     nameMr:"मुलाला खोकला सर्दी" },
-  { nameEn:"Child — Vomiting & Diarrhoea",   nameHi:"बच्चे को उल्टी दस्त",      nameMr:"मुलाला उलटी जुलाब" },
+  { nameEn:"Child - Fever",                  nameHi:"बच्चे को बुखार",            nameMr:"मुलाला ताप" },
+  { nameEn:"Child - Cough & Cold",           nameHi:"बच्चे को खांसी सर्दी",     nameMr:"मुलाला खोकला सर्दी" },
+  { nameEn:"Child - Vomiting & Diarrhoea",   nameHi:"बच्चे को उल्टी दस्त",      nameMr:"मुलाला उलटी जुलाब" },
   { nameEn:"Follow up visit",                nameHi:"फॉलो अप",                   nameMr:"फॉलो अप" },
   { nameEn:"Routine check-up",               nameHi:"नियमित जांच",               nameMr:"नियमित तपासणी" },
 ];
@@ -591,13 +591,13 @@ export const adviceOptions = [
 ];
 
 export const billingItems = [
-  { name:"Consultation Fee — General",       defaultPrice:300,  category:"Consultation" },
-  { name:"Consultation Fee — Follow Up",     defaultPrice:150,  category:"Consultation" },
-  { name:"Consultation Fee — Pediatric",     defaultPrice:350,  category:"Consultation" },
-  { name:"Consultation Fee — Emergency",     defaultPrice:500,  category:"Consultation" },
-  { name:"Consultation Fee — Senior Citizen",defaultPrice:200,  category:"Consultation" },
-  { name:"Dressing — Simple",                defaultPrice:100,  category:"Procedure" },
-  { name:"Dressing — Complex",               defaultPrice:250,  category:"Procedure" },
+  { name:"Consultation Fee - General",       defaultPrice:300,  category:"Consultation" },
+  { name:"Consultation Fee - Follow Up",     defaultPrice:150,  category:"Consultation" },
+  { name:"Consultation Fee - Pediatric",     defaultPrice:350,  category:"Consultation" },
+  { name:"Consultation Fee - Emergency",     defaultPrice:500,  category:"Consultation" },
+  { name:"Consultation Fee - Senior Citizen",defaultPrice:200,  category:"Consultation" },
+  { name:"Dressing - Simple",                defaultPrice:100,  category:"Procedure" },
+  { name:"Dressing - Complex",               defaultPrice:250,  category:"Procedure" },
   { name:"Suture Removal",                   defaultPrice:150,  category:"Procedure" },
   { name:"IV Injection",                     defaultPrice:200,  category:"Injection" },
   { name:"IM Injection",                     defaultPrice:100,  category:"Injection" },
