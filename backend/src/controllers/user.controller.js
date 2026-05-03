@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { successResponse, errorResponse, paginatedResponse } = require('../lib/response');
-const { sanitizeOverrides, resolvePermissions, PERMISSION_KEYS } = require('../lib/permissions');
+const { computeOverrides, resolvePermissions, PERMISSION_KEYS } = require('../lib/permissions');
 const { logAudit } = require('../lib/audit');
 
 // ── Get all users in clinic ───────────────────────────────
@@ -110,7 +110,7 @@ async function createUser(req, res) {
     if (existing) return errorResponse(res, 'This email is already registered', 409);
 
     const hashed = await bcrypt.hash(cleanPass, 12);
-    const overrides = sanitizeOverrides(cleanRole, permissions);
+    const overrides = computeOverrides(cleanRole, permissions);
 
     const user = await prisma.user.create({
       data: {
@@ -174,7 +174,7 @@ async function updateUser(req, res) {
     // Only set when permissions key is explicitly present in the request body.
     let permsOverride;
     if (permissions !== undefined) {
-      permsOverride = sanitizeOverrides(newRole, permissions);
+      permsOverride = computeOverrides(newRole, permissions);
 
       // Safety rail: prevent admin from removing their own Manage Users permission
       // (would lock themselves out).
