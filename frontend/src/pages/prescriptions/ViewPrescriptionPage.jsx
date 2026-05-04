@@ -471,7 +471,7 @@ export default function ViewPrescriptionPage() {
               {show('showRxSymbol') && <span className="text-xl font-bold italic" style={{color:cfg?.primaryColor||'#000'}}>℞</span>}
               <span className="font-bold text-slate-900 uppercase text-xs tracking-wider">Medicines</span>
             </div>
-            <table className="w-full text-sm border-collapse">
+            <table className="rx-medicines-table w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-slate-50">
                   <th className="text-left py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300 w-8">#</th>

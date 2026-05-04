@@ -44,7 +44,7 @@ async function getPrescriptions(req, res) {
     const { page = 1, limit = 20, patientId, doctorId, search } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const flags = await getClinicSharingFlags(req);
-    const privacy = doctorPrivacyWhere(req, flags.sharePrescriptions);
+    const privacy = doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false });
     const where = { clinicId: req.clinicId };
     if (patientId) where.patientId = patientId;
     if (doctorId)  where.doctorId  = doctorId;
@@ -90,7 +90,7 @@ async function getPrescription(req, res) {
       where: {
         id: req.params.id,
         clinicId: req.clinicId,
-        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false }),
       },
       include: {
         patient: true,
@@ -436,7 +436,7 @@ async function getPatientPrescriptions(req, res) {
       where: {
         patientId: req.params.patientId,
         clinicId: req.clinicId,
-        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false }),
       },
       orderBy: { date: 'desc' },
       include: {
@@ -459,7 +459,7 @@ async function getLastPrescription(req, res) {
       where: {
         patientId: req.params.patientId,
         clinicId: req.clinicId,
-        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false }),
       },
       orderBy: { date: 'desc' },
       include: {

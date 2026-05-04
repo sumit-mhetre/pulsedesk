@@ -253,7 +253,27 @@
     border-collapse: collapse !important;
   }
 
-  /* Subtle header shading on table header row - prints as very light grey */
+  /* Exception: the medicine table on the prescription print uses a
+     HealthPlix-style minimal layout — no vertical column borders, just a
+     bottom border under the header and light row separators between
+     medicines. Override the global "force borders" rule for it. Higher
+     specificity (.print-area .rx-medicines-table) beats the global rule. */
+  .print-area .rx-medicines-table,
+  .print-area .rx-medicines-table th,
+  .print-area .rx-medicines-table td {
+    border: none !important;
+  }
+  .print-area .rx-medicines-table thead th {
+    border-bottom: 1.5px solid #555 !important;
+  }
+  /* Light row separator on tbody cells - matches the on-screen `border-b
+     border-slate-100` we set in JSX. The component decides which row gets
+     the separator (last row of a multi-row medicine). */
+  .print-area .rx-medicines-table tbody tr td.border-b {
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  /* Subtle header shading on table header row — prints as very light grey */
   .print-area thead tr {
     background: #eee !important;
     -webkit-print-color-adjust: exact !important;
