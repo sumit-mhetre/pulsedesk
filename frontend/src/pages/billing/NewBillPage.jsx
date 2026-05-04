@@ -107,12 +107,13 @@ export default function NewBillPage() {
     api.get('/master/billing-items').then(({ data }) => setBillingItems(data.data)).catch(() => {})
   }, [])
 
-  // Load active doctors in the clinic. Auto-select if there's only one - that
-  // way single-doctor clinics never see the field at all (receptionist-friendly)
-  // and the queue entry still gets routed correctly.
+  // Load active doctors in the clinic via the public /users/doctors endpoint
+  // (open to any authenticated user - no manageUsers permission needed, so
+  // receptionists can fetch this for the consulting-doctor select). Auto-select
+  // if there's only one - that way single-doctor clinics never see the field.
   useEffect(() => {
-    api.get('/users?role=DOCTOR&isActive=true').then(({ data }) => {
-      const list = (data.data || []).filter(u => u.isActive !== false)
+    api.get('/users/doctors').then(({ data }) => {
+      const list = data.data || []
       setDoctors(list)
       if (list.length === 1) setConsultingDoctorId(list[0].id)
     }).catch(() => {})
