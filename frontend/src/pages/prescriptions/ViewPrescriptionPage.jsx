@@ -12,6 +12,66 @@ const LIQUID_NOTES_EN = ['5ml twice daily','5ml thrice daily','2.5ml twice daily
 const LIQUID_NOTES_MR = ['दिवसातून 2 वेळा 5ml','दिवसातून 3 वेळा 5ml','दिवसातून 2 वेळा 2.5ml','दिवसातून 2 वेळा 10ml','दिवसातून 2 वेळा 2 थेंब','दिवसातून 3 वेळा 2 थेंब','दिवसातून 3 वेळा 1 चमचा','दिवसातून 2 वेळा 2 चमचे','सांगितल्याप्रमाणे','दिवसातून 2 वेळा पातळ थर लावा']
 const LIQUID_NOTES_HI = ['दिन में 2 बार 5ml','दिन में 3 बार 5ml','दिन में 2 बार 2.5ml','दिन में 2 बार 10ml','दिन में 2 बार 2 बूंद','दिन में 3 बार 2 बूंद','दिन में 3 बार 1 चम्मच','दिन में 2 बार 2 चम्मच','निर्देशानुसार','दिन में 2 बार पतली परत लगाएं']
 
+// Pretty-print a dosage string for the printed Rx.
+// Doctors type free-form values like "1-0-1", "0.5-0-0.5", "1/2-0-1/2",
+// "1-1/2-1" (mixed). On print we want them to look polished:
+//   1-0-1            -> 1 — 0 — 1
+//   0.5-0-0.5        -> ½ — 0 — ½
+//   1/2-0-1/2        -> ½ — 0 — ½
+//   3/4-0-1/4        -> ¾ — 0 — ¼
+//   1.5-0-1.5        -> 1½ — 0 — 1½
+//   3/8-0-3/8        -> 3/8 — 0 — 3/8  (no Unicode glyph available, leave as text)
+//   OD / BD / SOS    -> OD / BD / SOS  (codes left untouched)
+//
+// Returns the pretty string, or the original input if nothing is parseable.
+function formatDosageForPrint(raw) {
+  if (!raw) return raw
+  const s = String(raw).trim()
+  if (!s) return raw
+  // Frequency codes - leave alone
+  if (/^(OD|BD|TDS|QID|HS|SOS|STAT|PRN)$/i.test(s)) return s.toUpperCase()
+  // Only reformat hyphen-separated dose-pieces. Anything else (free text)
+  // stays as-typed.
+  if (!s.includes('-')) return prettyPiece(s)
+  const parts = s.split('-').map(p => prettyPiece(p.trim()))
+  // Em-dash separator with spaces, matches the sample print
+  return parts.join(' \u2014 ')
+}
+
+// Pretty-print ONE piece of the hyphenated dosage (e.g. "1", "0.5", "1/2",
+// "1-1/2"... wait no, dashes split. Just a single piece.)
+function prettyPiece(p) {
+  if (!p) return p
+  // Already a unicode glyph
+  if (/^[½¼¾⅓⅔⅛⅜⅝⅞]$/.test(p)) return p
+  // Decimal -> fraction glyph if exact match
+  const dec = parseFloat(p)
+  if (!isNaN(dec) && p === dec.toString()) {
+    if (dec === 0)    return '0'
+    if (dec === 0.5)  return '½'
+    if (dec === 0.25) return '¼'
+    if (dec === 0.75) return '¾'
+    // Mixed: 1.5 -> 1½, 2.5 -> 2½, 1.25 -> 1¼, etc.
+    const whole = Math.floor(dec)
+    const frac  = dec - whole
+    if (whole > 0) {
+      if (frac === 0.5)  return `${whole}½`
+      if (frac === 0.25) return `${whole}¼`
+      if (frac === 0.75) return `${whole}¾`
+    }
+    return p
+  }
+  // Fraction like "1/2", "3/4", "1/4"
+  const m = p.match(/^(\d+)\/(\d+)$/)
+  if (m) {
+    const num = parseInt(m[1], 10), den = parseInt(m[2], 10)
+    if (den === 0) return p
+    const FR_GLYPH = { '1/2':'½', '1/4':'¼', '3/4':'¾', '1/3':'⅓', '2/3':'⅔', '1/8':'⅛', '3/8':'⅜', '5/8':'⅝', '7/8':'⅞' }
+    return FR_GLYPH[`${num}/${den}`] || p
+  }
+  return p
+}
+
 function translateNote(noteEn, lang) {
   if (!noteEn || lang === 'en') return noteEn
   const idx = LIQUID_NOTES_EN.indexOf(noteEn)
@@ -432,7 +492,7 @@ export default function ViewPrescriptionPage() {
                           <p className="text-xs text-slate-600 mt-0.5 italic">{translateNote(med.notesEn, lang)}</p>
                         )}
                       </td>
-                      {show('showDosage') && <td className="py-1.5 px-2 text-center font-mono text-slate-800 border border-slate-400 align-top">{med.dosage||'—'}</td>}
+                      {show('showDosage') && <td className="py-1.5 px-2 text-center font-mono text-slate-800 border border-slate-400 align-top">{med.dosage ? formatDosageForPrint(med.dosage) : '—'}</td>}
                       {compactPrint ? (
                         (show('showWhen') || show('showFrequency') || show('showDays')) && (
                           <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{combinedCell}</td>
