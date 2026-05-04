@@ -66,14 +66,13 @@ export default function DischargeMedicationsEditor({
     return seeded.length > 0 ? seeded : []
   })
 
-  // Pre-load a small page of medicines so the row dropdown can show
-  // results IMMEDIATELY on focus without waiting for a 2-character search.
-  // Each row still fires its own debounced search when the user types,
-  // but this lets "click → see list → pick" happen in one beat.
+  // Pre-load the medicines catalog so the row dropdown can show results
+  // IMMEDIATELY on focus without waiting for a 2-character search.
+  // Endpoint matches what NewPrescriptionPage uses (/master/medicines).
   const [allMedicines, setAllMedicines] = useState([])
   useEffect(() => {
-    api.get('/medicines', { params: { limit: 50 }, silent: true })
-      .then(({ data }) => setAllMedicines(data?.data || data?.medicines || []))
+    api.get('/master/medicines', { silent: true })
+      .then(({ data }) => setAllMedicines(data?.data || []))
       .catch(() => setAllMedicines([]))
   }, [])
 
@@ -240,16 +239,23 @@ function DischargeMedRow({ row, editable, initialMedicines, onChange, onPersist,
     if (justPickedRef.current) { justPickedRef.current = false; return }
     const q = (query || '').trim()
     if (q.length === 0) {
-      setSugg(initialMedicines || [])
+      // Empty query: show top of catalog (most-used medicines first since
+      // the endpoint already orders by usageCount). Cap at 8 so the dropdown
+      // doesn't run off the screen.
+      setSugg((initialMedicines || []).slice(0, 8))
       return
     }
     if (q.length < 2) { setSugg([]); return }
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
-        const { data } = await api.get('/medicines', { params: { search: q, limit: 8 } })
-        const list = data?.data || data?.medicines || []
-        setSugg(list)
+        // Use the same /master/medicines endpoint NewPrescriptionPage uses.
+        // The endpoint accepts ?search= and returns the full clinic catalog
+        // ordered by usage count.
+        const { data } = await api.get('/master/medicines', { params: { search: q } })
+        const list = data?.data || []
+        // Limit to first 8 client-side - keeps the dropdown short.
+        setSugg(list.slice(0, 8))
       } catch { setSugg([]) }
     }, 250)
     return () => debounceRef.current && clearTimeout(debounceRef.current)
