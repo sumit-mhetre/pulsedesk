@@ -5,6 +5,25 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SimpleRx EMR - Smart Clinic Management</title>
+    <link rel="canonical" href="https://www.simplerxemr.com/" />
+    <!--
+      Redirect legacy Render-hosted URLs to the canonical domain. Runs in the
+      <head> before React loads so users on the old URL never see the app
+      flash before being redirected. Path + query string are preserved so
+      e.g. /prescriptions/abc?tab=2 lands on the same place on the new host.
+    -->
+    <script>
+      (function () {
+        var legacyHosts = ['pulsedesk-1.onrender.com'];
+        if (legacyHosts.indexOf(window.location.hostname) !== -1) {
+          var target = 'https://www.simplerxemr.com'
+            + window.location.pathname
+            + window.location.search
+            + window.location.hash;
+          window.location.replace(target);
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
