@@ -40,6 +40,7 @@ import { can } from '../../../lib/permissions'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import DischargeMedicationModal from './DischargeMedicationModal'
+import DischargeMedicationsEditor from './DischargeMedicationsEditor'
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -710,76 +711,21 @@ export default function DischargeSummaryTab({ admission }) {
         open={activeSection === 's11'} onToggle={toggleSection}>
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="primary" size="sm" disabled={!editable}
-              icon={<Plus className="w-4 h-4"/>}
-              onClick={() => { setEditingMed(null); setShowMedModal(true) }}>
-              Add Medication
-            </Button>
             <Button variant="outline" size="sm" disabled={!editable}
               icon={<Copy className="w-4 h-4"/>}
               onClick={onCopyActive}>
               Copy from Active Orders
             </Button>
-            <span className="text-xs text-slate-500 ml-auto">{meds.length} item{meds.length === 1 ? '' : 's'}</span>
           </div>
-
-          {meds.length === 0 ? (
-            <div className="text-center py-6 text-sm text-slate-400 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-              No discharge medications added yet.
-            </div>
-          ) : (
-            <div className="border border-slate-200 rounded-lg overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50">
-                  <tr className="text-slate-500 uppercase tracking-wide text-[10px]">
-                    <th className="text-left px-3 py-1.5">Medication</th>
-                    <th className="text-left px-2 py-1.5">Dose</th>
-                    <th className="text-left px-2 py-1.5">Frequency</th>
-                    <th className="text-left px-2 py-1.5">Duration</th>
-                    <th className="text-left px-2 py-1.5">Instructions</th>
-                    <th className="px-2 py-1.5 w-20"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {meds.map(m => {
-                    const noDuration = !m.duration || m.duration.trim() === ''
-                    return (
-                      <tr key={m.id} className="border-t border-slate-200 hover:bg-slate-50">
-                        <td className="px-3 py-2">
-                          <div className="font-medium text-slate-800">{m.brandName}</div>
-                          {m.genericName && <div className="text-slate-500 text-[11px]">{m.genericName}</div>}
-                        </td>
-                        <td className="px-2 py-2 text-slate-700">{m.dose}</td>
-                        <td className="px-2 py-2 text-slate-700">{m.frequency}</td>
-                        <td className={`px-2 py-2 ${noDuration ? 'text-warning font-semibold' : 'text-slate-700'}`}>
-                          {noDuration ? '⚠ set duration' : m.duration}
-                        </td>
-                        <td className="px-2 py-2 text-slate-700">{m.instructions || '-'}</td>
-                        <td className="px-2 py-2">
-                          {editable && (
-                            <div className="flex items-center gap-1 justify-end">
-                              <button type="button"
-                                onClick={() => { setEditingMed(m); setShowMedModal(true) }}
-                                className="p-1 text-slate-400 hover:text-primary"
-                                title="Edit">
-                                <Pencil className="w-3.5 h-3.5"/>
-                              </button>
-                              <button type="button"
-                                onClick={() => setConfirmDelete(m)}
-                                className="p-1 text-slate-400 hover:text-danger"
-                                title="Delete">
-                                <Trash2 className="w-3.5 h-3.5"/>
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {/* Inline multi-row editor. Replaces the old "+ Add Medication"
+              modal flow with a NewPrescriptionPage-style table — autocomplete,
+              auto-fill from doctor preferences, autosave per row on blur. */}
+          <DischargeMedicationsEditor
+            admissionId={admission.id}
+            meds={meds}
+            setMeds={setMeds}
+            editable={editable}
+          />
         </div>
       </Section>
 

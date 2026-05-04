@@ -196,9 +196,62 @@ async function voidCharge(req, res) {
   }
 }
 
+// ── List recently-used charge descriptions for autocomplete ───────────────
+// Returns the clinic's previously-used non-voided charge descriptions
+// (case-insensitive distinct), ordered by most-recently-used first. Optional
+// `?type=MEDICINE` filters to one chargeType (per-type recents). The
+// frontend uses this to power the "Description" autocomplete on the charge
+// form so receptionists don't keep retyping the same words.
+//
+// We deliberately compute distinct on the JS side because Postgres + Prisma
+// don't expose `DISTINCT ON` cleanly without raw SQL, and the table per
+// clinic is small enough (a few thousand rows max) for in-memory dedup.
+async function listDescriptions(req, res) {
+  try {
+    const { type } = req.query
+    const where = {
+      voidedAt: null,
+      admission: { clinicId: req.clinicId },
+    }
+    if (type && VALID_TYPES.includes(type)) where.chargeType = type
+
+    // Pull recent rows; we'll dedup case-insensitively below.
+    const rows = await prisma.iPDCharge.findMany({
+      where,
+      orderBy: { chargedAt: 'desc' },
+      select: { description: true, chargeType: true, unitPrice: true, chargedAt: true },
+      take: 400, // cap so a giant ledger doesn't blow up the response
+    })
+
+    // Map of lowercased-trimmed key -> first (= most recent) description object
+    const seen = new Map()
+    for (const r of rows) {
+      const key = (r.description || '').trim().toLowerCase()
+      if (!key) continue
+      if (!seen.has(key)) {
+        seen.set(key, {
+          description: r.description.trim(),
+          chargeType:  r.chargeType,
+          unitPrice:   r.unitPrice,        // last-used price - frontend may use as default
+          lastUsedAt:  r.chargedAt,
+          useCount:    1,
+        })
+      } else {
+        seen.get(key).useCount += 1
+      }
+    }
+
+    return successResponse(res, Array.from(seen.values()))
+  } catch (err) {
+    console.error('[listDescriptions]', err)
+    return errorResponse(res, 'Failed to fetch descriptions', 500)
+  }
+}
+
 module.exports = {
   listCharges,
   createCharge,
   updateCharge,
   voidCharge,
+  listDescriptions,
 }

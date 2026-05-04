@@ -6,7 +6,7 @@
 //   - Table of charges, click to edit/void
 //   - Voided rows shown faded with strikethrough
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Plus, IndianRupee, Pencil, X, Save, AlertCircle, Trash2,
 } from 'lucide-react'
@@ -231,6 +231,42 @@ function ChargeFormModal({ admission, initial, onClose, onSaved }) {
   })
   const [saving, setSaving] = useState(false)
 
+  // Description autocomplete: pulls per-clinic recently-used descriptions
+  // from the backend. Filtered by chargeType when one is picked. Recently
+  // used surface first; free-typed values create new entries that show up
+  // here next time.
+  const [descSuggestions, setDescSuggestions] = useState([])
+  const [showDescDrop, setShowDescDrop] = useState(false)
+  const descBlurTimerRef = useRef(null)
+  useEffect(() => {
+    let cancelled = false
+    api.get('/ipd/charges/descriptions', { params: { type: form.chargeType }, silent: true })
+      .then(({ data }) => { if (!cancelled) setDescSuggestions(data?.data || []) })
+      .catch(() => { if (!cancelled) setDescSuggestions([]) })
+    return () => { cancelled = true }
+  }, [form.chargeType])
+
+  // Filter by what the user has typed so far. Empty input shows the full
+  // recents list (sorted newest-first, then most-frequent).
+  const filteredDesc = (() => {
+    const q = (form.description || '').trim().toLowerCase()
+    let list = descSuggestions
+    if (q) list = list.filter(s => s.description.toLowerCase().includes(q))
+    return list.slice(0, 8)
+  })()
+
+  const pickDesc = (s) => {
+    setForm(f => ({
+      ...f,
+      description: s.description,
+      // Auto-fill last-used unit price ONLY if user hasn't set one yet.
+      // This matches expectations: "I usually charge ₹150 for Augmentin -
+      // pre-fill that, but don't override if I just typed something."
+      unitPrice: f.unitPrice ? f.unitPrice : (s.unitPrice ?? f.unitPrice),
+    }))
+    setShowDescDrop(false)
+  }
+
   const amount = (parseFloat(form.unitPrice) || 0) * (parseInt(form.quantity, 10) || 1)
 
   const submit = async () => {
@@ -287,11 +323,42 @@ function ChargeFormModal({ admission, initial, onClose, onSaved }) {
               onChange={e => setForm(f => ({ ...f, chargedAt: e.target.value }))}/>
           </div>
         </div>
-        <div className="form-group">
+        <div className="form-group relative">
           <label className="form-label">Description *</label>
           <input className="form-input" value={form.description}
             placeholder="e.g. Augmentin 625mg, CBC, Wound dressing"
-            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}/>
+            onChange={e => { setForm(f => ({ ...f, description: e.target.value })); setShowDescDrop(true) }}
+            onFocus={() => setShowDescDrop(true)}
+            onBlur={() => {
+              if (descBlurTimerRef.current) clearTimeout(descBlurTimerRef.current)
+              descBlurTimerRef.current = setTimeout(() => setShowDescDrop(false), 150)
+            }}/>
+          {/* Autocomplete dropdown of recently-used descriptions for this
+              charge type. Tap to pick — fills description and pre-fills the
+              last-used unit price (only if no price typed yet). */}
+          {showDescDrop && filteredDesc.length > 0 && (
+            <ul className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow max-h-48 overflow-y-auto"
+              onMouseDown={() => { if (descBlurTimerRef.current) clearTimeout(descBlurTimerRef.current) }}>
+              {filteredDesc.map((s, idx) => (
+                <li key={`${s.description}-${idx}`}>
+                  <button type="button"
+                    className="w-full text-left px-3 py-1.5 hover:bg-blue-50 text-xs flex items-center justify-between gap-2"
+                    onMouseDown={(e) => { e.preventDefault(); pickDesc(s) }}>
+                    <span className="font-medium text-slate-800 truncate">{s.description}</span>
+                    <span className="text-slate-400 text-[10px] flex-shrink-0">
+                      ₹{s.unitPrice}
+                      {s.useCount > 1 && ` · used ${s.useCount}x`}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {filteredDesc.length === 0 && descSuggestions.length === 0 && (
+            <p className="text-[10px] text-slate-400 mt-1">
+              Free-typed descriptions are remembered and shown next time.
+            </p>
+          )}
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="form-group">

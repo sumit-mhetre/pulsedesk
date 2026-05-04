@@ -88,6 +88,10 @@ router.post ('/mar/:id/record',              authenticate, requireIPD('recordMAR
 router.post ('/mar/unscheduled',             authenticate, requireIPD('recordMAR'),  marCtrl.addUnscheduledDose)
 
 // ── IPD Charges ───────────────────────────────────────────
+// /charges/descriptions returns the clinic's recently-used charge descriptions
+// for autocomplete on the charge form. Mounted BEFORE the parameterized
+// /charges/:id routes so Express doesn't match `descriptions` as an :id.
+router.get   ('/charges/descriptions',            authenticate, requireIPD('manageIPDBilling'),   chargeCtrl.listDescriptions)
 router.get   ('/admissions/:admissionId/charges', authenticate, requireIPD('manageIPD'),          chargeCtrl.listCharges)
 router.post  ('/admissions/:admissionId/charges', authenticate, requireIPD('manageIPDBilling'),   chargeCtrl.createCharge)
 router.put   ('/charges/:id',                     authenticate, requireIPD('manageIPDBilling'),   chargeCtrl.updateCharge)
