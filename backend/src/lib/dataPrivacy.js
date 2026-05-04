@@ -66,20 +66,35 @@ function canMutate(req, rowUserId) {
  * Otherwise (DOCTOR), restricts to:
  *   - rows where doctorId === me, OR
  *   - rows where doctorId IS NULL (legacy / unassigned - visible to all doctors).
+ *
+ * @param {Object} req
+ * @param {boolean} shared - clinic-level sharing flag
+ * @param {Object} [opts]
+ * @param {boolean} [opts.allowNull=true] - when false, the OR-null branch is
+ *   omitted. Required for tables where doctorId is non-nullable in the schema
+ *   (e.g. Prescription) - Prisma rejects `{doctorId: null}` against a
+ *   non-nullable column with P2022. Pass `{ allowNull: false }` for those.
  */
-function doctorPrivacyWhere(req, shared) {
+function doctorPrivacyWhere(req, shared, opts = {}) {
+  const { allowNull = true } = opts;
   if (shared) return {};
   const user = req?.user;
   if (!user) return {};
   // Roles that always bypass doctor-scoped filtering
   if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') return {};
   if (user.role === 'RECEPTIONIST' || user.role === 'NURSE') return {};
-  return {
-    OR: [
-      { doctorId: user.id },
-      { doctorId: null },
-    ],
-  };
+  if (allowNull) {
+    return {
+      OR: [
+        { doctorId: user.id },
+        { doctorId: null },
+      ],
+    };
+  }
+  // Non-nullable doctorId column - omit the null branch but keep the OR wrapper
+  // so controllers using `if (privacy.OR)` still work (otherwise the privacy
+  // filter would silently disappear and leak data).
+  return { OR: [{ doctorId: user.id }] };
 }
 
 /**
