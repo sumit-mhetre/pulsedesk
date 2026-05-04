@@ -5,6 +5,8 @@ import { Button, Badge } from '../../components/ui'
 import api from '../../lib/api'
 import { format } from 'date-fns'
 import useAuthStore from '../../store/authStore'
+import { usePrintTitle } from '../../hooks/usePrintTitle'
+import { buildPrintTitle } from '../../lib/slug'
 
 // Only timing translates — everything else stays English
 // Notes translation for liquids/drops (Marathi)
@@ -189,6 +191,16 @@ export default function ViewPrescriptionPage() {
     }, 400)  // let fonts/images render first
     return () => clearTimeout(t)
   }, [loading, rx])
+
+  // PDF/print filename: "Prescription_<rxNo>_<patientCode>_<patient-name>".
+  // Replaces the default browser title (which would otherwise be the URL or
+  // "SimpleRx EMR") so when the user does Ctrl+P -> Save as PDF, the suggested
+  // filename is meaningful instead of a UUID slug.
+  usePrintTitle(rx ? buildPrintTitle('Prescription', {
+    id:   rx.rxNo || rx.id,
+    code: rx.patient?.patientCode,
+    name: rx.patient?.name,
+  }) : null)
 
   // Shorthand: show(key) returns true if cfg doesn't explicitly disable it
   const show = (key) => cfg ? (cfg[key] !== false) : true
