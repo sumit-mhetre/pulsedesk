@@ -471,28 +471,28 @@ export default function ViewPrescriptionPage() {
               {show('showRxSymbol') && <span className="text-xl font-bold italic" style={{color:cfg?.primaryColor||'#000'}}>℞</span>}
               <span className="font-bold text-slate-900 uppercase text-xs tracking-wider">Medicines</span>
             </div>
-            <table className="w-full text-sm border-collapse border border-slate-400">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-slate-50">
-                  <th className="text-left py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400 w-8">#</th>
-                  <th className="text-left py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Medicine</th>
-                  {show('showDosage') && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Dosage</th>}
+                  <th className="text-left py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300 w-8">#</th>
+                  <th className="text-left py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300">Medicine</th>
+                  {show('showDosage') && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300">Dosage</th>}
                   {compactPrint ? (
                     (show('showWhen') || show('showFrequency') || show('showDays')) && (
-                      <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">
+                      <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300">
                         {[show('showWhen') && 'Timing', show('showFrequency') && 'Freq.', show('showDays') && 'Duration'].filter(Boolean).join(' - ')}
                       </th>
                     )
                   ) : (
                     <>
-                      {show('showWhen')      && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Timing</th>}
-                      {show('showFrequency') && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Freq.</th>}
-                      {show('showDays')      && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Duration</th>}
+                      {show('showWhen')      && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300">Timing</th>}
+                      {show('showFrequency') && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300">Freq.</th>}
+                      {show('showDays')      && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300">Duration</th>}
                     </>
                   )}
-                  {show('showQty') && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400 w-14">Qty</th>}
+                  {show('showQty') && <th className="text-center py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300 w-14">Qty</th>}
                   {cfg?.notesAsColumn && show('showNotes') && (
-                    <th className="text-left py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border border-slate-400">Notes</th>
+                    <th className="text-left py-1.5 px-2 text-xs text-slate-700 font-bold uppercase border-b-2 border-slate-300">Notes</th>
                   )}
                 </tr>
               </thead>
@@ -505,8 +505,8 @@ export default function ViewPrescriptionPage() {
                   const combinedCell = parts.join(' - ')
                   return (
                     <tr key={med.id}>
-                      <td className="py-1.5 px-2 text-slate-700 text-xs border border-slate-400 align-top">{idx+1}</td>
-                      <td className="py-1.5 px-2 border border-slate-400 align-top">
+                      <td className="py-1.5 px-2 text-slate-700 text-xs border-b border-slate-100 align-top">{idx+1}</td>
+                      <td className="py-1.5 px-2 border-b border-slate-100 align-top">
                         <p className={show('medicineNameBold')?'font-bold text-slate-900':'text-slate-900'}>{med.medicineName}</p>
                         {show('showGeneric') && med.genericName && (
                           <p className="text-xs text-slate-700 italic mt-0.5">{med.genericName}</p>
@@ -515,21 +515,21 @@ export default function ViewPrescriptionPage() {
                           <p className="text-xs text-slate-600 mt-0.5 italic">{translateNote(med.notesEn, lang)}</p>
                         )}
                       </td>
-                      {show('showDosage') && <td className="py-1.5 px-2 text-center font-mono text-slate-800 border border-slate-400 align-top">{med.dosage ? formatDosageForPrint(med.dosage) : '—'}</td>}
+                      {show('showDosage') && <td className="py-1.5 px-2 text-center font-mono text-slate-800 border-b border-slate-100 align-top">{med.dosage ? formatDosageForPrint(med.dosage) : '—'}</td>}
                       {compactPrint ? (
                         (show('showWhen') || show('showFrequency') || show('showDays')) && (
-                          <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{combinedCell}</td>
+                          <td className="py-1.5 px-2 text-center text-xs text-slate-800 border-b border-slate-100 align-top">{combinedCell}</td>
                         )
                       ) : (
                         <>
-                          {show('showWhen')      && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
-                          {show('showFrequency') && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border border-slate-400 align-top">{getFrequencyLabel(med.frequency, lang)}</td>}
-                          {show('showDays')      && <td className="py-1.5 px-2 text-center text-slate-800 border border-slate-400 align-top">{translateDays(med.days, lang)}</td>}
+                          {show('showWhen')      && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border-b border-slate-100 align-top">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
+                          {show('showFrequency') && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border-b border-slate-100 align-top">{getFrequencyLabel(med.frequency, lang)}</td>}
+                          {show('showDays')      && <td className="py-1.5 px-2 text-center text-slate-800 border-b border-slate-100 align-top">{translateDays(med.days, lang)}</td>}
                         </>
                       )}
-                      {show('showQty') && <td className="py-1.5 px-2 text-center font-bold text-slate-900 border border-slate-400 align-top">{med.qty||'—'}</td>}
+                      {show('showQty') && <td className="py-1.5 px-2 text-center font-bold text-slate-900 border-b border-slate-100 align-top">{med.qty||'—'}</td>}
                       {cfg?.notesAsColumn && show('showNotes') && (
-                        <td className="py-1.5 px-2 text-xs text-slate-700 border border-slate-400 align-top">{med.notesEn ? translateNote(med.notesEn, lang) : '—'}</td>
+                        <td className="py-1.5 px-2 text-xs text-slate-700 border-b border-slate-100 align-top">{med.notesEn ? translateNote(med.notesEn, lang) : '—'}</td>
                       )}
                     </tr>
                   )
