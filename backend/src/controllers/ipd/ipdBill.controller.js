@@ -80,7 +80,29 @@ function buildBedRentSegments({ admittedAt, dischargedAt, transfers, currentBed 
     .filter(s => s.days > 0)
 }
 
-// ── Generate IPD bill number ──────────────────────────────
+// Human-readable label for each chargeType. Used on bill line items so a
+// receptionist can scan the bill and see at a glance "this is a doctor visit"
+// vs "this is medicine" without relying on the chargeType column being shown
+// on print. Keep in sync with CHARGE_TYPES in the frontend ChargesTab.
+const CHARGE_TYPE_LABEL = {
+  BED_RENT:       'Bed Rent',
+  DOCTOR_VISIT:   'Doctor Visit',
+  CONSULTATION:   'Consultation',
+  NURSING_CARE:   'Nursing Care',
+  MEDICINE:       'Medicine',
+  CONSUMABLE:     'Consumable',
+  LAB_TEST:       'Lab Test',
+  IMAGING:        'Imaging',
+  PROCEDURE:      'Procedure',
+  OT_CHARGE:      'OT Charge',
+  PACKAGE:        'Package',
+  PACKAGE_EXTRA:  'Package Extra',
+  DEPOSIT_REFUND: 'Deposit Refund',
+  ADJUSTMENT:     'Adjustment',
+  OTHER:          'Other',
+}
+
+// Generate IPD bill number ──────────────────────────────
 async function generateBillNo(clinicId) {
   const count = await prisma.bill.count({ where: { clinicId } })
   const year  = new Date().getFullYear()
@@ -154,13 +176,22 @@ async function previewBill(req, res) {
     }
 
     // 2. All non-voided charges, one row per charge for clear audit trail.
+    //    Description is prefixed with the human-readable charge type label
+    //    so the bill line reads e.g. "Doctor Visit - Dr Anil Patil" or
+    //    "Medicine - Dolo 650mg" instead of just "Dr Anil Patil" / "Dolo
+    //    650mg" (where the type would otherwise be invisible on the bill).
     const charges = await prisma.iPDCharge.findMany({
       where: { admissionId: admission.id, voidedAt: null },
       orderBy: { chargedAt: 'asc' },
     })
     for (const c of charges) {
+      const label = CHARGE_TYPE_LABEL[c.chargeType] || c.chargeType
+      // Skip prefixing if the description already starts with the label
+      // (e.g. legacy data, or bed-rent rows manually entered as charges).
+      const alreadyPrefixed = (c.description || '').toLowerCase().startsWith(label.toLowerCase())
+      const prettyName = alreadyPrefixed ? c.description : `${label} - ${c.description}`
       items.push({
-        name:   c.description,
+        name:   prettyName,
         qty:    c.quantity,
         rate:   c.unitPrice,
         amount: c.amount,

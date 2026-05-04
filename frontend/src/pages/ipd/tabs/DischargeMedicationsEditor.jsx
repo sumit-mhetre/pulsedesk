@@ -66,6 +66,17 @@ export default function DischargeMedicationsEditor({
     return seeded.length > 0 ? seeded : []
   })
 
+  // Pre-load a small page of medicines so the row dropdown can show
+  // results IMMEDIATELY on focus without waiting for a 2-character search.
+  // Each row still fires its own debounced search when the user types,
+  // but this lets "click → see list → pick" happen in one beat.
+  const [allMedicines, setAllMedicines] = useState([])
+  useEffect(() => {
+    api.get('/medicines', { params: { limit: 50 }, silent: true })
+      .then(({ data }) => setAllMedicines(data?.data || data?.medicines || []))
+      .catch(() => setAllMedicines([]))
+  }, [])
+
   // Resync rows when parent meds list changes (e.g. after "Copy from Active").
   // We preserve any unsaved drafts the user has open.
   useEffect(() => {
@@ -141,6 +152,19 @@ export default function DischargeMedicationsEditor({
     if (onAddBlankRow) onAddBlankRow(r)
   }
 
+  // Called after a row's medicine is picked. If this was the LAST row in the
+  // table, automatically append a fresh empty row below so the doctor can keep
+  // typing without clicking "+ Add Medication" between every entry. Mirrors
+  // the OPD prescription page behavior.
+  const appendBlankRowIfLast = (rowKey) => {
+    setRows(prev => {
+      const idx = prev.findIndex(r => r._localKey === rowKey)
+      if (idx === -1) return prev
+      if (idx !== prev.length - 1) return prev   // not the last row
+      return [...prev, emptyRow()]
+    })
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
@@ -177,9 +201,11 @@ export default function DischargeMedicationsEditor({
                   key={row._localKey}
                   row={row}
                   editable={editable}
+                  initialMedicines={allMedicines}
                   onChange={(patch) => updateRow(row._localKey, patch)}
                   onPersist={() => persistRow(row)}
                   onRemove={() => removeRow(row)}
+                  onPickedMedicine={() => appendBlankRowIfLast(row._localKey)}
                 />
               ))}
             </tbody>
@@ -192,7 +218,7 @@ export default function DischargeMedicationsEditor({
 
 // ─────────────────────────────────────────────────────────
 // One row of the discharge medications table.
-function DischargeMedRow({ row, editable, onChange, onPersist, onRemove }) {
+function DischargeMedRow({ row, editable, initialMedicines, onChange, onPersist, onRemove, onPickedMedicine }) {
   const [query, setQuery] = useState(row.brandName || '')
   const [suggestions, setSugg] = useState([])
   const [showSugg, setShowSugg] = useState(false)
@@ -206,20 +232,28 @@ function DischargeMedRow({ row, editable, onChange, onPersist, onRemove }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.brandName])
 
-  // Debounced search of the medicines catalog
+  // Search behavior:
+  //   - No query (empty input on focus): show the parent-loaded `initialMedicines`
+  //     list directly. Lets "click → pick" happen without typing.
+  //   - Query >= 2 chars: debounced server search.
   useEffect(() => {
     if (justPickedRef.current) { justPickedRef.current = false; return }
-    if (!query || query.trim().length < 2) { setSugg([]); return }
+    const q = (query || '').trim()
+    if (q.length === 0) {
+      setSugg(initialMedicines || [])
+      return
+    }
+    if (q.length < 2) { setSugg([]); return }
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
-        const { data } = await api.get('/medicines', { params: { search: query.trim(), limit: 8 } })
+        const { data } = await api.get('/medicines', { params: { search: q, limit: 8 } })
         const list = data?.data || data?.medicines || []
         setSugg(list)
       } catch { setSugg([]) }
     }, 250)
     return () => debounceRef.current && clearTimeout(debounceRef.current)
-  }, [query])
+  }, [query, initialMedicines])
 
   // Pick a medicine from the suggestions list. Fills brandName, genericName,
   // medicineId and ALSO tries to pre-fill dose/frequency/duration/instructions
@@ -252,8 +286,12 @@ function DischargeMedRow({ row, editable, onChange, onPersist, onRemove }) {
     if (!patch.duration && m.defaultDays) patch.duration = `${m.defaultDays} days`
 
     onChange(patch)
-    // Persist if everything is now complete
-    setTimeout(() => onPersist(), 0)
+    // Persist if everything is now complete, then ask the parent to append a
+    // fresh blank row below (only fires when this was the last row).
+    setTimeout(() => {
+      onPersist()
+      if (onPickedMedicine) onPickedMedicine()
+    }, 0)
   }
 
   // Free-text "Use 'X' as new medicine" - no medicineId, just text
