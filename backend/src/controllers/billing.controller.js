@@ -74,10 +74,36 @@ async function createBill(req, res) {
       patientId, prescriptionId, items = [],
       discount = 0, paymentMode = 'Cash',
       paymentStatus = 'Pending', amountPaid = 0, notes,
+      consultingDoctorId,
     } = req.body;
 
     const patient = await prisma.patient.findFirst({ where: { id: patientId, clinicId: req.clinicId } });
     if (!patient) return errorResponse(res, 'Patient not found', 404);
+
+    // Validate consultingDoctorId if supplied. Must be a DOCTOR in this clinic.
+    // We don't *require* it here (single-doctor clinics omit it; the frontend
+    // gate prevents multi-doctor saves without it). But if supplied, it must
+    // be valid - reject silently bad IDs.
+    let validatedDoctorId = null;
+    if (consultingDoctorId) {
+      const doc = await prisma.user.findFirst({
+        where: { id: consultingDoctorId, clinicId: req.clinicId, role: 'DOCTOR', isActive: true },
+        select: { id: true },
+      });
+      if (!doc) return errorResponse(res, 'Selected consulting doctor is not valid', 400);
+      validatedDoctorId = doc.id;
+    } else {
+      // Auto-fill for single-doctor clinics so the queue entry is correctly
+      // routed even without explicit selection. If 0 or 2+ doctors, leave
+      // null - frontend should have prompted, but legacy/edge-case requests
+      // fall through to the old "no doctor on appointment" behavior.
+      const doctors = await prisma.user.findMany({
+        where: { clinicId: req.clinicId, role: 'DOCTOR', isActive: true },
+        select: { id: true },
+        take: 2,
+      });
+      if (doctors.length === 1) validatedDoctorId = doctors[0].id;
+    }
 
     const billNo   = await generateBillNo(req.clinicId);
     const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.rate) * parseInt(item.qty)), 0);
@@ -136,6 +162,7 @@ async function createBill(req, res) {
           data: {
             clinicId:  req.clinicId,
             patientId,
+            doctorId:  validatedDoctorId,
             tokenNo:   nextToken,
             tokenDate: today,
             status:    'Waiting',
@@ -244,7 +271,7 @@ async function suggestFromPrescription(req, res) {
       where: {
         id: prescriptionId,
         clinicId: req.clinicId,
-        ...doctorPrivacyWhere(req, flags.sharePrescriptions),
+        ...doctorPrivacyWhere(req, flags.sharePrescriptions, { allowNull: false }),
       },
       include: { medicines: true, labTests: true },
     });

@@ -36,7 +36,7 @@ function ItemSearch({ value, billingItems, onChange, onSelect, onEnter, idx }) {
               onSelect(filtered[0]); setQuery(filtered[0].name); setOpen(false)
               onEnter && onEnter(idx)
             } else if (query.length > 0) {
-              // Custom item - just move to next
+              // Custom item — just move to next
               onEnter && onEnter(idx)
               setOpen(false)
             }
@@ -83,6 +83,12 @@ export default function NewBillPage() {
   const [amountPaid,  setAmountPaid]  = useState('')
   const [notes,       setNotes]       = useState('')
   const [saving,      setSaving]      = useState(false)
+  // Active doctors in the clinic. If 1, auto-select. If 2+, the receptionist
+  // must pick one before saving so the auto-queued appointment is routed
+  // to the right doctor's queue (matters for multi-doctor clinics under
+  // privacy mode).
+  const [doctors, setDoctors] = useState([])
+  const [consultingDoctorId, setConsultingDoctorId] = useState('')
 
   // Computed totals
   const subtotal = items.reduce((s, i) => s + (parseFloat(i.rate) || 0) * (parseInt(i.qty) || 1), 0)
@@ -101,6 +107,17 @@ export default function NewBillPage() {
     api.get('/master/billing-items').then(({ data }) => setBillingItems(data.data)).catch(() => {})
   }, [])
 
+  // Load active doctors in the clinic. Auto-select if there's only one - that
+  // way single-doctor clinics never see the field at all (receptionist-friendly)
+  // and the queue entry still gets routed correctly.
+  useEffect(() => {
+    api.get('/users?role=DOCTOR&isActive=true').then(({ data }) => {
+      const list = (data.data || []).filter(u => u.isActive !== false)
+      setDoctors(list)
+      if (list.length === 1) setConsultingDoctorId(list[0].id)
+    }).catch(() => {})
+  }, [])
+
   // Load from URL params
   useEffect(() => {
     const pid  = params.get('patientId')
@@ -115,7 +132,7 @@ export default function NewBillPage() {
     }
   }, [])
 
-  // Patient search - load all on focus
+  // Patient search — load all on focus
   const fetchPatients = async (q = '') => {
     try {
       const { data } = await api.get(`/patients/search?q=${q}`)
@@ -206,6 +223,12 @@ export default function NewBillPage() {
     if (!patient) { toast.error('Please select a patient'); return }
     const validItems = items.filter(i => i.name && parseFloat(i.rate) > 0)
     if (validItems.length === 0) { toast.error('Add at least one item with rate'); return }
+    // Multi-doctor clinics must pick a consulting doctor so the auto-queued
+    // appointment gets routed correctly. Single-doctor clinics auto-fill (or
+    // 0-doctor edge case skips).
+    if (doctors.length > 1 && !consultingDoctorId) {
+      toast.error('Please select consulting doctor'); return
+    }
     setSaving(true)
     try {
       const { data } = await api.post('/billing', {
@@ -216,6 +239,7 @@ export default function NewBillPage() {
         paymentMode,
         amountPaid:     parseFloat(amountPaid) || 0,
         notes,
+        consultingDoctorId: consultingDoctorId || null,
       })
       toast.success(`Bill ${data.data.billNo} created!`)
       navigate(`/billing/${data.data.id}`)
@@ -276,6 +300,33 @@ export default function NewBillPage() {
           )}
         </Card>
 
+        {/* Consulting Doctor — appears for multi-doctor clinics so the receptionist
+            picks who this visit is for. Single-doctor clinics auto-select; field
+            stays hidden to keep the form short. */}
+        {patient && doctors.length > 1 && (
+          <Card>
+            <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
+              Consulting Doctor
+              <Badge variant="danger">Required</Badge>
+            </h3>
+            <select
+              className="form-select"
+              value={consultingDoctorId}
+              onChange={e => setConsultingDoctorId(e.target.value)}
+            >
+              <option value="">— Select doctor —</option>
+              {doctors.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.name}{d.specialization ? ` (${d.specialization})` : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-400 mt-1">
+              The patient will appear in this doctor's queue.
+            </p>
+          </Card>
+        )}
+
         {/* ② Link Prescription (optional) */}
         {patient && (
           <Card>
@@ -316,13 +367,13 @@ export default function NewBillPage() {
           </Card>
         )}
 
-        {/* ③ Bill Items - inline table like medicines */}
+        {/* ③ Bill Items — inline table like medicines */}
         <Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-slate-700 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold flex-shrink-0">{patient ? '3' : '2'}</span>
               Bill Items
-              <span className="text-xs text-slate-400 font-normal ml-1">- press Enter to jump to next row</span>
+              <span className="text-xs text-slate-400 font-normal ml-1">— press Enter to jump to next row</span>
             </h3>
             <Button variant="outline" size="sm" icon={<Plus className="w-3.5 h-3.5"/>} onClick={addItem}>Add Row</Button>
           </div>
@@ -433,7 +484,7 @@ export default function NewBillPage() {
               </div>
             </div>
 
-            {/* Amount Paid - auto-filled with total */}
+            {/* Amount Paid — auto-filled with total */}
             <div>
               <label className="form-label">Amount Paid (₹)</label>
               <input type="number" min="0" max={total}
@@ -458,7 +509,7 @@ export default function NewBillPage() {
               <div className={`mt-1 p-3 rounded-xl border-2 transition-colors
                 ${payStatus === 'Paid' ? 'border-success bg-green-50' : payStatus === 'Partial' ? 'border-warning bg-orange-50' : 'border-slate-200 bg-slate-50'}`}>
                 <p className={`font-bold text-sm ${payStatus === 'Paid' ? 'text-success' : payStatus === 'Partial' ? 'text-warning' : 'text-slate-400'}`}>
-                  {payStatus === 'Paid' ? '✅ Fully Paid' : payStatus === 'Partial' ? '⚡ Partial Payment' : '-'}
+                  {payStatus === 'Paid' ? '✅ Fully Paid' : payStatus === 'Partial' ? '⚡ Partial Payment' : '—'}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Paid: ₹{paid.toLocaleString('en-IN')} {balance > 0 && `| Balance: ₹${balance.toLocaleString('en-IN')}`}
