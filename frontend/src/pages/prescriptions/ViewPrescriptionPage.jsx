@@ -503,35 +503,74 @@ export default function ViewPrescriptionPage() {
                   if (show('showFrequency')) parts.push(getFrequencyLabel(med.frequency, lang))
                   if (show('showDays'))      parts.push(translateDays(med.days, lang))
                   const combinedCell = parts.join(' - ')
+
+                  // ── HealthPlix-style two-row layout. The brand name + dosage + timing
+                  // sit on the first row. Below it, a SECOND row spans across the
+                  // remaining columns (everything except #) so long generic names like
+                  // "Ambroxol (30mg/5ml) + Levosalbutamol (1mg/5ml) + Guaifenesin..."
+                  // fit on a single line without wrapping awkwardly inside a narrow
+                  // Medicine cell.
+                  const hasGeneric     = show('showGeneric') && med.genericName
+                  const hasNotesBelow  = show('showNotes')   && med.notesEn && !cfg?.notesAsColumn
+                  const hasSecondRow   = hasGeneric || hasNotesBelow
+
+                  // Count visible columns to compute colSpan for the second row.
+                  // Row separator (border-b) goes on the LAST row of each medicine.
+                  let visibleCols = 2 // # + Medicine
+                  if (show('showDosage')) visibleCols++
+                  if (compactPrint) {
+                    if (show('showWhen') || show('showFrequency') || show('showDays')) visibleCols++
+                  } else {
+                    if (show('showWhen'))      visibleCols++
+                    if (show('showFrequency')) visibleCols++
+                    if (show('showDays'))      visibleCols++
+                  }
+                  if (show('showQty')) visibleCols++
+                  if (cfg?.notesAsColumn && show('showNotes')) visibleCols++
+                  const genericColSpan = visibleCols - 1 // skip # column
+
+                  // Brand-row cells get the bottom border ONLY when there's no second row.
+                  // When there IS a second row, the second row carries the separator.
+                  const brandBorder = hasSecondRow ? '' : 'border-b border-slate-100'
+
                   return (
-                    <tr key={med.id}>
-                      <td className="py-1.5 px-2 text-slate-700 text-xs border-b border-slate-100 align-top">{idx+1}</td>
-                      <td className="py-1.5 px-2 border-b border-slate-100 align-top">
-                        <p className={show('medicineNameBold')?'font-bold text-slate-900':'text-slate-900'}>{med.medicineName}</p>
-                        {show('showGeneric') && med.genericName && (
-                          <p className="text-xs text-slate-700 italic mt-0.5">{med.genericName}</p>
+                    <Fragment key={med.id}>
+                      <tr>
+                        <td className={`py-1.5 px-2 text-slate-700 text-xs align-top ${brandBorder}`}>{idx+1}</td>
+                        <td className={`pt-1.5 ${hasSecondRow ? 'pb-0.5' : 'pb-1.5'} px-2 align-top ${brandBorder}`}>
+                          <p className={show('medicineNameBold')?'font-bold text-slate-900':'text-slate-900'}>{med.medicineName}</p>
+                        </td>
+                        {show('showDosage') && <td className={`py-1.5 px-2 text-center font-mono text-slate-800 align-top ${brandBorder}`}>{med.dosage ? formatDosageForPrint(med.dosage) : '—'}</td>}
+                        {compactPrint ? (
+                          (show('showWhen') || show('showFrequency') || show('showDays')) && (
+                            <td className={`py-1.5 px-2 text-center text-xs text-slate-800 align-top ${brandBorder}`}>{combinedCell}</td>
+                          )
+                        ) : (
+                          <>
+                            {show('showWhen')      && <td className={`py-1.5 px-2 text-center text-xs text-slate-800 align-top ${brandBorder}`}>{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
+                            {show('showFrequency') && <td className={`py-1.5 px-2 text-center text-xs text-slate-800 align-top ${brandBorder}`}>{getFrequencyLabel(med.frequency, lang)}</td>}
+                            {show('showDays')      && <td className={`py-1.5 px-2 text-center text-slate-800 align-top ${brandBorder}`}>{translateDays(med.days, lang)}</td>}
+                          </>
                         )}
-                        {show('showNotes') && med.notesEn && !cfg?.notesAsColumn && (
-                          <p className="text-xs text-slate-600 mt-0.5 italic">{translateNote(med.notesEn, lang)}</p>
+                        {show('showQty') && <td className={`py-1.5 px-2 text-center font-bold text-slate-900 align-top ${brandBorder}`}>{med.qty||'—'}</td>}
+                        {cfg?.notesAsColumn && show('showNotes') && (
+                          <td className={`py-1.5 px-2 text-xs text-slate-700 align-top ${brandBorder}`}>{med.notesEn ? translateNote(med.notesEn, lang) : '—'}</td>
                         )}
-                      </td>
-                      {show('showDosage') && <td className="py-1.5 px-2 text-center font-mono text-slate-800 border-b border-slate-100 align-top">{med.dosage ? formatDosageForPrint(med.dosage) : '—'}</td>}
-                      {compactPrint ? (
-                        (show('showWhen') || show('showFrequency') || show('showDays')) && (
-                          <td className="py-1.5 px-2 text-center text-xs text-slate-800 border-b border-slate-100 align-top">{combinedCell}</td>
-                        )
-                      ) : (
-                        <>
-                          {show('showWhen')      && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border-b border-slate-100 align-top">{med.timing ? getTimingLabel(med.timing, lang) : '—'}</td>}
-                          {show('showFrequency') && <td className="py-1.5 px-2 text-center text-xs text-slate-800 border-b border-slate-100 align-top">{getFrequencyLabel(med.frequency, lang)}</td>}
-                          {show('showDays')      && <td className="py-1.5 px-2 text-center text-slate-800 border-b border-slate-100 align-top">{translateDays(med.days, lang)}</td>}
-                        </>
+                      </tr>
+                      {hasSecondRow && (
+                        <tr>
+                          <td className="border-b border-slate-100"></td>
+                          <td colSpan={genericColSpan} className="pt-0 pb-2 px-2 align-top border-b border-slate-100">
+                            {hasGeneric && (
+                              <p className="text-xs text-slate-700 italic">{med.genericName}</p>
+                            )}
+                            {hasNotesBelow && (
+                              <p className={`text-xs text-slate-600 italic ${hasGeneric ? 'mt-0.5' : ''}`}>{translateNote(med.notesEn, lang)}</p>
+                            )}
+                          </td>
+                        </tr>
                       )}
-                      {show('showQty') && <td className="py-1.5 px-2 text-center font-bold text-slate-900 border-b border-slate-100 align-top">{med.qty||'—'}</td>}
-                      {cfg?.notesAsColumn && show('showNotes') && (
-                        <td className="py-1.5 px-2 text-xs text-slate-700 border-b border-slate-100 align-top">{med.notesEn ? translateNote(med.notesEn, lang) : '—'}</td>
-                      )}
-                    </tr>
+                    </Fragment>
                   )
                 })}
               </tbody>
