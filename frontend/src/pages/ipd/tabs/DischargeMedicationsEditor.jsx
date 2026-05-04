@@ -182,11 +182,11 @@ export default function DischargeMedicationsEditor({
           No discharge medications added yet. Click <strong>+ Add Medication</strong> to start.
         </div>
       ) : (
-        <div className="border border-slate-200 rounded-lg overflow-hidden">
+        <div className="border border-slate-200 rounded-lg">
           <table className="w-full text-xs">
             <thead className="bg-slate-50">
               <tr className="text-slate-500 uppercase tracking-wide text-[10px]">
-                <th className="text-left px-3 py-1.5 w-[28%]">Medication</th>
+                <th className="text-left px-3 py-1.5 w-[28%] rounded-tl-lg">Medication</th>
                 <th className="text-left px-2 py-1.5 w-[12%]">Dose</th>
                 <th className="text-left px-2 py-1.5 w-[14%]">Frequency</th>
                 <th className="text-left px-2 py-1.5 w-[14%]">Duration</th>
@@ -221,9 +221,32 @@ function DischargeMedRow({ row, editable, initialMedicines, onChange, onPersist,
   const [query, setQuery] = useState(row.brandName || '')
   const [suggestions, setSugg] = useState([])
   const [showSugg, setShowSugg] = useState(false)
+  const [dropPos, setDropPos] = useState(null)   // {top,left,width} or null
+  const inputRef = useRef(null)
   const debounceRef = useRef(null)
   const justPickedRef = useRef(false)
   const blurTimerRef = useRef(null)
+
+  // Recompute dropdown position when it should be visible. Uses the input's
+  // bounding rect so we can render the dropdown with `position: fixed` and
+  // escape any ancestor `overflow-hidden` (table wrapper, Section accordion,
+  // sticky header, etc.). Recomputed on focus + on scroll/resize while open.
+  const recomputePos = () => {
+    if (!inputRef.current) return
+    const r = inputRef.current.getBoundingClientRect()
+    setDropPos({ top: r.bottom + 2, left: r.left, width: r.width })
+  }
+  useEffect(() => {
+    if (!showSugg) return
+    recomputePos()
+    const onScroll = () => recomputePos()
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [showSugg])
 
   // Keep the input in sync if the row is patched externally (e.g. doctor pref auto-fill).
   useEffect(() => {
@@ -328,6 +351,7 @@ function DischargeMedRow({ row, editable, initialMedicines, onChange, onPersist,
         <div className="relative">
           <Search className="w-3 h-3 absolute left-2 top-2.5 text-slate-300 pointer-events-none"/>
           <input
+            ref={inputRef}
             className="form-input form-input-sm !pl-7"
             disabled={!editable}
             value={query}
@@ -336,8 +360,15 @@ function DischargeMedRow({ row, editable, initialMedicines, onChange, onPersist,
             onFocus={() => setShowSugg(true)}
             onBlur={handleInputBlur}
           />
-          {showSugg && suggestions.length > 0 && (
-            <ul className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow max-h-48 overflow-y-auto"
+          {showSugg && suggestions.length > 0 && dropPos && (
+            <ul style={{
+                position: 'fixed',
+                top: dropPos.top,
+                left: dropPos.left,
+                width: dropPos.width,
+                zIndex: 9999,
+              }}
+              className="bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
               onMouseDown={cancelBlur}>
               {suggestions.map(m => (
                 <li key={m.id}>
