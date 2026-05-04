@@ -774,6 +774,8 @@ function TagSearch({ tags, onAdd, onRemove, items, placeholder, allowCustom=true
 // ── Section template button ───────────────────────────────
 function SectionTemplate({ label, onApply, templates, section }) {
   const [open,setOpen] = useState(false)
+  const [tplSearch, setTplSearch] = useState('')
+  const searchRef = useRef(null)
   const relevant = (templates||[]).filter(t => {
     if (section==='complaint')  return t.complaint
     if (section==='diagnosis')  return t.diagnosis
@@ -783,6 +785,31 @@ function SectionTemplate({ label, onApply, templates, section }) {
     return false
   })
   if (relevant.length === 0) return null
+
+  // Apply text filter — searches the template name and a short preview of its
+  // contents so doctors can type any keyword they remember from the body.
+  const q = tplSearch.trim().toLowerCase()
+  const filtered = q
+    ? relevant.filter(t => {
+        const hay = [
+          t.name,
+          t.complaint,
+          t.diagnosis,
+          t.advice,
+          (t.medicines || []).map(m => m.medicineName).join(' '),
+          (t.labTests || []).join(' '),
+        ].filter(Boolean).join(' ').toLowerCase()
+        return hay.includes(q)
+      })
+    : relevant
+
+  // Reset the search when closing so reopening starts fresh.
+  const close = () => { setOpen(false); setTplSearch('') }
+
+  // Show the search input only when there are 4+ templates - below that, the
+  // dropdown is short enough that searching is overkill.
+  const showSearch = relevant.length >= 4
+
   return (
     <div className="relative">
       <button type="button" onClick={()=>setOpen(o=>!o)}
@@ -791,13 +818,28 @@ function SectionTemplate({ label, onApply, templates, section }) {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={()=>setOpen(false)}/>
+          <div className="fixed inset-0 z-40" onClick={close}/>
           <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-xl border border-blue-100 z-50 max-h-72 overflow-y-auto">
-            <div className="px-3 py-2 border-b border-slate-50">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</p>
+            <div className="px-3 py-2 border-b border-slate-50 sticky top-0 bg-white">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">{label}</p>
+              {showSearch && (
+                <input
+                  ref={searchRef}
+                  type="text"
+                  autoFocus
+                  value={tplSearch}
+                  onChange={e => setTplSearch(e.target.value)}
+                  placeholder={`Search ${relevant.length} templates...`}
+                  className="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:border-primary"
+                />
+              )}
             </div>
-            {relevant.map(t=>(
-              <button key={t.id} type="button" onClick={()=>{ onApply(t); setOpen(false) }}
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-xs text-slate-400">
+                No templates match "{tplSearch}"
+              </div>
+            ) : filtered.map(t=>(
+              <button key={t.id} type="button" onClick={()=>{ onApply(t); close() }}
                 className="w-full text-left px-3 py-2.5 hover:bg-blue-50 border-b border-slate-50 last:border-0">
                 <p className="font-medium text-sm text-slate-700">{t.name}</p>
                 <p className="text-xs text-slate-400 mt-0.5">
