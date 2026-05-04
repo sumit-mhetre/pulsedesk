@@ -105,11 +105,16 @@ const FREQ_OPTS = [
   { code:'SOS',      label:'As Needed (SOS)' },
 ]
 const FREQ_MAP    = { '1-0-0':1,'0-1-0':1,'0-0-1':1,'1-0-1':2,'1-1-0':2,'0-1-1':2,'1-1-1':3,'1-1-1-1':4,'OD':1,'BD':2,'TDS':3,'QID':4,'HS':1 }
-// Medicine types where qty is always "1 bottle/tube" and dosage is N/A
-// (cream, syrup, drops, etc.). Injection is intentionally NOT in this list:
-// diabetes/insulin doctors enter a per-dose unit count like "22-0-22" and
-// expect dosage + qty calc to work normally.
-const NON_TABLET  = ['liquid','drops','cream','inhaler','powder','syrup','suspension','gel','lotion','ointment','spray']
+// Types where qty is always "1 bottle/tube/vial/pen" - the unit being
+// dispensed isn't countable from dosage × duration. Includes injection
+// because pharmacist dispenses 1 pen/vial regardless of "22 units BD".
+const QTY_FIXED_ONE = ['liquid','drops','cream','inhaler','injection','powder','syrup','suspension','gel','lotion','ointment','spray']
+
+// Subset of QTY_FIXED_ONE where the dosage column is hidden as N/A on the
+// form (cream, syrup, drops, etc. - the doctor writes instructions in the
+// notes field instead). Injection is NOT here: insulin doctors enter a
+// per-dose unit count like "22-0-22" but qty stays 1 (1 pen/vial).
+const NON_TABLET = ['liquid','drops','cream','inhaler','powder','syrup','suspension','gel','lotion','ointment','spray']
 const emptyMed    = { medicineId:'',medicineName:'',medicineType:'tablet',genericName:null,dosage:'',days:'',timing:'',frequency:'DAILY',qty:'',notesEn:'' }
 
 // Syrup/liquid notes options (bilingual)
@@ -169,8 +174,8 @@ const parseDosagePerDay = (dosage) => {
 }
 
 const calcQty = (dosage, days, type='tablet', frequency='DAILY') => {
-  // Liquid/syrup/drops/cream/etc → qty always 1 bottle/tube (editable)
-  if (NON_TABLET.includes(type) || type === 'sachet') return '1'
+  // Liquid/syrup/drops/cream/injection/etc → qty always 1 bottle/tube/pen (editable)
+  if (QTY_FIXED_ONE.includes(type) || type === 'sachet') return '1'
   // SOS = as-needed; no fixed schedule
   if (frequency === 'SOS') return ''
   // Parse dosage to "units per day". Falls back to FREQ_MAP for legacy codes,
@@ -1436,7 +1441,7 @@ export default function NewPrescriptionPage() {
         genericName: m.genericName || null,
         dosage:m.dosage||'', days:m.days?String(m.days):'', timing:m.timing||'AF',
         frequency: m.frequency||'DAILY',
-        qty:m.qty?String(m.qty):(NON_TABLET.includes(m.medicineType)?'1':''), notesEn:m.notesEn||''
+        qty:m.qty?String(m.qty):(QTY_FIXED_ONE.includes(m.medicineType)?'1':''), notesEn:m.notesEn||''
       })) : [{...emptyMed}])
       setRxTests(rx.labTests.map(t=>({ id:t.labTestId, name:t.labTestName })))
       setRxAdvice(rx.advice ? rx.advice.split('\n').filter(Boolean).map((a,i)=>({ id:'adv_'+i, name:a })) : [])
@@ -1924,8 +1929,9 @@ export default function NewPrescriptionPage() {
       if(field==='days')lastUsed.current.days=val
       if(field==='timing')lastUsed.current.timing=val
       if(field==='frequency')lastUsed.current.frequency=val
-      // Recalc qty whenever dosage/days/frequency change
-      if((field==='dosage'||field==='days'||field==='frequency')&&!NON_TABLET.includes(u[i].medicineType)) {
+      // Recalc qty whenever dosage/days/frequency change - skip for fixed-qty
+      // types (cream/syrup/injection/etc.) where qty stays 1 regardless.
+      if((field==='dosage'||field==='days'||field==='frequency')&&!QTY_FIXED_ONE.includes(u[i].medicineType)) {
         u[i].qty = calcQty(
           field==='dosage'    ? val : u[i].dosage,
           field==='days'      ? val : u[i].days,
@@ -1947,7 +1953,10 @@ export default function NewPrescriptionPage() {
   const handleMedSelect = useCallback((med, rowIdx) => {
     setDirty()
     if (!med) return
+    // isNT = "no dosage UI" (cream/syrup/drops). Injection allows dosage entry.
     const isNT = NON_TABLET.includes(med.type)
+    // isFixedQty = "qty is always 1" (cream/syrup/drops/injection). Wider set.
+    const isFixedQty = QTY_FIXED_ONE.includes(med.type)
     // Priority: doctor's personal preference > medicine default > last used
     const pref   = doctorPrefs[med.id] || {}
     const dosage = isNT ? '' : (pref.dosage || med.defaultDosage || lastUsed.current.dosage)
@@ -1963,7 +1972,7 @@ export default function NewPrescriptionPage() {
     const notesMr = pref.notesMr || ''
     setRxMeds(prev => {
       const u=[...prev]
-      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, genericName: med.genericName || null, dosage, days, timing, frequency, notesEn, notesHi, notesMr, qty: isNT?'1':calcQty(dosage,days,med.type,frequency) }
+      u[rowIdx]={ ...u[rowIdx], medicineId:med.id, medicineName:med.name, medicineType:med.type, genericName: med.genericName || null, dosage, days, timing, frequency, notesEn, notesHi, notesMr, qty: isFixedQty?'1':calcQty(dosage,days,med.type,frequency) }
       if (rowIdx===u.length-1) u.push({...emptyMed})
       return u
     })
@@ -2002,7 +2011,7 @@ export default function NewPrescriptionPage() {
     if (!val) return
     setRxMeds(prev => prev.map(m => {
       const u = { ...m, [field]: val }
-      if ((field==='dosage' || field==='days' || field==='frequency') && !NON_TABLET.includes(m.medicineType)) {
+      if ((field==='dosage' || field==='days' || field==='frequency') && !QTY_FIXED_ONE.includes(m.medicineType)) {
         u.qty = calcQty(
           field==='dosage'    ? val : m.dosage,
           field==='days'      ? val : m.days,
