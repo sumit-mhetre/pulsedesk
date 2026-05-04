@@ -39,7 +39,10 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:3000',
     'https://pulsedesk-testing1.onrender.com',
-    process.env.FRONTEND_URL,
+    'https://pulsedesk-1.onrender.com',         // legacy frontend on Render
+    'https://simplerxemr.com',                   // new production frontend (root)
+    'https://www.simplerxemr.com',               // new production frontend (www)
+    process.env.FRONTEND_URL,                    // override hook (env var)
   ].filter(Boolean),
   credentials: true,
 }))
@@ -75,7 +78,6 @@ app.use('/api/clinics',      require('./routes/clinic.routes'))
 app.use('/api/users',        require('./routes/user.routes'))
 app.use('/api/super',        require('./routes/super.routes'))
 app.use('/api/upload',       require('./routes/upload.routes'))
-app.use('/api',              require('./routes/attachment.routes'))
 app.use('/api/documents',    require('./routes/medicalDocument.routes'))
 app.use('/api/document-templates', require('./routes/medicalDocumentTemplate.routes'))
 app.use('/api/ipd',          require('./routes/ipd.routes'))
