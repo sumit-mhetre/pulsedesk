@@ -30,7 +30,13 @@ async function login(req, res) {
     // Clinic user — email globally unique
     const user = await prisma.user.findUnique({
       where: { email: emailNorm },
-      include: { clinic: { select: { id: true, name: true, logo: true, headerImageUrl: true, hideTextOnHeader: true, footerImageUrl: true, letterheadUrl: true, letterheadMode: true, status: true, subscriptionPlan: true } } },
+      // Clinic include MUST mirror the auth middleware's include so the user
+      // object returned at login matches what /auth/me returns later. If we
+      // omit fields here, the frontend's first render after login is missing
+      // them and gates like `clinic.ipdEnabled` evaluate to false until the
+      // page reloads. This caused the "IPD section only appears after refresh"
+      // bug — the data simply wasn't in the login payload.
+      include: { clinic: { select: { id: true, name: true, logo: true, headerImageUrl: true, hideTextOnHeader: true, footerImageUrl: true, letterheadUrl: true, letterheadMode: true, status: true, subscriptionPlan: true, settings: true, facilityType: true, ipdEnabled: true, ipdSettings: true } } },
     });
 
     if (!user) {
