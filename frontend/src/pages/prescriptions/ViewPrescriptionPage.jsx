@@ -13,17 +13,18 @@ const LIQUID_NOTES_MR = ['दिवसातून 2 वेळा 5ml','दि�
 const LIQUID_NOTES_HI = ['दिन में 2 बार 5ml','दिन में 3 बार 5ml','दिन में 2 बार 2.5ml','दिन में 2 बार 10ml','दिन में 2 बार 2 बूंद','दिन में 3 बार 2 बूंद','दिन में 3 बार 1 चम्मच','दिन में 2 बार 2 चम्मच','निर्देशानुसार','दिन में 2 बार पतली परत लगाएं']
 
 // Pretty-print a dosage string for the printed Rx.
+// Returns a React node so fractions (½, ¾, ¼) can be rendered larger - they
+// otherwise look much smaller than the surrounding digits in most fonts.
+//
 // Doctors type free-form values like "1-0-1", "0.5-0-0.5", "1/2-0-1/2",
 // "1-1/2-1" (mixed). On print we want them to look polished:
 //   1-0-1            -> 1 — 0 — 1
-//   0.5-0-0.5        -> ½ — 0 — ½
+//   0.5-0-0.5        -> ½ — 0 — ½  (fractions rendered larger)
 //   1/2-0-1/2        -> ½ — 0 — ½
 //   3/4-0-1/4        -> ¾ — 0 — ¼
 //   1.5-0-1.5        -> 1½ — 0 — 1½
 //   3/8-0-3/8        -> 3/8 — 0 — 3/8  (no Unicode glyph available, leave as text)
 //   OD / BD / SOS    -> OD / BD / SOS  (codes left untouched)
-//
-// Returns the pretty string, or the original input if nothing is parseable.
 function formatDosageForPrint(raw) {
   if (!raw) return raw
   const s = String(raw).trim()
@@ -32,14 +33,36 @@ function formatDosageForPrint(raw) {
   if (/^(OD|BD|TDS|QID|HS|SOS|STAT|PRN)$/i.test(s)) return s.toUpperCase()
   // Only reformat hyphen-separated dose-pieces. Anything else (free text)
   // stays as-typed.
-  if (!s.includes('-')) return prettyPiece(s)
+  if (!s.includes('-')) return renderPiece(prettyPiece(s))
   const parts = s.split('-').map(p => prettyPiece(p.trim()))
-  // Em-dash separator with spaces, matches the sample print
-  return parts.join(' \u2014 ')
+  // Em-dash separator with spaces, matches the sample print.
+  // Use React fragment so each piece can be individually styled.
+  const out = []
+  parts.forEach((p, i) => {
+    if (i > 0) out.push(<span key={`sep-${i}`}>{' \u2014 '}</span>)
+    out.push(<span key={`p-${i}`}>{renderPiece(p)}</span>)
+  })
+  return <>{out}</>
 }
 
-// Pretty-print ONE piece of the hyphenated dosage (e.g. "1", "0.5", "1/2",
-// "1-1/2"... wait no, dashes split. Just a single piece.)
+// Wrap unicode fraction glyphs in a larger span so they don't look tiny next
+// to plain digits. Mixed values like "1½" get the whole-number plain and the
+// fraction part bumped.
+function renderPiece(p) {
+  if (!p) return p
+  // Single-glyph fractions
+  if (/^[½¼¾⅓⅔⅛⅜⅝⅞]$/.test(p)) {
+    return <span style={{ fontSize: '1.4em', lineHeight: '1', verticalAlign: '-0.05em' }}>{p}</span>
+  }
+  // Mixed like "1½" / "2¼" / "3¾"
+  const m = p.match(/^(\d+)([½¼¾⅓⅔⅛⅜⅝⅞])$/)
+  if (m) {
+    return <>{m[1]}<span style={{ fontSize: '1.4em', lineHeight: '1', verticalAlign: '-0.05em' }}>{m[2]}</span></>
+  }
+  return p
+}
+
+// Pretty-print ONE piece of the hyphenated dosage (e.g. "1", "0.5", "1/2").
 function prettyPiece(p) {
   if (!p) return p
   // Already a unicode glyph
