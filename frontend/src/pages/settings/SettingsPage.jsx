@@ -162,6 +162,7 @@ function ColorPicker({ label, value, onChange }) {
 const DEFAULT_RX_FORM = {
   showComplaint: true, showDiagnosis: true, showVitals: false, showMedicines: true,
   showLabTests: true, showAdvice: true, showNextVisit: true,
+  showCustomRxNo: false,  // OFF by default - hide Custom Rx No. field from the writing form
   showTestOutcomes: true,  // Flask FAB on the writing form for recording lab values
   vitalBP: true, vitalSugar: true, vitalWeight: true, vitalTemp: true,
   vitalSpo2: true, vitalPulse: true, vitalHeight: false, vitalBMI: false,
@@ -2048,6 +2049,7 @@ const BODY_SECTION_ROWS = [
   { label: 'Test Outcomes',        sub: 'Recorded values for ordered tests',    formKey: 'showTestOutcomes', printKey: 'showLabResults' },
   { label: 'Advice & Precautions', sub: 'Instructions to patient',              formKey: 'showAdvice',       printKey: 'showAdvice' },
   { label: 'Next Visit',           sub: 'Follow-up date',                       formKey: 'showNextVisit',    printKey: 'showNextVisit' },
+  { label: 'Custom Rx No.',        sub: 'Doctor-typed Rx number override (form only - default OFF)', formKey: 'showCustomRxNo' },
 ]
 
 const MEDICINE_COL_ROWS = [

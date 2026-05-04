@@ -2769,10 +2769,12 @@ export default function NewPrescriptionPage() {
                 <label className="form-label">Next Visit Date</label>
                 <input type="date" className="form-input" value={nextVisit} onChange={e=>setNextVisit(e.target.value)}/>
               </div>
-              <div className="form-group">
-                <label className="form-label">Custom Rx No.</label>
-                <input className="form-input font-mono" placeholder="Auto-generated if empty" value={customRxNo} onChange={e=>setCustomRxNo(e.target.value)}/>
-              </div>
+              {pageDesign?.showCustomRxNo === true && (
+                <div className="form-group">
+                  <label className="form-label">Custom Rx No.</label>
+                  <input className="form-input font-mono" placeholder="Auto-generated if empty" value={customRxNo} onChange={e=>setCustomRxNo(e.target.value)}/>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Print Language</label>
                 <select className="form-select" value={printLang} onChange={e=>setPrintLang(e.target.value)}>
